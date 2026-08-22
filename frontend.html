@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casio fx-991EX ClassWiz — OG-style mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root{
+    --face:#2c2c2d;
+    --face2:#242425;
+    --rim:#b8b9b8;
+    --rim-hi:#e4e5e3;
+    --rim-lo:#777978;
+    --key:#171719;
+    --key2:#242426;
+    --whitekey:#efefed;
+    --blue:#2470e8;
+    --yellow:#d8a527;
+    --pink:#d7517f;
+    --cyan:#4aa6d5;
+    --lcd:#d5dfb8;
+    --ink:#141614;
+  }
+
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#a7a7a7;
+    font-family:Arial, Helvetica, sans-serif;
+    padding:24px;
+  }
+
+  /* ── OUTER CALCULATOR SHELL ── */
+  .shell{
+    width:322px;
+    padding:8px 9px 13px;
+    border-radius:38px 38px 31px 31px;
+    background:
+      linear-gradient(90deg,var(--rim-lo) 0%,var(--rim-hi) 7%,#c7c8c6 17%,#a7a8a7 84%,#747675 100%);
+    box-shadow:
+      0 18px 42px rgba(0,0,0,.42),
+      inset 0 1px 0 rgba(255,255,255,.8),
+      inset 0 -2px 3px rgba(0,0,0,.35);
+  }
+
+  .calc{
+    width:100%;
+    border-radius:31px 31px 24px 24px;
+    padding:17px 14px 15px;
+    background:
+      radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(180deg,#303031 0%,#29292a 55%,#262627 100%);
+    background-size:4px 4px, auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.05),
+      inset 0 -1px 0 rgba(0,0,0,.55);
+  }
+
+  /* ── HEADER ── */
+  .hdr{
+    position:relative;
+    height:65px;
+    margin-bottom:4px;
+  }
+  .brand-casio{
+    position:absolute;
+    left:2px;
+    top:2px;
+    color:#fff;
+    font-family:"Arial Black", Arial, sans-serif;
+    font-size:22px;
+    font-weight:900;
+    letter-spacing:.1px;
+  }
+  .brand-cwiz{
+    position:absolute;
+    left:50%;
+    top:29px;
+    transform:translateX(-50%);
+    color:#d95c7f;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:3.2px;
+    white-space:nowrap;
+  }
+
+  /* ── LCD + BLACK BEZEL ── */
+  .lcd-bezel{
+    background:#0e0f10;
+    border-radius:13px;
+    padding:12px 11px 11px;
+    margin:0 1px 12px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.03),
+      0 2px 0 rgba(0,0,0,.4);
+  }
+  .lcd{
+    height:103px;
+    border-radius:3px;
+    border:1px solid #83877d;
+    background:linear-gradient(180deg,#dce6c2 0%,#cedab0 100%);
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,.17),
+      inset 0 0 0 1px rgba(255,255,255,.35);
+    color:var(--ink);
+    font-family:"Courier New", monospace;
+    padding:7px 7px 6px;
+    overflow:hidden;
+  }
+  .menu-icons{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:3px;
+    height:48px;
+    margin-bottom:5px;
+  }
+  .menu-icon{
+    border:1px solid #353735;
+    background:rgba(255,255,255,.15);
+    font:700 10px/1 "Courier New",monospace;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+  .menu-icon small{
+    position:absolute;
+    right:2px;
+    bottom:1px;
+    font-size:7px;
+  }
+  .lcd-line{
+    font-size:17px;
+    line-height:1;
+    white-space:nowrap;
+  }
+
+  /* ── TOP NAV ── */
+  .top-row{
+    display:grid;
+    grid-template-columns:30px 30px 86px 30px 30px;
+    align-items:end;
+    justify-content:space-between;
+    gap:6px;
+    margin:0 1px 4px;
+  }
+  .bwc{
+    width:30px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .lbl{
+    width:100%;
+    height:11px;
+    text-align:center;
+    white-space:nowrap;
+    font-size:6px;
+    line-height:10px;
+    font-weight:700;
+  }
+  .ly{color:var(--yellow);}
+  .lp{color:var(--pink);}
+  .lc{color:var(--cyan);}
+  .lg{color:#c8c8c8;}
+
+  .bc{
+    width:27px;height:27px;
+    border:0;border-radius:50%;
+    background:linear-gradient(180deg,#858587,#69696b);
+    color:#fff;
+    font-size:7px;
+    font-weight:700;
+    box-shadow:0 2px 0 #151516,0 3px 6px rgba(0,0,0,.25);
+    cursor:pointer;
+  }
+  .bc:active{transform:translateY(1px);box-shadow:0 1px 0 #151516;}
+
+  /* ── CLASSWIZ-STYLE D-PAD ──
+     One continuous rounded control; no clip-paths, so the edges don't look chopped. */
+  .dpo{
+    width:86px;height:67px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .dpad{
+    width:82px;
+    height:62px;
+    position:relative;
+    filter:drop-shadow(0 2px 0 #111) drop-shadow(0 3px 3px rgba(0,0,0,.22));
+  }
+  .dpad-ring{
+    position:absolute;
+    inset:2px 0;
+    border-radius:46% 46% 44% 44%;
+    background:linear-gradient(180deg,#606063,#454548);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.09),
+      inset 0 0 0 1px #1a1a1b;
+  }
+  .dp{
+    position:absolute;
+    z-index:2;
+    border:0;
+    padding:0;
+    cursor:pointer;
+    background:transparent;
+    color:#d8d8d8;
+    font-size:9px;
+    line-height:1;
+  }
+  .dp:hover{background:rgba(255,255,255,.035);}
+  .dp:active{transform:translateY(1px);}
+
+  .dp-u{
+    left:25px;top:2px;
+    width:32px;height:22px;
+    border-radius:16px 16px 5px 5px;
+  }
+  .dp-d{
+    left:25px;bottom:2px;
+    width:32px;height:22px;
+    border-radius:5px 5px 16px 16px;
+  }
+  .dp-l{
+    left:2px;top:20px;
+    width:29px;height:23px;
+    border-radius:16px 5px 5px 16px;
+  }
+  .dp-r{
+    right:2px;top:20px;
+    width:29px;height:23px;
+    border-radius:5px 16px 16px 5px;
+  }
+  .dp-c{
+    left:29px;top:21px;
+    width:24px;height:21px;
+    background:transparent;
+    border:0;
+    box-shadow:none;
+  }
+
+  /* Clean continuous ClassWiz D-pad: no center square and no X-shaped grooves. */
+  .dpad::before,
+  .dpad::after{
+    content:none;
+    display:none;
+  }
+
+  /* ── BUTTON GRID ── */
+  .btns{display:flex;flex-direction:column;gap:3px;}
+  .row{display:flex;gap:3px;align-items:flex-end;}
+  .bw{
+    min-width:0;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .b{
+    width:100%;
+    height:27px;
+    border:0;
+    border-radius:4px;
+    background:linear-gradient(180deg,#222225,#121214);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 2px 0 #050506,0 3px 5px rgba(0,0,0,.25);
+  }
+  .b:active{transform:translateY(1px);box-shadow:0 1px 0 #050506;}
+  /* ── LOWER KEYPAD ──
+     Chunkier, squarer and brighter than the scientific keys, like the OG unit. */
+  .numeric-row{
+    gap:6px;
+    margin-top:1px;
+  }
+  .numeric-row .bw{
+    flex:1 1 0;
+  }
+  .numeric-row .lbl{
+    height:10px;
+    line-height:9px;
+    font-size:5.6px;
+  }
+  .bn,
+  .bop,
+  .bdel,
+  .bac{
+    height:34px;
+    border-radius:3px;
+  }
+  .bn{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:18px;
+    font-weight:800;
+    color:#121212;
+    background:linear-gradient(180deg,#fbfbfa 0%,#ececea 68%,#dededb 100%);
+    box-shadow:
+      0 2px 0 #8e8e8b,
+      0 3px 4px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .bop{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:17px;
+    font-weight:500;
+    color:#111;
+    background:linear-gradient(180deg,#f5f5f4 0%,#e5e5e2 70%,#d7d7d4 100%);
+    box-shadow:
+      0 2px 0 #898986,
+      0 3px 4px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  .bdel,.bac{
+    background:linear-gradient(180deg,#3d8df5 0%,#216edb 70%,#175ec7 100%);
+    color:#fff;
+    font-size:13px;
+    font-weight:800;
+    box-shadow:
+      0 2px 0 #0b3e93,
+      0 3px 4px rgba(0,0,0,.3),
+      inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .numeric-row button:active{
+    transform:translateY(1px);
+  }
+  .scientific-wide{
+    font-size:11px !important;
+    letter-spacing:-.2px;
+  }
+
+  .special-row{
+    display:grid;
+    grid-template-columns:1.26fr 1.26fr .45fr .88fr .88fr;
+    gap:4px;
+    align-items:end;
+  }
+
+  .small-note{
+    font-size:5px;
+    line-height:1;
+    margin-top:1px;
+  }
+  .accent-y{color:var(--yellow);}
+  .accent-p{color:var(--pink);}
+  .accent-c{color:var(--cyan);}
+
+  /* Calculator-style mathematical glyphs instead of text approximations */
+  .math-key{
+    font-family:"Times New Roman", Cambria, serif;
+    font-weight:700;
+    font-size:15px;
+  }
+  .frac-glyph{
+    display:inline-grid;
+    grid-template-rows:7px 1px 7px;
+    width:15px;
+    height:17px;
+    vertical-align:middle;
+    align-items:center;
+    justify-items:center;
+    line-height:1;
+  }
+  .frac-glyph .box{
+    width:6px;height:5px;
+    border:1px solid currentColor;
+  }
+  .frac-glyph .bar{
+    width:15px;height:1px;
+    background:currentColor;
+  }
+  .root-glyph{
+    display:inline-flex;
+    align-items:flex-start;
+    height:17px;
+    line-height:1;
+  }
+  .root-sign{
+    font-family:"Times New Roman", Cambria, serif;
+    font-size:19px;
+    line-height:16px;
+    transform:scaleX(.92);
+    transform-origin:right center;
+  }
+  .root-box{
+    width:11px;height:9px;
+    border-top:1px solid currentColor;
+    margin-top:2px;
+    position:relative;
+  }
+  .root-box:after{
+    content:"";
+    position:absolute;
+    width:6px;height:6px;
+    border:1px solid currentColor;
+    left:2px;top:3px;
+  }
+
+
+  .mode-page{display:none;}
+  .mode-page.active{display:block;}
+  .menu-icon{
+    appearance:none;
+    padding:0;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .menu-icon.selected{
+    background:#111;
+    color:#dce6c2;
+  }
+  .menu-icon .mi-main{line-height:1.05;}
+  .second-page{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .lcd-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-top:2px;
+  }
+  .lcd-mode-name{
+    font-size:17px;
+    line-height:1;
+    white-space:nowrap;
+  }
+  .lcd-indicators{
+    min-width:42px;
+    text-align:right;
+    font-size:8px;
+    font-weight:700;
+  }
+  #shiftIndicator::after{content:"";}
+  #alphaIndicator::after{content:"";}
+  body.shift-on #shiftIndicator::after{content:"S"; margin-right:4px;}
+  body.alpha-on #alphaIndicator::after{content:"A";}
+  .legend-pair{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    width:100%;
+  }
+  .lbl .alpha-mark{color:var(--pink);}
+  .lbl .base-mark{color:var(--cyan);}
+  .lbl .shift-mark{color:var(--yellow);}
+
+
+  /* ── More faithful fx-991EX key glyphs ── */
+  .glyph{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:currentColor;
+    line-height:1;
+  }
+
+  /* Integral template: upper box, integral, lower box, input box */
+  .int-glyph{
+    position:relative;
+    width:23px;
+    height:15px;
+    font-family:"Times New Roman", Cambria, serif;
+    transform:translateY(1px);
+  }
+  .int-glyph .int-sign{
+    position:absolute;
+    left:7px; top:0;
+    font-size:18px;
+    line-height:14px;
+  }
+  .int-glyph .ibox{
+    position:absolute;
+    width:4px; height:4px;
+    border:1px solid currentColor;
+  }
+  .int-glyph .ibox.top{left:1px;top:0;}
+  .int-glyph .ibox.bottom{left:1px;bottom:0;}
+  .int-glyph .ibox.arg{right:0;top:5px;width:6px;height:5px;}
+
+  /* Fraction template */
+  .frac-glyph{
+    display:inline-grid;
+    grid-template-rows:6px 1px 6px;
+    width:18px;
+    height:15px;
+    align-items:center;
+    justify-items:center;
+    line-height:1;
+  }
+  .frac-glyph .box{
+    width:7px;
+    height:5px;
+    border:1px solid currentColor;
+  }
+  .frac-glyph .bar{
+    width:17px;
+    height:1px;
+    background:currentColor;
+  }
+
+  /* Radical with an editable box under the vinculum */
+  .root-glyph{
+    position:relative;
+    display:inline-block;
+    width:22px;
+    height:15px;
+    transform:translateY(1px);
+  }
+  /* Draw the radical from lines instead of relying on a font glyph. */
+  .root-glyph .root-hook{
+    position:absolute;
+    left:1px;
+    top:7px;
+    width:5px;
+    height:6px;
+    border-left:1.4px solid currentColor;
+    border-bottom:1.4px solid currentColor;
+    transform:skewX(-18deg) rotate(-7deg);
+    transform-origin:left bottom;
+  }
+  .root-glyph .root-stem{
+    position:absolute;
+    left:5px;
+    top:3px;
+    width:7px;
+    height:10px;
+    border-left:1.4px solid currentColor;
+    transform:rotate(24deg);
+    transform-origin:left bottom;
+  }
+  .root-glyph .radicand{
+    position:absolute;
+    left:10px;
+    top:2px;
+    width:11px;
+    height:10px;
+    border-top:1.4px solid currentColor;
+  }
+  .root-glyph .radicand:after{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:3px;
+    width:6px;
+    height:5px;
+    border:1px solid currentColor;
+  }
+
+  /* x raised to an editable exponent box */
+  .pow-glyph{
+    position:relative;
+    width:25px;
+    height:17px;
+    font-family:"Times New Roman", Cambria, serif;
+    font-style:italic;
+  }
+  .pow-glyph .x{
+    position:absolute;
+    left:3px; bottom:0;
+    font-size:17px;
+  }
+  .pow-glyph .expbox{
+    position:absolute;
+    right:2px; top:0;
+    width:8px; height:7px;
+    border:1px solid currentColor;
+  }
+
+  /* log with small editable base box, matching the physical key */
+  .logbase-glyph{
+    display:inline-flex;
+    align-items:flex-end;
+    font-family:Arial, sans-serif;
+    font-weight:700;
+    font-size:11px;
+    height:15px;
+  }
+  .logbase-glyph .basebox{
+    width:6px; height:6px;
+    border:1px solid currentColor;
+    margin-left:1px;
+    margin-bottom:0;
+  }
+
+  /* mixed fraction icon above fraction key */
+  .mixed-frac-legend{
+    display:inline-flex;
+    align-items:center;
+    gap:1px;
+    transform:scale(.86);
+    transform-origin:center;
+  }
+  .mixed-frac-legend .whole{
+    width:4px; height:5px; border:1px solid currentColor;
+  }
+  .mini-frac{
+    display:inline-grid;
+    grid-template-rows:4px 1px 4px;
+    width:9px; height:9px;
+    justify-items:center;
+    align-items:center;
+  }
+  .mini-frac i{
+    display:block;
+    width:4px; height:3px; border:1px solid currentColor;
+  }
+  .mini-frac b{
+    display:block;
+    width:8px; height:1px; background:currentColor;
+  }
+
+  /* x-th-root legend above the power key */
+  .xroot-legend{
+    font-family:"Times New Roman", Cambria, serif;
+    font-size:8px;
+    white-space:nowrap;
+  }
+
+  /* ENG's two-way engineering-arrow legend */
+  .eng-arrows{
+    display:inline-flex;
+    gap:1px;
+    font-size:8px;
+    font-weight:900;
+  }
+  .eng-arrows .left{color:#8d6fd4;}
+  .eng-arrows .right{color:var(--yellow);}
+
+  /* S↔D legend is a composite on the original */
+  .sd-legend{
+    display:inline-flex;
+    align-items:center;
+    gap:1px;
+    font-size:5px;
+    white-space:nowrap;
+  }
+  .sd-legend .shift-mark{font-size:5px;}
+  .sd-legend .alpha-mark{font-size:6px;}
+
+  .key.math-template{
+    font-family:"Times New Roman", Cambria, serif;
+    font-weight:700;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .b.math-template{
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+
+  /* Top controls: labels stay above, all four round buttons share the D-pad centerline. */
+  .top-controls{
+    align-items:start;
+  }
+  .top-controls .bwc{
+    display:grid;
+    grid-template-rows:10px 67px;
+    align-items:start;
+    justify-items:center;
+  }
+  .top-controls .bwc .lbl{
+    height:10px;
+    line-height:9px;
+    align-self:start;
+  }
+  .top-controls .bwc .bc{
+    align-self:center;
+  }
+  .top-controls .dpo{
+    align-self:start;
+  }
+
+  /* subtle lower-body taper illusion */
+  .bottom-pad{height:1px;}
+
+  /* Refined top row: compact label-to-button spacing + groups centered with D-pad. */
+  .top-controls{
+    align-items:center !important;
+  }
+  .top-controls .bwc{
+    display:flex !important;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:67px;
+    gap:1px;
+  }
+  .top-controls .bwc .lbl{
+    height:8px !important;
+    min-height:8px;
+    line-height:8px !important;
+    margin:0 0 1px 0 !important;
+    padding:0 !important;
+  }
+  .top-controls .bwc .bc{
+    align-self:center;
+    margin:0 !important;
+  }
+  .top-controls .dpo,
+  .top-controls .dpad{
+    align-self:center !important;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="calc">
+
+    <div class="hdr">
+      <div class="brand-casio">MENTIS</div>
+      <div class="brand-cwiz">CLASSWIZ</div>
+    </div>
+
+    <div class="lcd-bezel">
+      <div class="lcd">
+        <div class="mode-page mode-page-1 active">
+          <div class="menu-icons">
+            <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
+            <button class="menu-icon" data-mode="Complex"><span class="mi-main">a+bi</span><small>2</small></button>
+            <button class="menu-icon" data-mode="Base-N"><span class="mi-main">2 8<br>10 16</span><small>3</small></button>
+            <button class="menu-icon" data-mode="Matrix"><span class="mi-main">[■]</span><small>4</small></button>
+            <button class="menu-icon" data-mode="Vector"><span class="mi-main">↗</span><small>5</small></button>
+            <button class="menu-icon" data-mode="Statistics"><span class="mi-main">▥</span><small>6</small></button>
+            <button class="menu-icon" data-mode="Distribution"><span class="mi-main">⌒</span><small>7</small></button>
+            <button class="menu-icon" data-mode="Spreadsheet"><span class="mi-main">▦</span><small>8</small></button>
+          </div>
+        </div>
+        <div class="mode-page mode-page-2">
+          <div class="menu-icons second-page">
+            <button class="menu-icon" data-mode="Table"><span class="mi-main">x y</span><small>9</small></button>
+            <button class="menu-icon" data-mode="Equation/Func"><span class="mi-main">=ƒ</span><small>10</small></button>
+            <button class="menu-icon" data-mode="Inequality"><span class="mi-main">≶</span><small>11</small></button>
+            <button class="menu-icon" data-mode="Ratio"><span class="mi-main">a:b</span><small>12</small></button>
+          </div>
+        </div>
+        <div class="lcd-bottom">
+          <span class="lcd-mode-name">1:Calculate</span>
+          <span class="lcd-indicators"><span id="shiftIndicator"></span><span id="alphaIndicator"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-row top-controls">
+      <div class="bwc">
+        <span class="lbl ly">SHIFT</span>
+        <button class="bc" data-key="shift"></button>
+      </div>
+      <div class="bwc">
+        <span class="lbl lp">ALPHA</span>
+        <button class="bc" data-key="alpha"></button>
+      </div>
+
+      <div class="dpo">
+        <div class="dpad">
+          <div class="dpad-ring"></div>
+          <button class="dp dp-u" data-key="dpad_up">▲</button>
+          <button class="dp dp-l" data-key="dpad_left">◀</button>
+          <button class="dp dp-c" data-key="dpad_center" aria-label="D-pad center"></button>
+          <button class="dp dp-r" data-key="dpad_right">▶</button>
+          <button class="dp dp-d" data-key="dpad_down">▼</button>
+        </div>
+      </div>
+
+      <div class="bwc">
+        <span class="lbl"><span class="lg">MENU</span> <span class="shift-mark">SETUP</span></span>
+        <button class="bc" data-shift="SETUP" data-key="setup"></button>
+      </div>
+      <div class="bwc">
+        <span class="lbl lg">ON</span>
+        <button class="bc" data-key="on"></button>
+      </div>
+    </div>
+
+    <div class="btns">
+
+      <div class="special-row">
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">QR</span></span>
+          <button class="b" data-shift="QR" data-key="optn">OPTN</button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">SOLVE</span><span class="alpha-mark">=</span></span>
+          <button class="b" data-shift="SOLVE" data-alpha="=" data-key="calc">CALC</button>
+        </div>
+        <div></div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">Σ</span><span class="alpha-mark">:</span></span>
+          <button class="b math-template" data-shift="Σ" data-alpha=":" data-key="integral" aria-label="integral">
+            <span class="glyph int-glyph">
+              <span class="ibox top"></span><span class="int-sign">∫</span>
+              <span class="ibox bottom"></span><span class="ibox arg"></span>
+            </span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">d/dx</span></span>
+          <button class="b variable" data-shift="d/dx" data-key="variable">x</button>
+        </div>
+      </div>
+
+      <!-- This row is SIX keys on the reference calculator:
+           fraction / sqrt / square / power / log-base / ln -->
+      <div class="row">
+        <div class="bw">
+          <span class="lbl">
+            <span class="shift-mark mixed-frac-legend">
+              <span class="whole"></span><span class="mini-frac"><i></i><b></b><i></i></span>
+            </span>
+          </span>
+          <button class="b math-template" data-shift="mixed_fraction" data-key="fraction" aria-label="fraction">
+            <span class="glyph frac-glyph"><span class="box"></span><span class="bar"></span><span class="box"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">∛</span></span>
+          <button class="b math-template" data-shift="cuberoot" data-key="sqrt" aria-label="square root">
+            <svg viewBox="0 0 28 18" width="28" height="18" aria-hidden="true"
+                 style="display:block; overflow:visible;">
+              <path d="M2 10 L5 10 L7.5 15 L11 3.5 L25.5 3.5"
+                    fill="none" stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="13.2" y="6.1" width="7" height="5.7"
+                    fill="none" stroke="currentColor" stroke-width="1.0"/>
+            </svg>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">x³</span> <span class="base-mark">DEC</span></span>
+          <button class="b" data-shift="cube" data-alpha="DEC" data-key="square">x²</button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark xroot-legend">ˣ√□</span> <span class="base-mark">HEX</span></span>
+          <button class="b math-template" data-shift="xroot" data-alpha="HEX" data-key="power" aria-label="power template">
+            <span class="glyph pow-glyph"><span class="x">x</span><span class="expbox"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">10ˣ</span> <span class="base-mark">BIN</span></span>
+          <button class="b" data-shift="10^x" data-alpha="BIN" data-key="log">
+            <span class="logbase-glyph">log<span class="basebox"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">eˣ</span> <span class="base-mark">OCT</span></span>
+          <button class="b" data-shift="e^x" data-alpha="OCT" data-key="ln">ln</button>
+        </div>
+      </div>
+
+      <!-- Magenta ALPHA variables A-F belong across this six-key row. -->
+      <div class="row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">logₐ</span> <span class="alpha-mark">A</span></span><button class="b" data-shift="log_base" data-alpha="A" data-key="negate">(-)</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">FACT</span> <span class="alpha-mark">B</span></span><button class="b" data-shift="FACT" data-alpha="B" data-key="ellipsis">°′″</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">x!</span> <span class="alpha-mark">C</span></span><button class="b" data-shift="factorial" data-alpha="C" data-key="inverse">x⁻¹</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">sin⁻¹</span> <span class="alpha-mark">D</span></span><button class="b" data-shift="asin" data-alpha="D" data-key="sin">sin</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">cos⁻¹</span> <span class="alpha-mark">E</span></span><button class="b" data-shift="acos" data-alpha="E" data-key="cos">cos</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">tan⁻¹</span> <span class="alpha-mark">F</span></span><button class="b" data-shift="atan" data-alpha="F" data-key="tan">tan</button></div>
+      </div>
+
+      <div class="row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">RECALL</span></span><button class="b" data-shift="RECALL" data-key="sto">STO</button></div>
+        <div class="bw"><span class="lbl"><span class="eng-arrows"><span class="left">←</span><span class="right">→</span></span></span><button class="b" data-shift="ENG_LEFT" data-key="eng">ENG</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Abs</span></span><button class="b" data-shift="Abs" data-key="left_paren">(</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">x</span></span><button class="b" data-alpha="x" data-key="right_paren">)</button></div>
+        <div class="bw"><span class="lbl"><span class="sd-legend"><span class="shift-mark">a b/c↔d/c</span><span class="alpha-mark">y</span></span></span><button class="b" data-shift="fraction_toggle" data-alpha="y" data-key="s_to_d">S⇔D</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">M−</span> <span class="alpha-mark">M</span></span><button class="b" data-shift="M-" data-alpha="M" data-key="m_plus">M+</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">CONST</span></span><button class="b bn" data-shift="CONST" data-key="7">7</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">CONV</span></span><button class="b bn" data-shift="CONV" data-key="8">8</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">RESET</span></span><button class="b bn" data-shift="RESET" data-key="9">9</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">INS</span></span><button class="b bdel" data-alpha="INS" data-key="del">DEL</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">OFF</span></span><button class="b bac" data-shift="OFF" data-key="ac">AC</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="4">4</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="5">5</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="6">6</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">nPr</span></span><button class="b bop" data-shift="nPr" data-key="multiply">×</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">nCr</span></span><button class="b bop" data-shift="nCr" data-key="divide">÷</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="1">1</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="2">2</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="3">3</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Pol</span></span><button class="b bop" data-shift="Pol" data-key="plus">+</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Rec</span></span><button class="b bop" data-shift="Rec" data-key="minus">−</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">Rnd</span></span><button class="b bn" data-shift="Rnd" data-key="0">0</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Ran#</span> <span class="alpha-mark">RanInt</span></span><button class="b bn" data-shift="Ran#" data-alpha="RanInt" data-key="decimal">.</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-key="scientific">×10ˣ</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-alpha="e" data-key="ans">Ans</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">≈</span></span><button class="b bop" data-shift="approx" data-key="equals">=</button></div>
+      </div>
+
+      <div class="bottom-pad"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let shiftActive = false;
+  let alphaActive = false;
+  let menuPage = 1;
+  let menuIndex = 0;
+
+  function setShift(on) {
+    shiftActive = on;
+    if (on) alphaActive = false;
+    document.body.classList.toggle('shift-on', shiftActive);
+    document.body.classList.toggle('alpha-on', alphaActive);
+  }
+
+  function setAlpha(on) {
+    alphaActive = on;
+    if (on) shiftActive = false;
+    document.body.classList.toggle('alpha-on', alphaActive);
+    document.body.classList.toggle('shift-on', shiftActive);
+  }
+
+  function setModePage(page) {
+    menuPage = page === 2 ? 2 : 1;
+    document.querySelectorAll('.mode-page').forEach(p => p.classList.remove('active'));
+    document.querySelector('.mode-page-' + menuPage)?.classList.add('active');
+  }
+
+  function setMenuSelection(page, index) {
+    setModePage(page);
+    const tiles = document.querySelectorAll('.mode-page-' + menuPage + ' .menu-icon');
+    menuIndex = Math.max(0, Math.min(Number(index) || 0, tiles.length - 1));
+    document.querySelectorAll('.menu-icon').forEach(tile => tile.classList.remove('selected'));
+    tiles[menuIndex]?.classList.add('selected');
+  }
+
+  function escapeDisplay(value) {
+    return String(value ?? '').replace(/[&<>]/g, '');
+  }
+
+  function renderBackendState(state) {
+    if (!state) return;
+
+    shiftActive = Boolean(state.shift);
+    alphaActive = Boolean(state.alpha);
+    setShift(shiftActive);
+    setAlpha(alphaActive);
+
+    if (state.menuPage && state.menuIndex !== undefined) {
+      setMenuSelection(state.menuPage, state.menuIndex);
+    }
+
+    const modeLabel = document.querySelector('.lcd-mode-name');
+    if (modeLabel) {
+      modeLabel.textContent = state.state === 'OFF'
+        ? 'OFF'
+        : `${state.modeNumber || ''}:${state.modeName || ''}`;
+    }
+
+    const lcd = document.querySelector('.lcd');
+    if (!lcd) return;
+    let backendDisplay = lcd.querySelector('.backend-display');
+    if (!backendDisplay) {
+      backendDisplay = document.createElement('div');
+      backendDisplay.className = 'backend-display';
+      backendDisplay.style.cssText = 'position:absolute;left:8px;right:8px;top:2px;display:flex;justify-content:flex-end;z-index:4;font:7px Consolas,monospace;color:#20251d;pointer-events:none;';
+      lcd.style.position = 'relative';
+      lcd.appendChild(backendDisplay);
+    }
+
+    const isOff = state.state === 'OFF' || state.poweredOn === false;
+    document.querySelectorAll('.mode-page').forEach(page => {
+      page.style.visibility = isOff ? 'hidden' : 'visible';
+    });
+
+    if (isOff) {
+      backendDisplay.style.justifyContent = 'center';
+      backendDisplay.style.fontSize = '12px';
+      backendDisplay.innerHTML = '<strong>OFF</strong>';
+      return;
+    }
+
+    backendDisplay.style.justifyContent = 'flex-end';
+    backendDisplay.style.fontSize = '7px';
+    const display = state.error || state.display || state.expression || '';
+    backendDisplay.innerHTML = `<strong>${escapeDisplay(display)}</strong>`;
+  }
+
+  async function sendKeyToBackend(detail) {
+    try {
+      const response = await fetch('/api/key', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(detail)
+      });
+      const state = await response.json();
+      renderBackendState(state);
+      if (!state.ok) console.warn('Calculator backend error:', state.error);
+    } catch (error) {
+      console.warn('Calculator backend unavailable:', error);
+    }
+  }
+
+  async function sendModeToBackend(mode, number) {
+    try {
+      const response = await fetch('/api/mode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mode, number})
+      });
+      const state = await response.json();
+      renderBackendState(state);
+      if (!state.ok) console.warn('Calculator mode error:', state.error);
+    } catch (error) {
+      console.warn('Calculator backend unavailable:', error);
+    }
+  }
+
+  function dispatchKey(key, resolvedAction) {
+    const detail = {
+      key,
+      action: resolvedAction || key,
+      shift: shiftActive,
+      alpha: alphaActive,
+      menuPage,
+      menuIndex
+    };
+
+    sendKeyToBackend(detail);
+
+    if (window.pyBridge && typeof window.pyBridge.pressKey === 'function') {
+      window.pyBridge.pressKey(key);
+    }
+
+    window.dispatchEvent(new CustomEvent('calculator-key', { detail }));
+  }
+
+  document.querySelectorAll('[data-key]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+
+      if (key === 'shift') {
+        setShift(!shiftActive);
+        dispatchKey('shift', 'shift');
+        return;
+      }
+
+      if (key === 'alpha') {
+        setAlpha(!alphaActive);
+        dispatchKey('alpha', 'alpha');
+        return;
+      }
+
+      const action = alphaActive && btn.dataset.alpha
+        ? btn.dataset.alpha
+        : shiftActive && btn.dataset.shift
+          ? btn.dataset.shift
+          : key;
+
+      dispatchKey(key, action);
+
+      if (shiftActive) setShift(false);
+      if (alphaActive) setAlpha(false);
+    });
+  });
+
+  document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.closest('.mode-page')?.classList.contains('mode-page-2') ? 2 : 1;
+      const tiles = [...document.querySelectorAll('.mode-page-' + page + ' .menu-icon')];
+      setMenuSelection(page, tiles.indexOf(btn));
+      const mode = btn.dataset.mode;
+      const number = btn.querySelector('small')?.textContent || '';
+      sendModeToBackend(mode, number);
+      window.dispatchEvent(new CustomEvent('calculator-mode', {detail:{mode, number}}));
+    });
+  });
+
+  setMenuSelection(1, 0);
+</script>
+
+</body>
+</html>
