@@ -7,6 +7,24 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  @font-face {
+    font-family: 'CASIO ClassWiz';
+    src: url('/ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype'),
+         url('/fonts/CASIO%20ClassWiz.ttf') format('truetype'),
+         url('ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: 'CASIO ClassWiz RS';
+    src: url('/ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
+         url('/fonts/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
+         url('ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
   :root{
     --face:#2c2c2d;
     --face2:#242425;
@@ -32,6 +50,7 @@
     background:#a7a7a7;
     font-family:Arial, Helvetica, sans-serif;
     padding:24px;
+    user-select:none;
   }
 
   /* ── OUTER CALCULATOR SHELL ── */
@@ -99,6 +118,7 @@
       0 2px 0 rgba(0,0,0,.4);
   }
   .lcd{
+    position:relative;
     height:103px;
     border-radius:3px;
     border:1px solid #83877d;
@@ -107,39 +127,317 @@
       inset 0 2px 5px rgba(0,0,0,.17),
       inset 0 0 0 1px rgba(255,255,255,.35);
     color:var(--ink);
-    font-family:"Courier New", monospace;
-    padding:7px 7px 6px;
+    font-family:'CASIO ClassWiz', monospace;
+    padding:4px 6px;
     overflow:hidden;
+    pointer-events:none;
+  }
+
+  /* SPLASH SCREEN */
+  #lcdSplash{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    height:100%;
+    font-family:'CASIO ClassWiz', sans-serif;
+    font-size:24px;
+    font-weight:900;
+    letter-spacing:2px;
+    color:var(--ink);
+  }
+
+  /* MENU SCREEN */
+  #lcdMenu{
+    display:none;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
   }
   .menu-icons{
     display:grid;
     grid-template-columns:repeat(4,1fr);
     gap:3px;
-    height:48px;
-    margin-bottom:5px;
+    height:70px;
   }
   .menu-icon{
     border:1px solid #353735;
     background:rgba(255,255,255,.15);
-    font:700 10px/1 "Courier New",monospace;
+    font:700 11px/1 'CASIO ClassWiz', monospace;
     display:flex;
     align-items:center;
     justify-content:center;
     position:relative;
+    color:var(--ink);
+    padding:0;
+  }
+  .menu-icon.selected{
+    background:#141614;
+    color:#dce6c2;
   }
   .menu-icon small{
     position:absolute;
     right:2px;
     bottom:1px;
-    font-size:7px;
+    font-size:8px;
   }
-  .lcd-line{
-    font-size:17px;
+  .menu-icon .mi-main{line-height:1.05; text-align:center;}
+  .second-page{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .mode-page{display:none;}
+  .mode-page.active{display:block;}
+
+  .lcd-menu-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    height:18px;
+    font-size:14px;
+    font-weight:700;
     line-height:1;
-    white-space:nowrap;
   }
 
-  /* ── TOP NAV ── */
+  /* CALC SCREEN */
+  #lcdCalc{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
+    position:relative;
+  }
+
+  /* STATUS BAR */
+  .lcd-status-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    height:12px;
+    font-size:9px;
+    font-weight:700;
+    line-height:1;
+  }
+  .status-left, .status-right{
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .status-tag{
+    display:none;
+    border:1px solid currentColor;
+    padding:0 2px;
+    font-size:8px;
+    line-height:9px;
+    border-radius:1px;
+  }
+  .status-tag.active{display:inline-block;}
+  .status-indicator{
+    font-size:9px;
+    font-weight:bold;
+  }
+
+  /* EXPRESSION VIEWPORT */
+  .lcd-expr-viewport{
+    position:relative;
+    width:100%;
+    height:50px;
+    overflow-x:hidden;
+    overflow-y:hidden;
+    white-space:nowrap;
+    font-size:16px;
+    line-height:1.2;
+    padding-top:2px;
+  }
+  .lcd-expr-content{
+    display:inline-flex;
+    align-items:baseline;
+    position:relative;
+    font-family:'CASIO ClassWiz', monospace;
+    font-size:16px;
+    color:var(--ink);
+  }
+
+  /* RESULT LINE */
+  .lcd-result-line{
+    position:absolute;
+    right:4px;
+    bottom:2px;
+    font-size:20px;
+    font-weight:bold;
+    line-height:1;
+    font-family:'CASIO ClassWiz', monospace;
+    text-align:right;
+    white-space:nowrap;
+    max-width:96%;
+    overflow:hidden;
+    color:var(--ink);
+  }
+
+  /* CURSOR */
+  .lcd-cursor{
+    display:inline-block;
+    width:1.5px;
+    height:15px;
+    background-color:#141614;
+    vertical-align:text-bottom;
+    margin:0 0.5px;
+    animation:lcdBlink 1s steps(1, start) infinite;
+  }
+  @keyframes lcdBlink {
+    0%, 100% { opacity:1; }
+    50% { opacity:0; }
+  }
+
+  /* EMPTY TEMPLATE SLOT */
+  .slot-empty{
+    display:inline-block;
+    width:7px;
+    height:10px;
+    border:1px dashed #555;
+    margin:0 1px;
+    vertical-align:baseline;
+  }
+
+  /* FRACTION TEMPLATE */
+  .math-fraction{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    vertical-align:middle;
+    margin:0 2px;
+    padding:0 1px;
+    font-size:13px;
+  }
+  .math-numerator{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:8px;
+    min-height:13px;
+    padding:0 1px;
+    line-height:1;
+  }
+  .math-fraction-bar{
+    width:100%;
+    height:1.2px;
+    background-color:currentColor;
+    margin:1px 0;
+  }
+  .math-denominator{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:8px;
+    min-height:13px;
+    padding:0 1px;
+    line-height:1;
+  }
+
+  /* RADICAL TEMPLATE */
+  .math-radical{
+    display:inline-flex;
+    align-items:flex-start;
+    vertical-align:baseline;
+    margin:0 1px;
+  }
+  .math-root-index{
+    font-size:9px;
+    line-height:1;
+    margin-right:-2px;
+    margin-top:-3px;
+  }
+  .math-radical-symbol{
+    font-size:17px;
+    line-height:1;
+    margin-right:0;
+    transform:translateY(1px);
+  }
+  .math-radicand{
+    border-top:1.2px solid currentColor;
+    display:inline-flex;
+    align-items:center;
+    padding:0 2px 0 1px;
+    margin-top:2px;
+    min-width:8px;
+  }
+
+  /* POWER TEMPLATE */
+  .math-power{
+    display:inline-flex;
+    align-items:flex-start;
+    vertical-align:baseline;
+  }
+  .math-power-base{
+    display:inline-flex;
+    align-items:baseline;
+  }
+  .math-power-exp{
+    font-size:10px;
+    line-height:1;
+    margin-top:-6px;
+    min-width:6px;
+    padding:0 1px;
+  }
+
+  /* LOG BASE TEMPLATE */
+  .math-log-base-template{
+    display:inline-flex;
+    align-items:baseline;
+  }
+  .math-log-sub{
+    font-size:9px;
+    line-height:1;
+    margin-bottom:-4px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-log-arg{
+    display:inline-flex;
+    align-items:baseline;
+    min-width:6px;
+  }
+
+  /* INTEGRAL TEMPLATE */
+  .math-integral-template{
+    display:inline-flex;
+    align-items:center;
+    vertical-align:middle;
+    margin:0 2px;
+  }
+  .math-int-sym-col{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    margin-right:1px;
+  }
+  .math-int-upper{
+    font-size:9px;
+    line-height:1;
+    min-height:9px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-int-sym{
+    font-size:20px;
+    line-height:15px;
+  }
+  .math-int-lower{
+    font-size:9px;
+    line-height:1;
+    min-height:9px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-int-body{
+    display:inline-flex;
+    align-items:baseline;
+    min-width:8px;
+    margin:0 1px;
+  }
+  .math-int-dx{
+    font-size:14px;
+    line-height:1;
+    margin-left:1px;
+  }
   .top-row{
     display:grid;
     grid-template-columns:30px 30px 86px 30px 30px;
@@ -438,6 +736,16 @@
     font-size:8px;
     font-weight:700;
   }
+  .lcd-cursor{
+    display:inline-block;
+    width:1px;
+    height:17px;
+    margin:0 1px;
+    vertical-align:-2px;
+    background:currentColor;
+    animation:lcd-cursor-blink 1s steps(1,end) infinite;
+  }
+  @keyframes lcd-cursor-blink{50%{opacity:0;}}
   #shiftIndicator::after{content:"";}
   #alphaIndicator::after{content:"";}
   body.shift-on #shiftIndicator::after{content:"S"; margin-right:4px;}
@@ -729,29 +1037,55 @@
 
     <div class="lcd-bezel">
       <div class="lcd">
-        <div class="mode-page mode-page-1 active">
-          <div class="menu-icons">
-            <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
-            <button class="menu-icon" data-mode="Complex"><span class="mi-main">a+bi</span><small>2</small></button>
-            <button class="menu-icon" data-mode="Base-N"><span class="mi-main">2 8<br>10 16</span><small>3</small></button>
-            <button class="menu-icon" data-mode="Matrix"><span class="mi-main">[■]</span><small>4</small></button>
-            <button class="menu-icon" data-mode="Vector"><span class="mi-main">↗</span><small>5</small></button>
-            <button class="menu-icon" data-mode="Statistics"><span class="mi-main">▥</span><small>6</small></button>
-            <button class="menu-icon" data-mode="Distribution"><span class="mi-main">⌒</span><small>7</small></button>
-            <button class="menu-icon" data-mode="Spreadsheet"><span class="mi-main">▦</span><small>8</small></button>
+        <!-- SPLASH SCREEN -->
+        <div id="lcdSplash">MENTIS</div>
+
+        <!-- MENU SCREEN -->
+        <div id="lcdMenu">
+          <div class="mode-page mode-page-1 active">
+            <div class="menu-icons">
+              <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
+              <button class="menu-icon" data-mode="Complex"><span class="mi-main">a+bi</span><small>2</small></button>
+              <button class="menu-icon" data-mode="Base-N"><span class="mi-main">2 8<br>10 16</span><small>3</small></button>
+              <button class="menu-icon" data-mode="Matrix"><span class="mi-main">[■]</span><small>4</small></button>
+              <button class="menu-icon" data-mode="Vector"><span class="mi-main">↗</span><small>5</small></button>
+              <button class="menu-icon" data-mode="Statistics"><span class="mi-main">▥</span><small>6</small></button>
+              <button class="menu-icon" data-mode="Distribution"><span class="mi-main">⌒</span><small>7</small></button>
+              <button class="menu-icon" data-mode="Spreadsheet"><span class="mi-main">▦</span><small>8</small></button>
+            </div>
+          </div>
+          <div class="mode-page mode-page-2">
+            <div class="menu-icons second-page">
+              <button class="menu-icon" data-mode="Table"><span class="mi-main">x y</span><small>9</small></button>
+              <button class="menu-icon" data-mode="Equation/Func"><span class="mi-main">=ƒ</span><small>10</small></button>
+              <button class="menu-icon" data-mode="Inequality"><span class="mi-main">≶</span><small>11</small></button>
+              <button class="menu-icon" data-mode="Ratio"><span class="mi-main">a:b</span><small>12</small></button>
+            </div>
+          </div>
+          <div class="lcd-menu-bottom">
+            <span id="lcdMenuLabel">1:Calculate</span>
           </div>
         </div>
-        <div class="mode-page mode-page-2">
-          <div class="menu-icons second-page">
-            <button class="menu-icon" data-mode="Table"><span class="mi-main">x y</span><small>9</small></button>
-            <button class="menu-icon" data-mode="Equation/Func"><span class="mi-main">=ƒ</span><small>10</small></button>
-            <button class="menu-icon" data-mode="Inequality"><span class="mi-main">≶</span><small>11</small></button>
-            <button class="menu-icon" data-mode="Ratio"><span class="mi-main">a:b</span><small>12</small></button>
+
+        <!-- CALCULATION SCREEN -->
+        <div id="lcdCalc">
+          <div class="lcd-status-bar">
+            <div class="status-left">
+              <span id="indShift" class="status-tag">S</span>
+              <span id="indAlpha" class="status-tag">A</span>
+              <span id="indMode" class="status-tag"></span>
+              <span id="indAngle" class="status-indicator">D</span>
+              <span id="indMath" class="status-indicator">Math</span>
+            </div>
+            <div class="status-right">
+              <span id="indLeftOverflow" style="display:none;">◀</span>
+              <span id="indRightOverflow" style="display:none;">▶</span>
+            </div>
           </div>
-        </div>
-        <div class="lcd-bottom">
-          <span class="lcd-mode-name">1:Calculate</span>
-          <span class="lcd-indicators"><span id="shiftIndicator"></span><span id="alphaIndicator"></span></span>
+          <div class="lcd-expr-viewport" id="lcdExprViewport">
+            <div class="lcd-expr-content" id="lcdExprContent"></div>
+          </div>
+          <div class="lcd-result-line" id="lcdResultLine"></div>
         </div>
       </div>
     </div>
@@ -919,182 +1253,514 @@
 </div>
 
 <script>
-  let shiftActive = false;
-  let alphaActive = false;
-  let menuPage = 1;
-  let menuIndex = 0;
+  // ── MATHEMATICAL TEMPLATE TREE ENGINE ──
+  let _id = 1;
+  const nextId = () => _id++;
+  const createSlot = (items = []) => ({ id: nextId(), items: [...items] });
 
-  function setShift(on) {
-    shiftActive = on;
-    if (on) alphaActive = false;
-    document.body.classList.toggle('shift-on', shiftActive);
-    document.body.classList.toggle('alpha-on', alphaActive);
+  let rootSlot = createSlot();
+  let cursor = { slot: rootSlot, index: 0 };
+
+  const appState = {
+    poweredOn: true, mode: 'Calculate', menuOpen: false, menuPage: 1,
+    menuSelection: 0, shift: false, alpha: false, splash: false,
+    result: null, resultDisplayed: false, error: null
+  };
+
+  // ── SERIALIZATION ──
+  function serializeSlot(slot) {
+    if (!slot || !slot.items) return '';
+    let out = '';
+    for (const item of slot.items) {
+      if (typeof item === 'string') {
+        out += item
+          .replace(/sin\u207b\u00b9\(/g, 'asin(')
+          .replace(/cos\u207b\u00b9\(/g, 'acos(')
+          .replace(/tan\u207b\u00b9\(/g, 'atan(')
+          .replace(/\u00d710\^/g, '*10^')
+          .replace(/\u00d7/g, '*')
+          .replace(/\u00f7/g, '/')
+          .replace(/\u2212/g, '-')
+          .replace(/\u03c0/g, 'pi')
+          .replace(/\u00b2/g, '^2')
+          .replace(/\u00b3/g, '^3')
+          .replace(/\u207b\u00b9/g, '^(-1)');
+      } else if (item.type === 'fraction') {
+        out += '((' + (serializeSlot(item.num)||'0') + ')/(' + (serializeSlot(item.den)||'1') + '))';
+      } else if (item.type === 'radical') {
+        const rad = serializeSlot(item.radicand) || '0';
+        if (item.index && item.index.items.length > 0) {
+          out += 'xroot(' + (serializeSlot(item.index)||'2') + ',' + rad + ')';
+        } else { out += 'sqrt(' + rad + ')'; }
+      } else if (item.type === 'cbrt') {
+        out += 'cbrt(' + (serializeSlot(item.radicand)||'0') + ')';
+      } else if (item.type === 'power') {
+        out += '((' + (serializeSlot(item.base)||'0') + ')^(' + (serializeSlot(item.exp)||'1') + '))';
+      } else if (item.type === 'log') {
+        out += 'log_base(' + (serializeSlot(item.base)||'10') + ',' + (serializeSlot(item.arg)||'1') + ')';
+      } else if (item.type === 'integral') {
+        out += 'integral(' + (serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
+      }
+    }
+    return out;
+  }
+  const getExpr = () => serializeSlot(rootSlot);
+
+  // ── TREE MANIPULATION ──
+  function insertToken(tok) {
+    if (appState.resultDisplayed) resetExpr();
+    cursor.slot.items.splice(cursor.index, 0, tok);
+    cursor.index++;
+    renderLCD();
+    syncBackendExpression();
   }
 
-  function setAlpha(on) {
-    alphaActive = on;
-    if (on) shiftActive = false;
-    document.body.classList.toggle('alpha-on', alphaActive);
-    document.body.classList.toggle('shift-on', shiftActive);
+  function insertTemplate(tmpl, enterSlotName) {
+    if (appState.resultDisplayed) resetExpr();
+    tmpl.parentSlot = cursor.slot;
+    cursor.slot.items.splice(cursor.index, 0, tmpl);
+    cursor.slot = tmpl[enterSlotName];
+    cursor.index = 0;
+    renderLCD();
+    syncBackendExpression();
   }
 
-  function setModePage(page) {
-    menuPage = page === 2 ? 2 : 1;
-    document.querySelectorAll('.mode-page').forEach(p => p.classList.remove('active'));
-    document.querySelector('.mode-page-' + menuPage)?.classList.add('active');
+  function insertFraction() {
+    insertTemplate({ type:'fraction', id:nextId(), num:createSlot(), den:createSlot() }, 'num');
+  }
+  function insertRadical(isCbrt, isNth) {
+    if (isCbrt) {
+      insertTemplate({ type:'cbrt', id:nextId(), radicand:createSlot() }, 'radicand');
+    } else if (isNth) {
+      insertTemplate({ type:'radical', id:nextId(), index:createSlot(), radicand:createSlot() }, 'index');
+    } else {
+      insertTemplate({ type:'radical', id:nextId(), index:null, radicand:createSlot() }, 'radicand');
+    }
+  }
+  function insertPower(fixedExp) {
+    if (appState.resultDisplayed) resetExpr();
+    const baseItems = cursor.index > 0 ? [cursor.slot.items[cursor.index-1]] : [];
+    const pow = { type:'power', id:nextId(), base:createSlot(baseItems), exp:createSlot(fixedExp ? [fixedExp] : []), parentSlot:cursor.slot };
+    if (baseItems.length) cursor.slot.items.splice(cursor.index-1, 1, pow);
+    else { cursor.slot.items.splice(cursor.index, 0, pow); }
+    if (fixedExp) { /* cursor stays after */ }
+    else { cursor.slot = pow.exp; cursor.index = 0; }
+    renderLCD();
+    syncBackendExpression();
+  }
+  function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
+
+  function resetExpr() {
+    rootSlot = createSlot();
+    cursor = { slot: rootSlot, index: 0 };
+    appState.result = null; appState.resultDisplayed = false; appState.error = null;
   }
 
-  function setMenuSelection(page, index) {
-    setModePage(page);
-    const tiles = document.querySelectorAll('.mode-page-' + menuPage + ' .menu-icon');
-    menuIndex = Math.max(0, Math.min(Number(index) || 0, tiles.length - 1));
-    document.querySelectorAll('.menu-icon').forEach(tile => tile.classList.remove('selected'));
-    tiles[menuIndex]?.classList.add('selected');
+  function syncBackendExpression() {
+    // Keep the controller's normalized expression synchronized without moving
+    // template rendering or cursor ownership into the backend.
+    backendKey('input_sync', { expression: getExpr(), cursorPosition: getExpr().length });
   }
 
-  function escapeDisplay(value) {
-    return String(value ?? '').replace(/[&<>]/g, '');
+  // ── PARENT LOOKUP ──
+  function findParent(target, slot, par, slotName) {
+    if (!slot) return null;
+    if (slot === target) return { par, slotName };
+    for (const item of slot.items) {
+      if (typeof item === 'string') continue;
+      for (const k of ['num','den','base','exp','arg','radicand','index','body','lower','upper']) {
+        if (item[k]) {
+          if (item[k] === target) return { par: item, slotName: k };
+          const res = findParent(target, item[k], item, k);
+          if (res) return res;
+        }
+      }
+    }
+    return null;
+  }
+  const getParent = () => findParent(cursor.slot, rootSlot, null, null);
+
+  // ── CURSOR MOVEMENT ──
+  function moveCursorLeft() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    if (cursor.index > 0) {
+      const prev = cursor.slot.items[cursor.index-1];
+      if (typeof prev !== 'string') {
+        // Enter rightmost slot of previous template
+        if (prev.type === 'fraction') { cursor.slot = prev.den; cursor.index = prev.den.items.length; }
+        else if (prev.type === 'power') { cursor.slot = prev.exp; cursor.index = prev.exp.items.length; }
+        else if (prev.type === 'log') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
+        else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
+        else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
+        else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
+      } else { cursor.index--; }
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = t.num.items.length; }
+        else if (p.slotName === 'arg') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
   }
 
-  function renderBackendState(state) {
-    if (!state) return;
+  function moveCursorRight() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    if (cursor.index < cursor.slot.items.length) {
+      const next = cursor.slot.items[cursor.index];
+      if (typeof next !== 'string') {
+        if (next.type === 'fraction') { cursor.slot = next.num; cursor.index = 0; }
+        else if (next.type === 'power') { cursor.slot = next.exp; cursor.index = 0; }
+        else if (next.type === 'log') { cursor.slot = next.base; cursor.index = 0; }
+        else if (next.type === 'radical') { cursor.slot = next.index || next.radicand; cursor.index = 0; }
+        else if (next.type === 'cbrt') { cursor.slot = next.radicand; cursor.index = 0; }
+        else if (next.type === 'integral') { cursor.slot = next.lower; cursor.index = 0; }
+      } else { cursor.index++; }
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = 0; }
+        else if (p.slotName === 'base' && t.type === 'log') { cursor.slot = t.arg; cursor.index = 0; }
+        else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
+        else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
+        else if (p.slotName === 'upper') { cursor.slot = t.body; cursor.index = 0; }
+        else { cursor.slot = ps; cursor.index = ps.items.indexOf(t) + 1; }
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
 
-    shiftActive = Boolean(state.shift);
-    alphaActive = Boolean(state.alpha);
-    setShift(shiftActive);
-    setAlpha(alphaActive);
+  function moveCursorUp() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    const p = getParent();
+    if (p && p.par) {
+      const t = p.par;
+      if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = Math.min(cursor.index, t.num.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = Math.min(cursor.index, t.upper.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.upper; cursor.index = 0; }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
 
-    if (state.menuPage && state.menuIndex !== undefined) {
-      setMenuSelection(state.menuPage, state.menuIndex);
+  function moveCursorDown() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    const p = getParent();
+    if (p && p.par) {
+      const t = p.par;
+      if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = Math.min(cursor.index, t.den.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'upper') { cursor.slot = t.lower; cursor.index = Math.min(cursor.index, t.lower.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.lower; cursor.index = 0; }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function deleteAtCursor() {
+    if (appState.resultDisplayed) { resetExpr(); renderLCD(); return; }
+    if (cursor.index > 0) {
+      cursor.slot.items.splice(cursor.index-1, 1);
+      cursor.index--;
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        const ti = ps.items.indexOf(t);
+        ps.items.splice(ti, 1);
+        cursor.slot = ps; cursor.index = Math.max(0, ti);
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  // ── DOM RENDERING ──
+  function renderSlotDOM(slot) {
+    const wrap = document.createElement('span');
+    wrap.className = 'math-slot';
+    const here = cursor.slot === slot;
+    if (slot.items.length === 0) {
+      if (here && cursor.index === 0) { wrap.appendChild(makeCursor()); }
+      else { const e = document.createElement('span'); e.className = 'slot-empty'; wrap.appendChild(e); }
+      return wrap;
+    }
+    for (let i = 0; i <= slot.items.length; i++) {
+      if (here && cursor.index === i) wrap.appendChild(makeCursor());
+      if (i < slot.items.length) {
+        const item = slot.items[i];
+        if (typeof item === 'string') { wrap.appendChild(document.createTextNode(item)); }
+        else if (item.type === 'fraction') {
+          const f = el('span','math-fraction');
+          const n = el('span','math-numerator'); n.appendChild(renderSlotDOM(item.num));
+          const b = el('span','math-fraction-bar');
+          const d = el('span','math-denominator'); d.appendChild(renderSlotDOM(item.den));
+          f.append(n, b, d); wrap.appendChild(f);
+        } else if (item.type === 'radical' || item.type === 'cbrt') {
+          const r = el('span','math-radical');
+          if (item.type === 'cbrt' || (item.index)) {
+            const idx = el('span','math-root-index');
+            if (item.type === 'cbrt') idx.textContent = '3';
+            else idx.appendChild(renderSlotDOM(item.index));
+            r.appendChild(idx);
+          }
+          const sym = el('span','math-radical-symbol'); sym.textContent = '\u221a'; r.appendChild(sym);
+          const rad = el('span','math-radicand'); rad.appendChild(renderSlotDOM(item.radicand)); r.appendChild(rad);
+          wrap.appendChild(r);
+        } else if (item.type === 'power') {
+          const p = el('span','math-power');
+          const bs = el('span','math-power-base'); bs.appendChild(renderSlotDOM(item.base));
+          const ex = el('span','math-power-exp'); ex.appendChild(renderSlotDOM(item.exp));
+          p.append(bs, ex); wrap.appendChild(p);
+        } else if (item.type === 'log') {
+          const lg = el('span','math-log-base-template');
+          lg.appendChild(document.createTextNode('log'));
+          const sub = el('span','math-log-sub'); sub.appendChild(renderSlotDOM(item.base));
+          lg.appendChild(sub);
+          lg.appendChild(document.createTextNode('('));
+          const arg = el('span','math-log-arg'); arg.appendChild(renderSlotDOM(item.arg));
+          lg.appendChild(arg);
+          lg.appendChild(document.createTextNode(')'));
+          wrap.appendChild(lg);
+        } else if (item.type === 'integral') {
+          const ig = el('span','math-integral-template');
+          const col = el('span','math-int-sym-col');
+          const up = el('span','math-int-upper'); up.appendChild(renderSlotDOM(item.upper));
+          const sym = el('span','math-int-sym'); sym.textContent = '\u222b';
+          const lo = el('span','math-int-lower'); lo.appendChild(renderSlotDOM(item.lower));
+          col.append(up, sym, lo); ig.appendChild(col);
+          const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
+          ig.appendChild(bd);
+          const dx = el('span','math-int-dx'); dx.textContent = 'dx';
+          ig.appendChild(dx);
+          wrap.appendChild(ig);
+        }
+      }
+    }
+    return wrap;
+  }
+  const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+  function makeCursor() { const c = el('span','lcd-cursor'); return c; }
+
+  // ── LCD RENDER ──
+  function renderLCD() {
+    const lcdEl = document.querySelector('.lcd');
+    const splashEl = document.getElementById('lcdSplash');
+    const menuEl = document.getElementById('lcdMenu');
+    const calcEl = document.getElementById('lcdCalc');
+
+    if (!appState.poweredOn) {
+      lcdEl.style.background = '#111213';
+      splashEl.style.display = 'none'; menuEl.style.display = 'none'; calcEl.style.display = 'none';
+      return;
+    }
+    lcdEl.style.background = '';
+
+    if (appState.splash) {
+      splashEl.style.display = 'flex'; menuEl.style.display = 'none'; calcEl.style.display = 'none';
+      return;
+    }
+    splashEl.style.display = 'none';
+
+    if (appState.menuOpen) {
+      menuEl.style.display = 'flex'; calcEl.style.display = 'none';
+      document.querySelectorAll('.mode-page').forEach(p => p.classList.remove('active'));
+      document.querySelector('.mode-page-' + appState.menuPage)?.classList.add('active');
+      document.querySelectorAll('.menu-icon').forEach(t => t.classList.remove('selected'));
+      const tiles = document.querySelectorAll('.mode-page-' + appState.menuPage + ' .menu-icon');
+      tiles[appState.menuSelection]?.classList.add('selected');
+      const modeNames = appState.menuPage === 1
+        ? ['1:Calculate','2:Complex','3:Base-N','4:Matrix','5:Vector','6:Statistics','7:Distribution','8:Spreadsheet']
+        : ['9:Table','10:Equation/Func','11:Inequality','12:Ratio'];
+      document.getElementById('lcdMenuLabel').textContent = modeNames[appState.menuSelection] || '1:Calculate';
+      return;
+    }
+    menuEl.style.display = 'none'; calcEl.style.display = 'flex';
+
+    // Status bar
+    document.getElementById('indShift').classList.toggle('active', appState.shift);
+    document.getElementById('indAlpha').classList.toggle('active', appState.alpha);
+    const modeTags = { 'Complex':'CMPLX','Base-N':'BASE','Matrix':'MAT','Vector':'VCT','Statistics':'STAT','Equation/Func':'EQN','Table':'TABLE','Distribution':'DIST','Inequality':'INEQ' };
+    const mt = modeTags[appState.mode];
+    const indMode = document.getElementById('indMode');
+    if (mt) { indMode.textContent = mt; indMode.classList.add('active'); } else { indMode.classList.remove('active'); }
+
+    // Expression
+    const exprContent = document.getElementById('lcdExprContent');
+    exprContent.innerHTML = '';
+    exprContent.appendChild(renderSlotDOM(rootSlot));
+
+    // Result
+    const resultEl = document.getElementById('lcdResultLine');
+    if (appState.error) resultEl.textContent = appState.error;
+    else if (appState.resultDisplayed && appState.result !== null) resultEl.textContent = String(appState.result);
+    else resultEl.textContent = '';
+
+    // Horizontal scroll to cursor
+    const viewport = document.getElementById('lcdExprViewport');
+    const curEl = exprContent.querySelector('.lcd-cursor');
+    if (curEl) {
+      const cl = curEl.offsetLeft;
+      const vw = viewport.clientWidth;
+      if (cl > viewport.scrollLeft + vw - 20) viewport.scrollLeft = cl - vw + 30;
+      else if (cl < viewport.scrollLeft + 10) viewport.scrollLeft = Math.max(0, cl - 20);
+    }
+    document.getElementById('indLeftOverflow').style.display = viewport.scrollLeft > 5 ? 'inline' : 'none';
+    document.getElementById('indRightOverflow').style.display =
+      (exprContent.scrollWidth - viewport.scrollLeft - viewport.clientWidth > 5) ? 'inline' : 'none';
+  }
+
+  // ── BACKEND COMMUNICATION ──
+  async function evaluate() {
+    const expr = getExpr();
+    if (!expr) { appState.result = '0'; appState.resultDisplayed = true; renderLCD(); return; }
+    try {
+      const r = await fetch('/api/key', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key:'equals', expression: expr, shift: appState.shift, alpha: appState.alpha })
+      });
+      const s = await r.json();
+      if (s.result !== undefined && s.result !== null) {
+        appState.result = s.result; appState.resultDisplayed = true; appState.error = null;
+      } else if (s.error) {
+        appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
+      }
+      // Sync state from backend
+      if (s.modeName) appState.mode = s.modeName;
+      renderLCD();
+    } catch(e) { console.warn('eval failed', e); }
+  }
+
+  async function backendKey(key, extra) {
+    try {
+      const r = await fetch('/api/key', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key, shift: appState.shift, alpha: appState.alpha,
+          menuPage: appState.menuPage, menuIndex: appState.menuSelection, ...extra })
+      });
+      const s = await r.json();
+      if (s.state === 'OFF') { appState.poweredOn = false; }
+      else if (s.state === 'MENU') { appState.menuOpen = true; if (s.menuPage) appState.menuPage = s.menuPage; if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex; }
+      else if (s.modeName) appState.mode = s.modeName;
+      if (s.menuPage) appState.menuPage = s.menuPage;
+      if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex;
+      renderLCD();
+    } catch(e) { console.warn('backend key failed', e); }
+  }
+
+  // ── KEY HANDLER ──
+  function handleKey(btn) {
+    const rawKey = btn.dataset.key;
+    const isShift = appState.shift;
+    const isAlpha = appState.alpha;
+    const action = isAlpha && btn.dataset.alpha ? btn.dataset.alpha
+      : isShift && btn.dataset.shift ? btn.dataset.shift : rawKey;
+
+    if (rawKey !== 'shift' && rawKey !== 'alpha') { appState.shift = false; appState.alpha = false; }
+
+    if (rawKey === 'on') {
+      appState.poweredOn = true; appState.splash = true; appState.menuOpen = false;
+      appState.mode = 'Calculate'; resetExpr(); renderLCD();
+      backendKey('on');
+      setTimeout(() => { appState.splash = false; renderLCD(); }, 1400);
+      return;
+    }
+    if (!appState.poweredOn) return;
+
+    if (appState.menuOpen && rawKey === 'ac') return;
+
+    if ((rawKey === 'ac' && isShift) || action === 'OFF') {
+      appState.poweredOn = false; resetExpr(); renderLCD(); backendKey('ac', { action:'OFF' }); return;
+    }
+    if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); backendKey('shift'); return; }
+    if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); backendKey('alpha'); return; }
+
+    if (rawKey === 'setup' && action !== 'SETUP') {
+      if (appState.menuOpen) return;
+      appState.menuOpen = true; renderLCD(); backendKey('menu'); return;
     }
 
-    const modeLabel = document.querySelector('.lcd-mode-name');
-    if (modeLabel) {
-      modeLabel.textContent = state.state === 'OFF'
-        ? 'OFF'
-        : `${state.modeNumber || ''}:${state.modeName || ''}`;
-    }
-
-    const lcd = document.querySelector('.lcd');
-    if (!lcd) return;
-    let backendDisplay = lcd.querySelector('.backend-display');
-    if (!backendDisplay) {
-      backendDisplay = document.createElement('div');
-      backendDisplay.className = 'backend-display';
-      backendDisplay.style.cssText = 'position:absolute;left:8px;right:8px;top:2px;display:flex;justify-content:flex-end;z-index:4;font:7px Consolas,monospace;color:#20251d;pointer-events:none;';
-      lcd.style.position = 'relative';
-      lcd.appendChild(backendDisplay);
-    }
-
-    const isOff = state.state === 'OFF' || state.poweredOn === false;
-    document.querySelectorAll('.mode-page').forEach(page => {
-      page.style.visibility = isOff ? 'hidden' : 'visible';
-    });
-
-    if (isOff) {
-      backendDisplay.style.justifyContent = 'center';
-      backendDisplay.style.fontSize = '12px';
-      backendDisplay.innerHTML = '<strong>OFF</strong>';
+    if (appState.menuOpen) {
+      const pts = appState.menuPage === 1 ? 8 : 4;
+      const menuNavKey = ['dpad_left', 'dpad_right', 'dpad_up', 'dpad_down'].includes(rawKey);
+      if (rawKey === 'dpad_right') {
+        if (appState.menuSelection < pts-1) appState.menuSelection++;
+        else if (appState.menuPage === 1) { appState.menuPage = 2; appState.menuSelection = 0; }
+        else { appState.menuPage = 1; appState.menuSelection = 0; }
+      } else if (rawKey === 'dpad_left') {
+        if (appState.menuSelection > 0) appState.menuSelection--;
+        else if (appState.menuPage === 2) { appState.menuPage = 1; appState.menuSelection = 7; }
+        else { appState.menuPage = 2; appState.menuSelection = 3; }
+      } else if (rawKey === 'dpad_up' && appState.menuSelection >= 4) appState.menuSelection -= 4;
+      else if (rawKey === 'dpad_down' && appState.menuSelection + 4 < pts) appState.menuSelection += 4;
+      else if (rawKey === 'equals') {
+        const modes = appState.menuPage === 1
+          ? ['Calculate','Complex','Base-N','Matrix','Vector','Statistics','Distribution','Spreadsheet']
+          : ['Table','Equation/Func','Inequality','Ratio'];
+        appState.mode = modes[appState.menuSelection] || 'Calculate';
+        appState.menuOpen = false; resetExpr();
+        backendKey('equals');
+      } else if (/^[0-9]$/.test(rawKey)) {
+        const n = parseInt(rawKey);
+        if (n >= 1 && n <= 8) { appState.menuPage=1; appState.menuSelection=n-1; const modes=['Calculate','Complex','Base-N','Matrix','Vector','Statistics','Distribution','Spreadsheet']; appState.mode=modes[n-1]; appState.menuOpen=false; resetExpr(); backendKey(rawKey); }
+        else if (n === 9) { appState.menuPage=2; appState.menuSelection=0; appState.mode='Table'; appState.menuOpen=false; resetExpr(); backendKey(rawKey); }
+      }
+      renderLCD();
+      if (menuNavKey) backendKey(rawKey);
       return;
     }
 
-    backendDisplay.style.justifyContent = 'flex-end';
-    backendDisplay.style.fontSize = '7px';
-    const display = state.error || state.display || state.expression || '';
-    backendDisplay.innerHTML = `<strong>${escapeDisplay(display)}</strong>`;
-  }
+    if (rawKey === 'dpad_left') { moveCursorLeft(); return; }
+    if (rawKey === 'dpad_right') { moveCursorRight(); return; }
+    if (rawKey === 'dpad_up') { moveCursorUp(); return; }
+    if (rawKey === 'dpad_down') { moveCursorDown(); return; }
+    if (rawKey === 'ac') { resetExpr(); renderLCD(); backendKey('ac'); return; }
+    if (rawKey === 'del') { deleteAtCursor(); return; }
+    if (rawKey === 'equals') { evaluate(); return; }
 
-  async function sendKeyToBackend(detail) {
-    try {
-      const response = await fetch('/api/key', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(detail)
-      });
-      const state = await response.json();
-      renderBackendState(state);
-      if (!state.ok) console.warn('Calculator backend error:', state.error);
-    } catch (error) {
-      console.warn('Calculator backend unavailable:', error);
-    }
-  }
+    if (rawKey === 'fraction') { insertFraction(); return; }
+    if (rawKey === 'sqrt') { isShift ? insertRadical(true,false) : insertRadical(false,false); return; }
+    if (rawKey === 'power') { isShift ? insertRadical(false,true) : insertPower(null); return; }
+    if (rawKey === 'square') { isShift ? insertPower('3') : insertPower('2'); return; }
+    if (rawKey === 'inverse') { isShift ? insertToken('!') : insertPower('-1'); return; }
+    if (rawKey === 'integral') { isShift ? insertToken('\u03a3(') : insertIntegral(); return; }
+    if (rawKey === 'log') { isShift ? insertToken('10^(') : insertLog(); return; }
+    if (rawKey === 'ln') { insertToken(isShift ? 'e^(' : 'ln('); return; }
 
-  async function sendModeToBackend(mode, number) {
-    try {
-      const response = await fetch('/api/mode', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({mode, number})
-      });
-      const state = await response.json();
-      renderBackendState(state);
-      if (!state.ok) console.warn('Calculator mode error:', state.error);
-    } catch (error) {
-      console.warn('Calculator backend unavailable:', error);
-    }
-  }
+    if (rawKey === 'sin') { insertToken(isShift ? 'sin\u207b\u00b9(' : isAlpha ? 'D' : 'sin('); return; }
+    if (rawKey === 'cos') { insertToken(isShift ? 'cos\u207b\u00b9(' : isAlpha ? 'E' : 'cos('); return; }
+    if (rawKey === 'tan') { insertToken(isShift ? 'tan\u207b\u00b9(' : isAlpha ? 'F' : 'tan('); return; }
 
-  function dispatchKey(key, resolvedAction) {
-    const detail = {
-      key,
-      action: resolvedAction || key,
-      shift: shiftActive,
-      alpha: alphaActive,
-      menuPage,
-      menuIndex
+    if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
+    if (rawKey === 'ans') { insertToken(isAlpha ? 'e' : 'Ans'); return; }
+    if (rawKey === 'variable') { insertToken(isShift ? 'd/dx(' : 'x'); return; }
+    if (rawKey === 'negate') { insertToken(isAlpha ? 'A' : '(-'); return; }
+    if (rawKey === 'left_paren') { insertToken(isShift ? 'Abs(' : '('); return; }
+    if (rawKey === 'right_paren') { insertToken(isAlpha ? 'x' : ')'); return; }
+
+    const tkMap = {
+      '0': isShift ? 'round(' : '0', '1':'1','2':'2','3':'3','4':'4',
+      '5':'5','6':'6','7':'7','8':'8','9':'9',
+      'decimal': isShift ? 'Ran#' : isAlpha ? 'RanInt(' : '.',
+      'plus': isShift ? 'Pol(' : '+',
+      'minus': isShift ? 'Rec(' : '\u2212',
+      'multiply': isShift ? 'nPr' : '\u00d7',
+      'divide': isShift ? 'nCr' : '\u00f7',
     };
-
-    sendKeyToBackend(detail);
-
-    if (window.pyBridge && typeof window.pyBridge.pressKey === 'function') {
-      window.pyBridge.pressKey(key);
-    }
-
-    window.dispatchEvent(new CustomEvent('calculator-key', { detail }));
+    if (tkMap[rawKey] !== undefined) { insertToken(tkMap[rawKey]); return; }
   }
 
   document.querySelectorAll('[data-key]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.key;
-
-      if (key === 'shift') {
-        setShift(!shiftActive);
-        dispatchKey('shift', 'shift');
-        return;
-      }
-
-      if (key === 'alpha') {
-        setAlpha(!alphaActive);
-        dispatchKey('alpha', 'alpha');
-        return;
-      }
-
-      const action = alphaActive && btn.dataset.alpha
-        ? btn.dataset.alpha
-        : shiftActive && btn.dataset.shift
-          ? btn.dataset.shift
-          : key;
-
-      dispatchKey(key, action);
-
-      if (shiftActive) setShift(false);
-      if (alphaActive) setAlpha(false);
-    });
+    btn.addEventListener('click', () => handleKey(btn));
   });
 
-  document.querySelectorAll('[data-mode]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const page = btn.closest('.mode-page')?.classList.contains('mode-page-2') ? 2 : 1;
-      const tiles = [...document.querySelectorAll('.mode-page-' + page + ' .menu-icon')];
-      setMenuSelection(page, tiles.indexOf(btn));
-      const mode = btn.dataset.mode;
-      const number = btn.querySelector('small')?.textContent || '';
-      sendModeToBackend(mode, number);
-      window.dispatchEvent(new CustomEvent('calculator-mode', {detail:{mode, number}}));
-    });
-  });
-
-  setMenuSelection(1, 0);
+  renderLCD();
 </script>
 
 </body>

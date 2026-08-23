@@ -1,8 +1,5 @@
 import sys
 
-sys.path.insert(0, r"E:\A.G\casio_mvp")
-sys.path.insert(1, r"E:\A.G\casio_calculator")
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 

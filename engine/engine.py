@@ -7,9 +7,9 @@ delegates to the root evaluation pipeline.
 
 from __future__ import annotations
 
-from evaluator import evaluate
-from parser import parse
-from tokenizer import tokenize
+from engine.evaluator import evaluate
+from engine.parser import parse
+from engine.tokenizer import tokenize
 
 from engine.base_n import base_n_engine as bn
 from engine.calculus.calculus_engine import CalculusEngine
