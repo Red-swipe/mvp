@@ -48,7 +48,8 @@ post("/api/key", {"key": "ac"})
 
 # 2. Division by zero
 s = post("/api/key", {"key": "equals", "expression": "1/0"})
-check("1/0=TO INFINITY AND BEYOND", s.get("result") == "TO INFINITY AND BEYOND", repr(s.get("result")))
+check("1/0=Math ERROR", s.get("error") == "Math ERROR" and s.get("display") == "Math ERROR",
+      repr((s.get("error"), s.get("display"))))
 
 post("/api/key", {"key": "ac"})
 

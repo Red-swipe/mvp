@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test Frontend Expression</title>
+</head>
+<body>
+<div id="lcdCalc">
+  <div class="lcd-expr-viewport">
+    <div class="lcd-expr-content" id="lcdExprContent"></div>
+  </div>
+  <div class="lcd-result-line" id="lcdResultLine"></div>
+</div>
+
+<script>
+let _id = 1;
+const nextId = () => _id++;
+const createSlot = (items = []) => ({ id: nextId(), items: [...items] });
+
+let rootSlot = createSlot();
+let cursor = { slot: rootSlot, index: 0 };
+
+let appState = {
+    poweredOn: true, mode: 'Calculate', menuOpen: false, menuPage: 1,
+    menuSelection: 0, shift: false, alpha: false, splash: false,
+    result: null, resultDisplayed: false, error: null
+};
+
+function serializeSlot(slot) {
+    if (!slot || !slot.items) return '';
+    let out = '';
+    for (const item of slot.items) {
+      if (typeof item === 'string') {
+        out += item
+          .replace(/sin\u207b\u00b9\(/g, 'asin(')
+          .replace(/cos\u207b\u00b9\(/g, 'acos(')
+          .replace(/tan\u207b\u00b9\(/g, 'atan(')
+          .replace(/\u00d710\^/g, '*10^')
+          .replace(/\u00d7/g, '*')
+          .replace(/\u00f7/g, '/')
+          .replace(/\u2212/g, '-')
+          .replace(/\u03c0/g, 'pi')
+          .replace(/\u00b2/g, '^2')
+          .replace(/\u00b3/g, '^3')
+          .replace(/\u207b\u00b9/g, '^(-1)');
+      } else if (item.type === 'fraction') {
+        out += '((' + (serializeSlot(item.num)||'0') + ')/(' + (serializeSlot(item.den)||'1') + '))';
+      } else if (item.type === 'radical') {
+        const rad = serializeSlot(item.radicand) || '0';
+        if (item.index && item.index.items.length > 0) {
+          out += 'xroot(' + (serializeSlot(item.index)||'2') + ',' + rad + ')';
+        } else { out += 'sqrt(' + rad + ')'; }
+      } else if (item.type === 'cbrt') {
+        out += 'cbrt(' + (serializeSlot(item.radicand)||'0') + ')';
+      } else if (item.type === 'power') {
+        out += '((' + (serializeSlot(item.base)||'0') + ')^(' + (serializeSlot(item.exp)||'1') + '))';
+      } else if (item.type === 'log') {
+        out += 'log_base(' + (serializeSlot(item.base)||'10') + ',' + (serializeSlot(item.arg)||'1') + ')';
+      } else if (item.type === 'integral') {
+        out += 'integral(' + (serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
+      }
+    }
+    return out;
+  }
+  const getExpr = () => serializeSlot(rootSlot);
+
+function insertToken(tok) {
+    if (appState.resultDisplayed) resetExpr();
+    cursor.slot.items.splice(cursor.index, 0, tok);
+    cursor.index++;
+}
+
+function resetExpr() {
+    rootSlot = createSlot();
+    cursor = { slot: rootSlot, index: 0 };
+    appState.result = null; appState.resultDisplayed = false; appState.error = null;
+}
+
+// Press 1
+insertToken('1');
+console.log('After pressing 1:', getExpr());
+
+// Press +
+insertToken('+');
+console.log('After pressing +:', getExpr());
+
+// Press 1 again
+insertToken('1');
+console.log('After pressing 1:', getExpr());
+
+// Evaluate
+const expr = getExpr();
+console.log('Expression to send:', JSON.stringify(expr));
+
+if (!expr) { 
+    appState.result = '0'; appState.resultDisplayed = true; 
+} else {
+    const r = await fetch('http://127.0.0.1:8080/api/key', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key:'equals', expression: expr, shift: appState.shift, alpha: appState.alpha })
+    });
+    const s = await r.json();
+    console.log('Response:', JSON.stringify(s));
+    if (s.result !== undefined && s.result !== null) {
+        appState.result = s.result; appState.resultDisplayed = true; appState.error = null;
+    } else if (s.error) {
+        appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
+    }
+    if (s.modeName) appState.mode = s.modeName;
+    console.log('Result in appState:', appState.result);
+}
+</script>
+</div>
+</body>
+</html>

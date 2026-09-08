@@ -1,0 +1,3353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casio fx-991EX ClassWiz — OG-style mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @font-face {
+    font-family: 'CASIO ClassWiz';
+    src: url('/ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype'),
+         url('/fonts/CASIO%20ClassWiz.ttf') format('truetype'),
+         url('ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: 'CASIO ClassWiz RS';
+    src: url('/ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
+         url('/fonts/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
+         url('ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  :root{
+    --face:#2c2c2d;
+    --face2:#242425;
+    --rim:#b8b9b8;
+    --rim-hi:#e4e5e3;
+    --rim-lo:#777978;
+    --key:#171719;
+    --key2:#242426;
+    --whitekey:#efefed;
+    --blue:#2470e8;
+    --yellow:#d8a527;
+    --pink:#d7517f;
+    --cyan:#4aa6d5;
+    --lcd:#d5dfb8;
+    --ink:#141614;
+  }
+
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#a7a7a7;
+    font-family:Arial, Helvetica, sans-serif;
+    padding:24px;
+    user-select:none;
+  }
+
+  /* ── OUTER CALCULATOR SHELL ── */
+  .shell{
+    width:322px;
+    padding:8px 9px 13px;
+    border-radius:38px 38px 31px 31px;
+    background:
+      linear-gradient(90deg,var(--rim-lo) 0%,var(--rim-hi) 7%,#c7c8c6 17%,#a7a8a7 84%,#747675 100%);
+    box-shadow:
+      0 18px 42px rgba(0,0,0,.42),
+      inset 0 1px 0 rgba(255,255,255,.8),
+      inset 0 -2px 3px rgba(0,0,0,.35);
+  }
+
+  .calc{
+    width:100%;
+    border-radius:31px 31px 24px 24px;
+    padding:17px 14px 15px;
+    background:
+      radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(180deg,#303031 0%,#29292a 55%,#262627 100%);
+    background-size:4px 4px, auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.05),
+      inset 0 -1px 0 rgba(0,0,0,.55);
+  }
+
+  /* ── HEADER ── */
+  .hdr{
+    position:relative;
+    height:65px;
+    margin-bottom:4px;
+  }
+  .brand-casio{
+    position:absolute;
+    left:2px;
+    top:2px;
+    color:#fff;
+    font-family:"Arial Black", Arial, sans-serif;
+    font-size:22px;
+    font-weight:900;
+    letter-spacing:.1px;
+  }
+  .brand-cwiz{
+    position:absolute;
+    left:50%;
+    top:29px;
+    transform:translateX(-50%);
+    color:#d95c7f;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:3.2px;
+    white-space:nowrap;
+  }
+
+  /* ── LCD + BLACK BEZEL ── */
+  .lcd-bezel{
+    background:#0e0f10;
+    border-radius:13px;
+    padding:12px 11px 11px;
+    margin:0 1px 12px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.03),
+      0 2px 0 rgba(0,0,0,.4);
+  }
+  .lcd{
+    position:relative;
+    height:103px;
+    border-radius:3px;
+    border:1px solid #83877d;
+    background:linear-gradient(180deg,#dce6c2 0%,#cedab0 100%);
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,.17),
+      inset 0 0 0 1px rgba(255,255,255,.35);
+    color:var(--ink);
+    font-family:'CASIO ClassWiz', monospace;
+    padding:4px 6px;
+    overflow:hidden;
+    pointer-events:none;
+  }
+
+  /* SPLASH SCREEN */
+  #lcdSplash{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    height:100%;
+    font-family:'CASIO ClassWiz', sans-serif;
+    font-size:24px;
+    font-weight:900;
+    letter-spacing:2px;
+    color:var(--ink);
+  }
+
+  /* MENU SCREEN */
+  #lcdMenu{
+    display:none;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
+  }
+  .menu-icons{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:2px;
+    height:56px;
+  }
+  .menu-icon{
+    border:1px solid #353735;
+    background:rgba(255,255,255,.15);
+    font:700 9px/1 Arial, monospace;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    color:var(--ink);
+    padding:0 1px;
+  }
+  .menu-icon.selected{
+    background:#141614;
+    color:#dce6c2;
+  }
+  .menu-icon small{
+    position:absolute;
+    right:2px;
+    bottom:1px;
+    font-size:6px;
+    font-family:Arial;
+  }
+  .menu-icon .mi-main{font-family:Arial; font-size:9px; font-weight:700; line-height:1.15; text-align:center;}
+  .second-page{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .mode-page{display:none;}
+  .mode-page.active{display:block;}
+  .lcd-page-indicator{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);pointer-events:none;}
+
+  .lcd-menu-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    height:18px;
+    font-size:14px;
+    font-weight:700;
+    line-height:1;
+  }
+
+  /* MATRIX SCREEN */
+  #lcdMatrix{
+    display:none;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
+    position:relative;
+    color:var(--ink);
+    font-family:'CASIO ClassWiz', monospace;
+  }
+  .matrix-menu-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:4px 8px;
+    padding:4px 8px;
+    font-size:13px;
+    font-weight:700;
+  }
+  .matrix-dim-box{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:2px 8px;
+    gap:3px;
+  }
+  .matrix-dim-title{
+    font-size:13px;
+    font-weight:700;
+  }
+  .matrix-dim-line{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+  }
+  .matrix-dim-val{
+    font-weight:700;
+    font-size:13px;
+  }
+  .matrix-grid-container{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height:calc(100% - 14px);
+  }
+  .matrix-table{
+    display:grid;
+    gap:1px;
+    background:#141614;
+    border:1px solid #141614;
+    margin:1px 2px;
+  }
+  .matrix-cell{
+    background:#dce6c2;
+    color:#141614;
+    text-align:right;
+    padding:0 2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .matrix-cell.active{
+    background:#141614;
+    color:#dce6c2;
+    font-weight:bold;
+  }
+  .matrix-bottom-info{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:11px;
+    line-height:1;
+    font-weight:700;
+    padding:0 3px 1px 3px;
+  }
+
+  /* VECTOR SCREEN */
+  #lcdVector{
+    display:none;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
+    position:relative;
+    color:var(--ink);
+    font-family:'CASIO ClassWiz', monospace;
+  }
+  .vector-menu-list{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:4px 8px;
+    padding:4px 8px;
+    font-size:13px;
+    font-weight:700;
+  }
+  .vector-dim-box{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:2px 8px;
+    gap:3px;
+  }
+  .vector-dim-title{
+    font-size:13px;
+    font-weight:700;
+  }
+  .vector-dim-line{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+  }
+  .vector-dim-val{
+    font-weight:700;
+    font-size:13px;
+  }
+  .vector-grid-container{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height:calc(100% - 14px);
+  }
+  .vector-table{
+    display:grid;
+    gap:1px;
+    background:#141614;
+    border:1px solid #141614;
+    margin:1px 2px;
+  }
+  .vector-cell{
+    background:#dce6c2;
+    color:#141614;
+    text-align:right;
+    padding:0 2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .vector-cell.active{
+    background:#141614;
+    color:#dce6c2;
+    font-weight:bold;
+  }
+  .vector-bottom-info{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:11px;
+    line-height:1;
+    font-weight:700;
+    padding:0 3px 1px 3px;
+  }
+
+  /* STATISTICS SCREEN */
+  #lcdStatistics {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    position: relative;
+    color: var(--ink);
+    font-family: 'CASIO ClassWiz', monospace;
+  }
+  .stat-type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .stat-type-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .stat-type-item.selected {
+    background: var(--ink);
+    color: #dce6c2;
+  }
+  .stat-grid-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: calc(100% - 14px);
+  }
+  .stat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'CASIO ClassWiz', monospace;
+    font-size: 10px;
+    margin: 1px 0;
+  }
+  .stat-table th {
+    font-size: 9px;
+    text-align: center;
+    border-bottom: 1px solid var(--ink);
+    padding: 0 2px;
+  }
+  .stat-table td {
+    border: 1px solid var(--ink);
+    padding: 0 2px;
+    text-align: right;
+    min-width: 36px;
+    height: 13px;
+    line-height: 13px;
+    font-size: 9px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stat-table td.active {
+    background: var(--ink);
+    color: #dce6c2;
+    font-weight: bold;
+  }
+  .stat-row-num {
+    font-size: 8px;
+    color: var(--ink);
+    opacity: 0.7;
+    text-align: center !important;
+    min-width: 16px !important;
+    border: none !important;
+  }
+  .stat-bottom-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    padding: 0 3px 1px 3px;
+  }
+  .stat-scroll-hint {
+    font-size: 9px;
+    text-align: right;
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+  }
+
+  /* CALC SCREEN */
+  #lcdCalc{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height:100%;
+    position:relative;
+  }
+
+  /* STATUS BAR */
+  .lcd-status-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    height:12px;
+    font-size:9px;
+    font-weight:700;
+    line-height:1;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .status-left, .status-right{
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .status-tag{
+    display:none;
+    border:1px solid currentColor;
+    padding:0 2px;
+    font-size:8px;
+    line-height:9px;
+    border-radius:1px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .status-tag.active{display:inline-block;}
+  .status-indicator{
+    font-size:9px;
+    font-weight:bold;
+  }
+
+  /* EXPRESSION VIEWPORT */
+  .lcd-expr-viewport{
+    position:relative;
+    width:100%;
+    height:50px;
+    overflow-x:hidden;
+    overflow-y:hidden;
+    white-space:nowrap;
+    font-size:16px;
+    line-height:1.2;
+    padding-top:2px;
+  }
+  .lcd-expr-content{
+    display:inline-flex;
+    align-items:baseline;
+    position:relative;
+    font-family:'CASIO ClassWiz', monospace;
+    font-size:16px;
+    color:var(--ink);
+  }
+
+  /* RESULT LINE */
+  .lcd-result-line{
+    position:absolute;
+    right:4px;
+    bottom:2px;
+    font-size:20px;
+    font-weight:bold;
+    line-height:1;
+    font-family:'CASIO ClassWiz', monospace;
+    text-align:right;
+    white-space:nowrap;
+    max-width:96%;
+    overflow:hidden;
+    color:var(--ink);
+  }
+
+  /* CURSOR */
+  .lcd-cursor{
+    display:inline-block;
+    width:1.5px;
+    height:15px;
+    background-color:#141614;
+    vertical-align:text-bottom;
+    margin:0 0.5px;
+    animation:lcdBlink 1s steps(1, start) infinite;
+  }
+  @keyframes lcdBlink {
+    0%, 100% { opacity:1; }
+    50% { opacity:0; }
+  }
+
+  /* EMPTY TEMPLATE SLOT */
+  .slot-empty{
+    display:inline-block;
+    width:7px;
+    height:10px;
+    border:1px dashed #555;
+    margin:0 1px;
+    vertical-align:baseline;
+  }
+
+  /* FRACTION TEMPLATE */
+  .math-fraction{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    vertical-align:middle;
+    margin:0 2px;
+    padding:0 1px;
+    font-size:13px;
+  }
+  .math-numerator{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:8px;
+    min-height:13px;
+    padding:0 1px;
+    line-height:1;
+  }
+  .math-fraction-bar{
+    width:100%;
+    height:1.2px;
+    background-color:currentColor;
+    margin:1px 0;
+  }
+  .math-denominator{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:8px;
+    min-height:13px;
+    padding:0 1px;
+    line-height:1;
+  }
+
+  /* RADICAL TEMPLATE */
+  .math-radical{
+    display:inline-flex;
+    align-items:flex-start;
+    vertical-align:baseline;
+    margin:0 1px;
+  }
+  .math-root-index{
+    font-size:9px;
+    line-height:1;
+    margin-right:-2px;
+    margin-top:-3px;
+  }
+  .math-radical-symbol{
+    font-size:17px;
+    line-height:1;
+    margin-right:0;
+    transform:translateY(1px);
+  }
+  .math-radicand{
+    border-top:1.2px solid currentColor;
+    display:inline-flex;
+    align-items:center;
+    padding:0 2px 0 1px;
+    margin-top:2px;
+    min-width:8px;
+  }
+
+  /* POWER TEMPLATE */
+  .math-power{
+    display:inline-flex;
+    align-items:flex-start;
+    vertical-align:baseline;
+  }
+  .math-power-base{
+    display:inline-flex;
+    align-items:baseline;
+  }
+  .math-power-exp{
+    font-size:10px;
+    line-height:1;
+    margin-top:-6px;
+    min-width:6px;
+    padding:0 1px;
+  }
+
+  /* LOG BASE TEMPLATE */
+  .math-log-base-template{
+    display:inline-flex;
+    align-items:baseline;
+  }
+  .math-log-sub{
+    font-size:9px;
+    line-height:1;
+    margin-bottom:-4px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-log-arg{
+    display:inline-flex;
+    align-items:baseline;
+    min-width:6px;
+  }
+
+  /* INTEGRAL TEMPLATE */
+  .math-integral-template{
+    display:inline-flex;
+    align-items:center;
+    vertical-align:middle;
+    margin:0 2px;
+  }
+  .math-int-sym-col{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    margin-right:1px;
+  }
+  .math-int-upper{
+    font-size:9px;
+    line-height:1;
+    min-height:9px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-int-sym{
+    font-size:20px;
+    line-height:15px;
+  }
+  .math-int-lower{
+    font-size:9px;
+    line-height:1;
+    min-height:9px;
+    min-width:6px;
+    padding:0 1px;
+  }
+  .math-int-body{
+    display:inline-flex;
+    align-items:baseline;
+    min-width:8px;
+    margin:0 1px;
+  }
+  .math-int-dx{
+    font-size:14px;
+    line-height:1;
+    margin-left:1px;
+  }
+  .top-row{
+    display:grid;
+    grid-template-columns:30px 30px 86px 30px 30px;
+    align-items:end;
+    justify-content:space-between;
+    gap:6px;
+    margin:0 1px 4px;
+  }
+  .bwc{
+    width:30px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .lbl{
+    width:100%;
+    height:11px;
+    text-align:center;
+    white-space:nowrap;
+    font-size:6px;
+    line-height:10px;
+    font-weight:700;
+  }
+  .ly{color:var(--yellow);}
+  .lp{color:var(--pink);}
+  .lc{color:var(--cyan);}
+  .lg{color:#c8c8c8;}
+
+  .bc{
+    width:27px;height:27px;
+    border:0;border-radius:50%;
+    background:linear-gradient(180deg,#858587,#69696b);
+    color:#fff;
+    font-size:7px;
+    font-weight:700;
+    box-shadow:0 2px 0 #151516,0 3px 6px rgba(0,0,0,.25);
+    cursor:pointer;
+  }
+  .bc:active{transform:translateY(1px);box-shadow:0 1px 0 #151516;}
+
+  /* ── CLASSWIZ-STYLE D-PAD ──
+     One continuous rounded control; no clip-paths, so the edges don't look chopped. */
+  .dpo{
+    width:86px;height:67px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .dpad{
+    width:82px;
+    height:62px;
+    position:relative;
+    filter:drop-shadow(0 2px 0 #111) drop-shadow(0 3px 3px rgba(0,0,0,.22));
+  }
+  .dpad-ring{
+    position:absolute;
+    inset:2px 0;
+    border-radius:46% 46% 44% 44%;
+    background:linear-gradient(180deg,#606063,#454548);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.09),
+      inset 0 0 0 1px #1a1a1b;
+  }
+  .dp{
+    position:absolute;
+    z-index:2;
+    border:0;
+    padding:0;
+    cursor:pointer;
+    background:transparent;
+    color:#d8d8d8;
+    font-size:9px;
+    line-height:1;
+  }
+  .dp:hover{background:rgba(255,255,255,.035);}
+  .dp:active{transform:translateY(1px);}
+
+  .dp-u{
+    left:25px;top:2px;
+    width:32px;height:22px;
+    border-radius:16px 16px 5px 5px;
+  }
+  .dp-d{
+    left:25px;bottom:2px;
+    width:32px;height:22px;
+    border-radius:5px 5px 16px 16px;
+  }
+  .dp-l{
+    left:2px;top:20px;
+    width:29px;height:23px;
+    border-radius:16px 5px 5px 16px;
+  }
+  .dp-r{
+    right:2px;top:20px;
+    width:29px;height:23px;
+    border-radius:5px 16px 16px 5px;
+  }
+  .dp-c{
+    left:29px;top:21px;
+    width:24px;height:21px;
+    background:transparent;
+    border:0;
+    box-shadow:none;
+  }
+
+  /* Clean continuous ClassWiz D-pad: no center square and no X-shaped grooves. */
+  .dpad::before,
+  .dpad::after{
+    content:none;
+    display:none;
+  }
+
+  /* ── BUTTON GRID ── */
+  .btns{display:flex;flex-direction:column;gap:3px;}
+  .row{display:flex;gap:3px;align-items:flex-end;}
+  .bw{
+    min-width:0;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .b{
+    width:100%;
+    height:27px;
+    border:0;
+    border-radius:4px;
+    background:linear-gradient(180deg,#222225,#121214);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 2px 0 #050506,0 3px 5px rgba(0,0,0,.25);
+  }
+  .b:active{transform:translateY(1px);box-shadow:0 1px 0 #050506;}
+  /* ── LOWER KEYPAD ──
+     Chunkier, squarer and brighter than the scientific keys, like the OG unit. */
+  .numeric-row{
+    gap:6px;
+    margin-top:1px;
+  }
+  .numeric-row .bw{
+    flex:1 1 0;
+  }
+  .numeric-row .lbl{
+    height:10px;
+    line-height:9px;
+    font-size:5.6px;
+  }
+  .bn,
+  .bop,
+  .bdel,
+  .bac{
+    height:34px;
+    border-radius:3px;
+  }
+  .bn{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:18px;
+    font-weight:800;
+    color:#121212;
+    background:linear-gradient(180deg,#fbfbfa 0%,#ececea 68%,#dededb 100%);
+    box-shadow:
+      0 2px 0 #8e8e8b,
+      0 3px 4px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .bop{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:17px;
+    font-weight:500;
+    color:#111;
+    background:linear-gradient(180deg,#f5f5f4 0%,#e5e5e2 70%,#d7d7d4 100%);
+    box-shadow:
+      0 2px 0 #898986,
+      0 3px 4px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  .bdel,.bac{
+    background:linear-gradient(180deg,#3d8df5 0%,#216edb 70%,#175ec7 100%);
+    color:#fff;
+    font-size:13px;
+    font-weight:800;
+    box-shadow:
+      0 2px 0 #0b3e93,
+      0 3px 4px rgba(0,0,0,.3),
+      inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .numeric-row button:active{
+    transform:translateY(1px);
+  }
+  .scientific-wide{
+    font-size:11px !important;
+    letter-spacing:-.2px;
+  }
+
+  .special-row{
+    display:grid;
+    grid-template-columns:1.26fr 1.26fr .45fr .88fr .88fr;
+    gap:4px;
+    align-items:end;
+  }
+
+  .small-note{
+    font-size:5px;
+    line-height:1;
+    margin-top:1px;
+  }
+  .accent-y{color:var(--yellow);}
+  .accent-p{color:var(--pink);}
+  .accent-c{color:var(--cyan);}
+
+  /* Calculator-style mathematical glyphs instead of text approximations */
+  .math-key{
+    font-family:"Times New Roman", Cambria, serif;
+    font-weight:700;
+    font-size:15px;
+  }
+  .frac-glyph{
+    display:inline-grid;
+    grid-template-rows:7px 1px 7px;
+    width:15px;
+    height:17px;
+    vertical-align:middle;
+    align-items:center;
+    justify-items:center;
+    line-height:1;
+  }
+  .frac-glyph .box{
+    width:6px;height:5px;
+    border:1px solid currentColor;
+  }
+  .frac-glyph .bar{
+    width:15px;height:1px;
+    background:currentColor;
+  }
+  .root-glyph{
+    display:inline-flex;
+    align-items:flex-start;
+    height:17px;
+    line-height:1;
+  }
+  .root-sign{
+    font-family:"Times New Roman", Cambria, serif;
+    font-size:19px;
+    line-height:16px;
+    transform:scaleX(.92);
+    transform-origin:right center;
+  }
+  .root-box{
+    width:11px;height:9px;
+    border-top:1px solid currentColor;
+    margin-top:2px;
+    position:relative;
+  }
+  .root-box:after{
+    content:"";
+    position:absolute;
+    width:6px;height:6px;
+    border:1px solid currentColor;
+    left:2px;top:3px;
+  }
+
+
+  .mode-page{display:none;}
+  .mode-page.active{display:block;}
+  .menu-icon{
+    appearance:none;
+    padding:0;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .menu-icon.selected{
+    background:#111;
+    color:#dce6c2;
+  }
+  .menu-icon .mi-main{font-family:Arial; font-size:9px; font-weight:700; line-height:1.15; text-align:center;}
+  .second-page{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .lcd-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-top:2px;
+  }
+  .lcd-mode-name{
+    font-size:17px;
+    line-height:1;
+    white-space:nowrap;
+  }
+  .lcd-indicators{
+    min-width:42px;
+    text-align:right;
+    font-size:8px;
+    font-weight:700;
+  }
+  .lcd-cursor{
+    display:inline-block;
+    width:1px;
+    height:17px;
+    margin:0 1px;
+    vertical-align:-2px;
+    background:currentColor;
+    animation:lcd-cursor-blink 1s steps(1,end) infinite;
+  }
+  @keyframes lcd-cursor-blink{50%{opacity:0;}}
+  #shiftIndicator::after{content:"";}
+  #alphaIndicator::after{content:"";}
+  body.shift-on #shiftIndicator::after{content:"S"; margin-right:4px;}
+  body.alpha-on #alphaIndicator::after{content:"A";}
+  .legend-pair{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    width:100%;
+  }
+  .lbl .alpha-mark{color:var(--pink);}
+  .lbl .base-mark{color:var(--cyan);}
+  .lbl .shift-mark{color:var(--yellow);}
+
+
+  /* ── More faithful fx-991EX key glyphs ── */
+  .glyph{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:currentColor;
+    line-height:1;
+  }
+
+  /* Integral template: upper box, integral, lower box, input box */
+  .int-glyph{
+    position:relative;
+    width:23px;
+    height:15px;
+    font-family:"Times New Roman", Cambria, serif;
+    transform:translateY(1px);
+  }
+  .int-glyph .int-sign{
+    position:absolute;
+    left:7px; top:0;
+    font-size:18px;
+    line-height:14px;
+  }
+  .int-glyph .ibox{
+    position:absolute;
+    width:4px; height:4px;
+    border:1px solid currentColor;
+  }
+  .int-glyph .ibox.top{left:1px;top:0;}
+  .int-glyph .ibox.bottom{left:1px;bottom:0;}
+  .int-glyph .ibox.arg{right:0;top:5px;width:6px;height:5px;}
+
+  /* Fraction template */
+  .frac-glyph{
+    display:inline-grid;
+    grid-template-rows:6px 1px 6px;
+    width:18px;
+    height:15px;
+    align-items:center;
+    justify-items:center;
+    line-height:1;
+  }
+  .frac-glyph .box{
+    width:7px;
+    height:5px;
+    border:1px solid currentColor;
+  }
+  .frac-glyph .bar{
+    width:17px;
+    height:1px;
+    background:currentColor;
+  }
+
+  /* Radical with an editable box under the vinculum */
+  .root-glyph{
+    position:relative;
+    display:inline-block;
+    width:22px;
+    height:15px;
+    transform:translateY(1px);
+  }
+  /* Draw the radical from lines instead of relying on a font glyph. */
+  .root-glyph .root-hook{
+    position:absolute;
+    left:1px;
+    top:7px;
+    width:5px;
+    height:6px;
+    border-left:1.4px solid currentColor;
+    border-bottom:1.4px solid currentColor;
+    transform:skewX(-18deg) rotate(-7deg);
+    transform-origin:left bottom;
+  }
+  .root-glyph .root-stem{
+    position:absolute;
+    left:5px;
+    top:3px;
+    width:7px;
+    height:10px;
+    border-left:1.4px solid currentColor;
+    transform:rotate(24deg);
+    transform-origin:left bottom;
+  }
+  .root-glyph .radicand{
+    position:absolute;
+    left:10px;
+    top:2px;
+    width:11px;
+    height:10px;
+    border-top:1.4px solid currentColor;
+  }
+  .root-glyph .radicand:after{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:3px;
+    width:6px;
+    height:5px;
+    border:1px solid currentColor;
+  }
+
+  /* x raised to an editable exponent box */
+  .pow-glyph{
+    position:relative;
+    width:25px;
+    height:17px;
+    font-family:"Times New Roman", Cambria, serif;
+    font-style:italic;
+  }
+  .pow-glyph .x{
+    position:absolute;
+    left:3px; bottom:0;
+    font-size:17px;
+  }
+  .pow-glyph .expbox{
+    position:absolute;
+    right:2px; top:0;
+    width:8px; height:7px;
+    border:1px solid currentColor;
+  }
+
+  /* log with small editable base box, matching the physical key */
+  .logbase-glyph{
+    display:inline-flex;
+    align-items:flex-end;
+    font-family:Arial, sans-serif;
+    font-weight:700;
+    font-size:11px;
+    height:15px;
+  }
+  .logbase-glyph .basebox{
+    width:6px; height:6px;
+    border:1px solid currentColor;
+    margin-left:1px;
+    margin-bottom:0;
+  }
+
+  /* mixed fraction icon above fraction key */
+  .mixed-frac-legend{
+    display:inline-flex;
+    align-items:center;
+    gap:1px;
+    transform:scale(.86);
+    transform-origin:center;
+  }
+  .mixed-frac-legend .whole{
+    width:4px; height:5px; border:1px solid currentColor;
+  }
+  .mini-frac{
+    display:inline-grid;
+    grid-template-rows:4px 1px 4px;
+    width:9px; height:9px;
+    justify-items:center;
+    align-items:center;
+  }
+  .mini-frac i{
+    display:block;
+    width:4px; height:3px; border:1px solid currentColor;
+  }
+  .mini-frac b{
+    display:block;
+    width:8px; height:1px; background:currentColor;
+  }
+
+  /* x-th-root legend above the power key */
+  .xroot-legend{
+    font-family:"Times New Roman", Cambria, serif;
+    font-size:8px;
+    white-space:nowrap;
+  }
+
+  /* ENG's two-way engineering-arrow legend */
+  .eng-arrows{
+    display:inline-flex;
+    gap:1px;
+    font-size:8px;
+    font-weight:900;
+  }
+  .eng-arrows .left{color:#8d6fd4;}
+  .eng-arrows .right{color:var(--yellow);}
+
+  /* S↔D legend is a composite on the original */
+  .sd-legend{
+    display:inline-flex;
+    align-items:center;
+    gap:1px;
+    font-size:5px;
+    white-space:nowrap;
+  }
+  .sd-legend .shift-mark{font-size:5px;}
+  .sd-legend .alpha-mark{font-size:6px;}
+
+  .key.math-template{
+    font-family:"Times New Roman", Cambria, serif;
+    font-weight:700;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .b.math-template{
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+
+  /* Top controls: labels stay above, all four round buttons share the D-pad centerline. */
+  .top-controls{
+    align-items:start;
+  }
+  .top-controls .bwc{
+    display:grid;
+    grid-template-rows:10px 67px;
+    align-items:start;
+    justify-items:center;
+  }
+  .top-controls .bwc .lbl{
+    height:10px;
+    line-height:9px;
+    align-self:start;
+  }
+  .top-controls .bwc .bc{
+    align-self:center;
+  }
+  .top-controls .dpo{
+    align-self:start;
+  }
+
+  /* subtle lower-body taper illusion */
+  .bottom-pad{height:1px;}
+
+  /* Refined top row: compact label-to-button spacing + groups centered with D-pad. */
+  .top-controls{
+    align-items:center !important;
+  }
+  .top-controls .bwc{
+    display:flex !important;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:67px;
+    gap:1px;
+  }
+  .top-controls .bwc .lbl{
+    height:8px !important;
+    min-height:8px;
+    line-height:8px !important;
+    margin:0 0 1px 0 !important;
+    padding:0 !important;
+  }
+  .top-controls .bwc .bc{
+    align-self:center;
+    margin:0 !important;
+  }
+  .top-controls .dpo,
+  .top-controls .dpad{
+    align-self:center !important;
+  }
+  
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="calc">
+
+    <div class="hdr">
+      <div class="brand-casio">MENTIS</div>
+      <div class="brand-cwiz">CLASSWIZ</div>
+    </div>
+
+    <div class="lcd-bezel">
+      <div class="lcd">
+        <!-- SPLASH SCREEN -->
+        <div id="lcdSplash">MENTIS</div>
+
+        <!-- MENU SCREEN -->
+        <div id="lcdMenu">
+          <div class="lcd-page-indicator" id="lcdPageIndicator">▼</div>
+          <div class="mode-page mode-page-1 active">
+            <div class="menu-icons">
+              <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
+              <button class="menu-icon" data-mode="Complex"><span class="mi-main">a+bi</span><small>2</small></button>
+              <button class="menu-icon" data-mode="Base-N"><span class="mi-main">2 8<br>10 16</span><small>3</small></button>
+              <button class="menu-icon" data-mode="Matrix"><span class="mi-main">[■]</span><small>4</small></button>
+              <button class="menu-icon" data-mode="Vector"><span class="mi-main">↗</span><small>5</small></button>
+              <button class="menu-icon" data-mode="Statistics"><span class="mi-main">▥</span><small>6</small></button>
+              <button class="menu-icon" data-mode="Distribution"><span class="mi-main">⌒</span><small>7</small></button>
+              <button class="menu-icon" data-mode="Spreadsheet"><span class="mi-main">▦</span><small>8</small></button>
+            </div>
+          </div>
+          <div class="mode-page mode-page-2">
+            <div class="menu-icons second-page">
+              <button class="menu-icon" data-mode="Table"><span class="mi-main">x y</span><small>9</small></button>
+              <button class="menu-icon" data-mode="Equation/Func"><span class="mi-main">=ƒ</span><small>10</small></button>
+              <button class="menu-icon" data-mode="Inequality"><span class="mi-main">≶</span><small>11</small></button>
+              <button class="menu-icon" data-mode="Ratio"><span class="mi-main">a:b</span><small>12</small></button>
+            </div>
+          </div>
+          <div class="lcd-menu-bottom">
+            <span id="lcdMenuLabel">1:Calculate</span>
+          </div>
+        </div>
+
+        <!-- CALCULATION SCREEN -->
+        <div id="lcdCalc">
+          <div class="lcd-status-bar">
+            <div class="status-left">
+              <span id="indShift" class="status-tag">S</span>
+              <span id="indAlpha" class="status-tag">A</span>
+              <span id="indMode" class="status-tag"></span>
+              <span id="indAngle" class="status-indicator">D</span>
+              <span id="indMath" class="status-indicator">Math</span>
+              <span id="indBase" class="status-tag" style="display:none;"></span>
+            </div>
+            <div class="status-right">
+              <span id="indLeftOverflow" style="display:none;">◀</span>
+              <span id="indRightOverflow" style="display:none;">▶</span>
+            </div>
+          </div>
+          <div class="lcd-expr-viewport" id="lcdExprViewport">
+            <div class="lcd-expr-content" id="lcdExprContent"></div>
+          </div>
+          <div class="lcd-result-line" id="lcdResultLine"></div>
+        </div>
+
+        <!-- MATRIX SCREEN -->
+        <div id="lcdMatrix">
+          <div class="lcd-status-bar">
+            <div class="status-left">
+              <span id="matIndShift" class="status-tag">S</span>
+              <span id="matIndAlpha" class="status-tag">A</span>
+              <span class="status-tag active">MAT</span>
+              <span class="status-indicator">D</span>
+              <span class="status-indicator">Math</span>
+            </div>
+          </div>
+          <div id="lcdMatrixBody" style="flex:1; display:flex; flex-direction:column; justify-content:space-between;"></div>
+        </div>
+
+        <!-- VECTOR SCREEN -->
+        <div id="lcdVector">
+          <div class="lcd-status-bar">
+            <div class="status-left">
+              <span id="vctIndShift" class="status-tag">S</span>
+              <span id="vctIndAlpha" class="status-tag">A</span>
+              <span class="status-tag active">VCT</span>
+              <span class="status-indicator">D</span>
+              <span class="status-indicator">Math</span>
+            </div>
+          </div>
+          <div id="lcdVectorBody" style="flex:1; display:flex; flex-direction:column; justify-content:space-between;"></div>
+        </div>
+
+        <!-- STATISTICS SCREEN -->
+        <div id="lcdStatistics">
+          <div class="lcd-status-bar">
+            <div class="status-left">
+              <span id="statIndShift" class="status-tag">S</span>
+              <span id="statIndAlpha" class="status-tag">A</span>
+              <span class="status-tag active">STAT</span>
+              <span class="status-indicator">D</span>
+              <span class="status-indicator">Math</span>
+            </div>
+          </div>
+          <div id="lcdStatisticsBody" style="flex:1; display:flex; flex-direction:column; justify-content:space-between;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-row top-controls">
+      <div class="bwc">
+        <span class="lbl ly">SHIFT</span>
+        <button class="bc" data-key="shift"></button>
+      </div>
+      <div class="bwc">
+        <span class="lbl lp">ALPHA</span>
+        <button class="bc" data-key="alpha"></button>
+      </div>
+
+      <div class="dpo">
+        <div class="dpad">
+          <div class="dpad-ring"></div>
+          <button class="dp dp-u" data-key="dpad_up">▲</button>
+          <button class="dp dp-l" data-key="dpad_left">◀</button>
+          <button class="dp dp-c" data-key="dpad_center" aria-label="D-pad center"></button>
+          <button class="dp dp-r" data-key="dpad_right">▶</button>
+          <button class="dp dp-d" data-key="dpad_down">▼</button>
+        </div>
+      </div>
+
+      <div class="bwc">
+        <span class="lbl"><span class="lg">MENU</span> <span class="shift-mark">SETUP</span></span>
+        <button class="bc" data-shift="SETUP" data-key="setup"></button>
+      </div>
+      <div class="bwc">
+        <span class="lbl lg">ON</span>
+        <button class="bc" data-key="on"></button>
+      </div>
+    </div>
+
+    <div class="btns">
+
+      <div class="special-row">
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">QR</span></span>
+          <button class="b" data-shift="QR" data-key="optn">OPTN</button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">SOLVE</span><span class="alpha-mark">=</span></span>
+          <button class="b" data-shift="SOLVE" data-alpha="=" data-key="calc">CALC</button>
+        </div>
+        <div></div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">Σ</span><span class="alpha-mark">:</span></span>
+          <button class="b math-template" data-shift="Σ" data-alpha=":" data-key="integral" aria-label="integral">
+            <span class="glyph int-glyph">
+              <span class="ibox top"></span><span class="int-sign">∫</span>
+              <span class="ibox bottom"></span><span class="ibox arg"></span>
+            </span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">d/dx</span></span>
+          <button class="b variable" data-shift="d/dx" data-key="variable">x</button>
+        </div>
+      </div>
+
+      <!-- This row is SIX keys on the reference calculator:
+           fraction / sqrt / square / power / log-base / ln -->
+      <div class="row">
+        <div class="bw">
+          <span class="lbl">
+            <span class="shift-mark mixed-frac-legend">
+              <span class="whole"></span><span class="mini-frac"><i></i><b></b><i></i></span>
+            </span>
+          </span>
+          <button class="b math-template" data-shift="mixed_fraction" data-key="fraction" aria-label="fraction">
+            <span class="glyph frac-glyph"><span class="box"></span><span class="bar"></span><span class="box"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">∛</span></span>
+          <button class="b math-template" data-shift="cuberoot" data-key="sqrt" aria-label="square root">
+            <svg viewBox="0 0 28 18" width="28" height="18" aria-hidden="true"
+                 style="display:block; overflow:visible;">
+              <path d="M2 10 L5 10 L7.5 15 L11 3.5 L25.5 3.5"
+                    fill="none" stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="13.2" y="6.1" width="7" height="5.7"
+                    fill="none" stroke="currentColor" stroke-width="1.0"/>
+            </svg>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">x³</span> <span class="base-mark">DEC</span></span>
+          <button class="b" data-shift="cube" data-alpha="DEC" data-key="square">x²</button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark xroot-legend">ˣ√□</span> <span class="base-mark">HEX</span></span>
+          <button class="b math-template" data-shift="xroot" data-alpha="HEX" data-key="power" aria-label="power template">
+            <span class="glyph pow-glyph"><span class="x">x</span><span class="expbox"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">10ˣ</span> <span class="base-mark">BIN</span></span>
+          <button class="b" data-shift="10^x" data-alpha="BIN" data-key="log">
+            <span class="logbase-glyph">log<span class="basebox"></span></span>
+          </button>
+        </div>
+        <div class="bw">
+          <span class="lbl"><span class="shift-mark">eˣ</span> <span class="base-mark">OCT</span></span>
+          <button class="b" data-shift="e^x" data-alpha="OCT" data-key="ln">ln</button>
+        </div>
+      </div>
+
+      <!-- Magenta ALPHA variables A-F belong across this six-key row. -->
+      <div class="row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">logₐ</span> <span class="alpha-mark">A</span></span><button class="b" data-shift="log_base" data-alpha="A" data-key="negate">(-)</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">FACT</span> <span class="alpha-mark">B</span></span><button class="b" data-shift="FACT" data-alpha="B" data-key="ellipsis">°′″</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">x!</span> <span class="alpha-mark">C</span></span><button class="b" data-shift="factorial" data-alpha="C" data-key="inverse">x⁻¹</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">sin⁻¹</span> <span class="alpha-mark">D</span></span><button class="b" data-shift="asin" data-alpha="D" data-key="sin">sin</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">cos⁻¹</span> <span class="alpha-mark">E</span></span><button class="b" data-shift="acos" data-alpha="E" data-key="cos">cos</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">tan⁻¹</span> <span class="alpha-mark">F</span></span><button class="b" data-shift="atan" data-alpha="F" data-key="tan">tan</button></div>
+      </div>
+
+      <div class="row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">RECALL</span></span><button class="b" data-shift="RECALL" data-key="sto">STO</button></div>
+        <div class="bw"><span class="lbl"><span class="eng-arrows"><span class="left">←</span><span class="right">→</span></span></span><button class="b" data-shift="ENG_LEFT" data-key="eng">ENG</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Abs</span></span><button class="b" data-shift="Abs" data-key="left_paren">(</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">x</span></span><button class="b" data-alpha="x" data-key="right_paren">)</button></div>
+        <div class="bw"><span class="lbl"><span class="sd-legend"><span class="shift-mark">a b/c↔d/c</span><span class="alpha-mark">y</span></span></span><button class="b" data-shift="fraction_toggle" data-alpha="y" data-key="s_to_d">S⇔D</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">M−</span> <span class="alpha-mark">M</span></span><button class="b" data-shift="M-" data-alpha="M" data-key="m_plus">M+</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">CONST</span></span><button class="b bn" data-shift="CONST" data-key="7">7</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">CONV</span></span><button class="b bn" data-shift="CONV" data-key="8">8</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">RESET</span></span><button class="b bn" data-shift="RESET" data-key="9">9</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">INS</span></span><button class="b bdel" data-alpha="INS" data-key="del">DEL</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">OFF</span></span><button class="b bac" data-shift="OFF" data-key="ac">AC</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="4">4</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="5">5</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="6">6</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">nPr</span></span><button class="b bop" data-shift="nPr" data-key="multiply">×</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">nCr</span></span><button class="b bop" data-shift="nCr" data-key="divide">÷</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="1">1</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="2">2</button></div>
+        <div class="bw"><span class="lbl">&nbsp;</span><button class="b bn" data-key="3">3</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Pol</span></span><button class="b bop" data-shift="Pol" data-key="plus">+</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Rec</span></span><button class="b bop" data-shift="Rec" data-key="minus">−</button></div>
+      </div>
+
+      <div class="row numeric-row">
+        <div class="bw"><span class="lbl"><span class="shift-mark">Rnd</span></span><button class="b bn" data-shift="Rnd" data-key="0">0</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">Ran#</span> <span class="alpha-mark">RanInt</span></span><button class="b bn" data-shift="Ran#" data-alpha="RanInt" data-key="decimal">.</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-key="scientific">×10ˣ</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-alpha="e" data-key="ans">Ans</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">≈</span></span><button class="b bop" data-shift="approx" data-key="equals">=</button></div>
+      </div>
+
+      <div class="bottom-pad"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── MATHEMATICAL TEMPLATE TREE ENGINE ──
+  let _id = 1;
+  const nextId = () => _id++;
+  const createSlot = (items = []) => ({ id: nextId(), items: [...items] });
+
+  let rootSlot = createSlot();
+  let cursor = { slot: rootSlot, index: 0 };
+
+  const appState = {
+    poweredOn: true, mode: 'Calculate', menuOpen: false, menuPage: 1,
+    menuSelection: 0, shift: false, alpha: false, splash: false,
+    result: null, resultDisplayed: false, error: null,
+    base: 10, baseNBase: 10,
+    matrices: {
+      A: { rows: 0, cols: 0, data: [] },
+      B: { rows: 0, cols: 0, data: [] },
+      C: { rows: 0, cols: 0, data: [] },
+      D: { rows: 0, cols: 0, data: [] }
+    },
+    matrixInput: {
+      active: null,
+      phase: null,
+      row: 0,
+      col: 0,
+      tempRows: 0,
+      tempCols: 0,
+      dimBuffer: '',
+      cellBuffer: ''
+    },
+    vectors: {
+      A: { dim: 0, data: [] },
+      B: { dim: 0, data: [] },
+      C: { dim: 0, data: [] },
+      D: { dim: 0, data: [] },
+    },
+    vectorInput: {
+      active: null,       // 'A'|'B'|'C'|'D'|null
+      phase: 'menu',      // 'menu'|'dim'|'grid'
+      col: 0,             // current cell index (0..dim-1)
+      dimBuffer: '',      // digit being typed for dimension
+      cellBuffer: '',     // digit(s) being typed for current cell
+    },
+    statistics: {
+      type: 0,
+      data: []
+    },
+    statInput: {
+      phase: 'typeMenu',   // 'typeMenu' | 'dataEntry'
+      type: null,          // 1-8
+      menuPage: 0,         // 0 = types 1-4, 1 = types 5-8
+      rows: [],            // array of {x, y} objects (y omitted for 1-var)
+      activeRow: 0,
+      activeCol: 0,        // 0 = x column, 1 = y column
+      cellBuffer: '',
+    }
+  };
+
+  // ── SERIALIZATION ──
+  function serializeSlot(slot) {
+    if (!slot || !slot.items) return '';
+    let out = '';
+    for (const item of slot.items) {
+      if (typeof item === 'string') {
+        out += item
+          .replace(/sin\u207b\u00b9\(/g, 'asin(')
+          .replace(/cos\u207b\u00b9\(/g, 'acos(')
+          .replace(/tan\u207b\u00b9\(/g, 'atan(')
+          .replace(/\u00d710\^/g, '*10^')
+          .replace(/\u00d7/g, '*')
+          .replace(/\u00f7/g, '/')
+          .replace(/\u2212/g, '-')
+          .replace(/\u03c0/g, 'pi')
+          .replace(/\u00b2/g, '^2')
+          .replace(/\u00b3/g, '^3')
+          .replace(/\u207b\u00b9/g, '^(-1)');
+      } else if (item.type === 'fraction') {
+        out += '((' + (serializeSlot(item.num)||'0') + ')/(' + (serializeSlot(item.den)||'1') + '))';
+      } else if (item.type === 'radical') {
+        const rad = serializeSlot(item.radicand) || '0';
+        if (item.index && item.index.items.length > 0) {
+          out += 'xroot(' + (serializeSlot(item.index)||'2') + ',' + rad + ')';
+        } else { out += 'sqrt(' + rad + ')'; }
+      } else if (item.type === 'cbrt') {
+        out += 'cbrt(' + (serializeSlot(item.radicand)||'0') + ')';
+      } else if (item.type === 'power') {
+        out += '((' + (serializeSlot(item.base)||'0') + ')^(' + (serializeSlot(item.exp)||'1') + '))';
+      } else if (item.type === 'log') {
+        out += 'log_base(' + (serializeSlot(item.base)||'10') + ',' + (serializeSlot(item.arg)||'1') + ')';
+      } else if (item.type === 'integral') {
+        out += 'integral(' + (serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
+      }
+    }
+    return out;
+  }
+  const getExpr = () => serializeSlot(rootSlot);
+
+  // ── LOCAL EVALUATION BRIDGE (file:// mode) ──
+  // Mirrors mvp_server.safe_evaluate_expression plus Simpson integration so the
+  // standalone page evaluates with the same grammar, formatting and Math ERROR
+  // semantics as the backend when opened directly as a local file.
+  const FILE_MODE = window.location.protocol === 'file:';
+  let localAns = '0';
+
+  function _fmtG(v) {
+    if (Object.is(v, -0)) v = 0;
+    const ax = Math.abs(v);
+    if (ax !== 0 && (ax < 1e-4 || ax >= 1e10)) {
+      const parts = v.toExponential(9).split('e');
+      let mant = parts[0];
+      if (mant.indexOf('.') >= 0) mant = mant.replace(/0+$/, '').replace(/\.$/, '');
+      const ex = parseInt(parts[1], 10);
+      return mant + 'e' + (ex < 0 ? '-' : '+') + String(Math.abs(ex)).padStart(2, '0');
+    }
+    let out = v.toPrecision(10);
+    if (out.indexOf('.') >= 0) out = out.replace(/0+$/, '').replace(/\.$/, '');
+    return String(parseFloat(out));
+  }
+
+  function _expandIntDigits(v) {
+    const neg = v < 0;
+    const a = Math.abs(v);
+    let s;
+    if (a < 1e21) {
+      s = String(Math.trunc(a));
+    } else {
+      const buf = new ArrayBuffer(8);
+      new Float64Array(buf)[0] = a;
+      const bits = new BigUint64Array(buf)[0];
+      const exp = Number((bits >> 52n) & 0x7FFn) - 1075;
+      const mant = (bits & 0xFFFFFFFFFFFFFn) | 0x10000000000000n;
+      s = exp >= 0 ? (mant << BigInt(exp)).toString() : (mant >> BigInt(-exp)).toString();
+    }
+    return (neg ? '-' : '') + s;
+  }
+
+  function localFormat(v) {
+    if (!isFinite(v)) throw new Error('Math ERROR');
+    if (Number.isInteger(v)) return _expandIntDigits(v);
+    return _fmtG(v);
+  }
+
+  function _reprNum(v) {
+    if (!isFinite(v)) throw new Error('Math ERROR');
+    return String(v);
+  }
+
+  function _simpson(f, a, b) {
+    if (a === b) return 0;
+    let negate = false;
+    if (a > b) { const t = a; a = b; b = t; negate = true; }
+    const n = 1000, h = (b - a) / n;
+    let total = f(a);
+    for (let i = 1; i < n; i++) total += (i % 2 ? 4 : 2) * f(a + i * h);
+    total += f(b);
+    let res = (h / 3) * total;
+    if (negate) res = -res;
+    if (!isFinite(res)) throw new Error('Math ERROR');
+    return res;
+  }
+
+  const _LOCAL_FNS = {
+    sin: Math.sin,
+    cos: Math.cos,
+    tan: (x) => { const c = Math.cos(x); if (!(Math.abs(c) > 1e-12)) throw new Error('Math ERROR'); return Math.tan(x); },
+    asin: (x) => { if (!(Math.abs(x) <= 1)) throw new Error('Math ERROR'); return Math.asin(x); },
+    acos: (x) => { if (!(Math.abs(x) <= 1)) throw new Error('Math ERROR'); return Math.acos(x); },
+    atan: Math.atan,
+    sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+    sqrt: (x) => { if (x < 0) throw new Error('Math ERROR'); return Math.sqrt(x); },
+    log: Math.log10, log10: Math.log10, ln: Math.log,
+    exp: (x) => { const r = Math.exp(x); if (!isFinite(r) && isFinite(x)) throw new Error('Math ERROR'); return r; },
+    abs: Math.abs, Abs: Math.abs,
+    round: (x) => { const f = Math.floor(x), d = x - f; if (d === 0.5) return (f % 2 === 0 ? f : f + 1); return d > 0.5 ? f + 1 : d < -0.5 ? f - 1 : f; },
+  };
+  const _LOCAL_CONSTS = { e: Math.E, pi: Math.PI };
+
+  function _pyPow(b, ex) {
+    if (ex === 0) return 1;
+    if (b === 0 && ex < 0) throw new Error('Math ERROR');
+    if (b < 0 && !Number.isInteger(ex)) throw new Error('Math ERROR');
+    return Math.pow(b, ex);
+  }
+
+  const _SPECIAL_FUNCS = ['integral', 'log_base', 'xroot', 'cbrt', 'sqrt'];
+
+  function _findSpecialCall(s) {
+    let best = null;
+    for (const name of _SPECIAL_FUNCS) {
+      let pos = 0;
+      for (;;) {
+        const idx = s.indexOf(name, pos);
+        if (idx < 0) break;
+        const end = idx + name.length;
+        const boundaryOk = idx === 0 || !/[A-Za-z0-9_]/.test(s[idx - 1]);
+        if (boundaryOk && end < s.length && s[end] === '(') {
+          if (best === null || idx < best[1]) best = [name, idx];
+        }
+        pos = end;
+      }
+    }
+    return best;
+  }
+
+  function _matchParen(s, openIdx) {
+    let depth = 0;
+    for (let i = openIdx; i < s.length; i++) {
+      if (s[i] === '(') depth++;
+      else if (s[i] === ')') { depth--; if (depth === 0) return i; }
+    }
+    return -1;
+  }
+
+  function _splitArgs(inner) {
+    const parts = [];
+    let depth = 0, cur = '';
+    for (const ch of inner) {
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    parts.push(cur.trim());
+    return parts;
+  }
+
+  function _transformSpecial(s) {
+    for (;;) {
+      const found = _findSpecialCall(s);
+      if (!found) return s;
+      const name = found[0], start = found[1];
+      const open = start + name.length;
+      const close = _matchParen(s, open);
+      if (close < 0) throw new Error('Math ERROR');
+      const args = _splitArgs(s.slice(open + 1, close));
+      let rep;
+      if (name === 'integral') {
+        if (args.length !== 3 || !args[0] || !args[1] || !args[2]) throw new Error('Math ERROR');
+        const body = args[0];
+        const a = _evalStr(args[1]), b = _evalStr(args[2]);
+        const val = _simpson((x) => _evalStr(body.replace(/\bx\b/g, '(' + x + ')')), a, b);
+        rep = '(' + _reprNum(val) + ')';
+      } else if (name === 'log_base') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const base = _evalStr(args[0]), val = _evalStr(args[1]);
+        if (!(val > 0) || !(base > 0) || base === 1) throw new Error('Math ERROR');
+        rep = '(' + _reprNum(Math.log(val) / Math.log(base)) + ')';
+      } else if (name === 'xroot') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const n = _evalStr(args[0]), rad = _evalStr(args[1]);
+        if (n === 0) throw new Error('Math ERROR');
+        rep = '(' + _reprNum(Math.pow(rad, 1 / n)) + ')';
+      } else if (name === 'cbrt') {
+        if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
+        rep = '(' + _reprNum(Math.pow(_evalStr(args[0]), 1 / 3)) + ')';
+      } else {
+        if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
+        rep = '(' + _reprNum(Math.sqrt(_evalStr(args[0]))) + ')';
+      }
+      s = s.slice(0, start) + rep + s.slice(close + 1);
+    }
+  }
+
+  function _tokenize(s) {
+    const t = []; let i = 0;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === ' ') { i++; continue; }
+      if ((c >= '0' && c <= '9') || (c === '.' && s[i + 1] >= '0' && s[i + 1] <= '9')) {
+        let j = i;
+        while (j < s.length && s[j] >= '0' && s[j] <= '9') j++;
+        if (s[j] === '.') { j++; while (j < s.length && s[j] >= '0' && s[j] <= '9') j++; }
+        if (s[j] === 'e' || s[j] === 'E') {
+          let k = j + 1;
+          if (s[k] === '+' || s[k] === '-') k++;
+          if (s[k] >= '0' && s[k] <= '9') { j = k; while (j < s.length && s[j] >= '0' && s[j] <= '9') j++; }
+        }
+        t.push(['n', parseFloat(s.slice(i, j))]); i = j; continue;
+      }
+      if (/[A-Za-z_]/.test(c)) {
+        let j = i;
+        while (j < s.length && /[A-Za-z_0-9]/.test(s[j])) j++;
+        t.push(['v', s.slice(i, j)]); i = j; continue;
+      }
+      if ('+-*/^(),'.indexOf(c) >= 0) { t.push([c]); i++; continue; }
+      throw new Error('Math ERROR');
+    }
+    return t;
+  }
+
+  function _parseEval(tokens) {
+    let p = 0;
+    const peekOp = (ops) => tokens[p] && tokens[p].length === 1 && ops.indexOf(tokens[p][0]) >= 0;
+    function atom() {
+      const t = tokens[p];
+      if (!t) throw new Error('Math ERROR');
+      if (t[0] === 'n') { p++; return t[1]; }
+      if (t[0] === '(') { p++; const v = addSub(); if (!peekOp([')'])) throw new Error('Math ERROR'); p++; return v; }
+      if (t[0] === 'v') {
+        p++;
+        if (tokens[p] && tokens[p][0] === '(') {
+          if (!(t[1] in _LOCAL_FNS)) throw new Error('Math ERROR');
+          p++;
+          const a = addSub();
+          if (!peekOp([')'])) throw new Error('Math ERROR');
+          p++;
+          return _LOCAL_FNS[t[1]](a);
+        }
+        if (t[1] in _LOCAL_CONSTS) return _LOCAL_CONSTS[t[1]];
+        throw new Error('Math ERROR');
+      }
+      throw new Error('Math ERROR');
+    }
+    function power() {
+      const b = atom();
+      if (peekOp(['^'])) { p++; const ex = unary(); return _pyPow(b, ex); }
+      return b;
+    }
+    function unary() {
+      if (peekOp(['-'])) { p++; return -unary(); }
+      if (peekOp(['+'])) { p++; return unary(); }
+      return power();
+    }
+    function mulDiv() {
+      let l = unary();
+      while (peekOp(['*', '/'])) {
+        const op = tokens[p][0]; p++;
+        const r = unary();
+        if (r === 0) throw new Error('Math ERROR');
+        l = op === '*' ? l * r : l / r;
+      }
+      return l;
+    }
+    function addSub() {
+      let l = mulDiv();
+      while (peekOp(['+', '-'])) {
+        const op = tokens[p][0]; p++;
+        l = op === '+' ? l + mulDiv() : l - mulDiv();
+      }
+      return l;
+    }
+    const v = addSub();
+    if (p !== tokens.length) throw new Error('Math ERROR');
+    return v;
+  }
+
+  function _ansValue() {
+    const f = parseFloat(localAns);
+    return isFinite(f) ? f : 0;
+  }
+
+  function _evalStr(input) {
+    let s = input.trim();
+    if (!s) return 0;
+    s = s.split('π').join('(' + Math.PI + ')').split('pi').join('(' + Math.PI + ')');
+    s = s.split('×').join('*').split('÷').join('/').split('−').join('-');
+    s = s.split('Ans').join('(' + _ansValue() + ')').split('ans').join('(' + _ansValue() + ')');
+    s = _transformSpecial(s);
+    s = s.split('^').join('**');
+    s = s.replace(/(\d+)!/g, (m, d) => {
+      const n = parseInt(d, 10);
+      if (n > 170) throw new Error('Math ERROR');
+      let r = 1n;
+      for (let k = 2; k <= n; k++) r *= BigInt(k);
+      return '(' + Number(r) + ')';
+    });
+    s = s.split('**').join('^');
+    let v;
+    try { v = _parseEval(_tokenize(s)); }
+    catch (err) { throw new Error('Math ERROR'); }
+    if (!isFinite(v)) throw new Error('Math ERROR');
+    return v;
+  }
+
+  function localEvaluate(expr) {
+    const r = localFormat(_evalStr(expr));
+    localAns = r;
+    return r;
+  }
+  // ── END LOCAL EVALUATION BRIDGE ──
+
+  // ── TREE MANIPULATION ──
+  function insertToken(tok) {
+    if (appState.resultDisplayed) resetExpr();
+    cursor.slot.items.splice(cursor.index, 0, tok);
+    cursor.index++;
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function insertTemplate(tmpl, enterSlotName) {
+    if (appState.resultDisplayed) resetExpr();
+    tmpl.parentSlot = cursor.slot;
+    cursor.slot.items.splice(cursor.index, 0, tmpl);
+    cursor.slot = tmpl[enterSlotName];
+    cursor.index = 0;
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function insertFraction() {
+    insertTemplate({ type:'fraction', id:nextId(), num:createSlot(), den:createSlot() }, 'num');
+  }
+  function insertRadical(isCbrt, isNth) {
+    if (isCbrt) {
+      insertTemplate({ type:'cbrt', id:nextId(), radicand:createSlot() }, 'radicand');
+    } else if (isNth) {
+      insertTemplate({ type:'radical', id:nextId(), index:createSlot(), radicand:createSlot() }, 'index');
+    } else {
+      insertTemplate({ type:'radical', id:nextId(), index:null, radicand:createSlot() }, 'radicand');
+    }
+  }
+  function insertPower(fixedExp) {
+    if (appState.resultDisplayed) resetExpr();
+    const baseItems = cursor.index > 0 ? [cursor.slot.items[cursor.index-1]] : [];
+    const pow = { type:'power', id:nextId(), base:createSlot(baseItems), exp:createSlot(fixedExp ? [fixedExp] : []), parentSlot:cursor.slot };
+    if (baseItems.length) cursor.slot.items.splice(cursor.index-1, 1, pow);
+    else { cursor.slot.items.splice(cursor.index, 0, pow); }
+    if (fixedExp) { /* cursor stays after */ }
+    else { cursor.slot = pow.exp; cursor.index = 0; }
+    renderLCD();
+    syncBackendExpression();
+  }
+  function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
+
+  function resetExpr() {
+    rootSlot = createSlot();
+    cursor = { slot: rootSlot, index: 0 };
+    appState.result = null; appState.resultDisplayed = false; appState.error = null;
+    appState.base = 10; appState.baseNBase = 10;
+  }
+
+  function syncBackendExpression() {
+    // Keep the controller's normalized expression synchronized without moving
+    // template rendering or cursor ownership into the backend.
+    backendKey('input_sync', { expression: getExpr(), cursorPosition: getExpr().length });
+  }
+
+  // ── PARENT LOOKUP ──
+  function findParent(target, slot, par, slotName) {
+    if (!slot) return null;
+    if (slot === target) return { par, slotName };
+    for (const item of slot.items) {
+      if (typeof item === 'string') continue;
+      for (const k of ['num','den','base','exp','arg','radicand','index','body','lower','upper']) {
+        if (item[k]) {
+          if (item[k] === target) return { par: item, slotName: k };
+          const res = findParent(target, item[k], item, k);
+          if (res) return res;
+        }
+      }
+    }
+    return null;
+  }
+  const getParent = () => findParent(cursor.slot, rootSlot, null, null);
+
+  // ── CURSOR MOVEMENT ──
+  function moveCursorLeft() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    if (cursor.index > 0) {
+      const prev = cursor.slot.items[cursor.index-1];
+      if (typeof prev !== 'string') {
+        // Enter rightmost slot of previous template
+        if (prev.type === 'fraction') { cursor.slot = prev.den; cursor.index = prev.den.items.length; }
+        else if (prev.type === 'power') { cursor.slot = prev.exp; cursor.index = prev.exp.items.length; }
+        else if (prev.type === 'log') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
+        else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
+        else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
+        else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
+      } else { cursor.index--; }
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = t.num.items.length; }
+        else if (p.slotName === 'arg') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function moveCursorRight() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    if (cursor.index < cursor.slot.items.length) {
+      const next = cursor.slot.items[cursor.index];
+      if (typeof next !== 'string') {
+        if (next.type === 'fraction') { cursor.slot = next.num; cursor.index = 0; }
+        else if (next.type === 'power') { cursor.slot = next.exp; cursor.index = 0; }
+        else if (next.type === 'log') { cursor.slot = next.base; cursor.index = 0; }
+        else if (next.type === 'radical') { cursor.slot = next.index || next.radicand; cursor.index = 0; }
+        else if (next.type === 'cbrt') { cursor.slot = next.radicand; cursor.index = 0; }
+        else if (next.type === 'integral') { cursor.slot = next.lower; cursor.index = 0; }
+      } else { cursor.index++; }
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = 0; }
+        else if (p.slotName === 'base' && t.type === 'log') { cursor.slot = t.arg; cursor.index = 0; }
+        else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
+        else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
+        else if (p.slotName === 'upper') { cursor.slot = t.body; cursor.index = 0; }
+        else { cursor.slot = ps; cursor.index = ps.items.indexOf(t) + 1; }
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function moveCursorUp() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    const p = getParent();
+    if (p && p.par) {
+      const t = p.par;
+      if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = Math.min(cursor.index, t.num.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = Math.min(cursor.index, t.upper.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.upper; cursor.index = 0; }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function moveCursorDown() {
+    if (appState.resultDisplayed) { appState.resultDisplayed = false; appState.result = null; renderLCD(); return; }
+    const p = getParent();
+    if (p && p.par) {
+      const t = p.par;
+      if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = Math.min(cursor.index, t.den.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'upper') { cursor.slot = t.lower; cursor.index = Math.min(cursor.index, t.lower.items.length); }
+      else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.lower; cursor.index = 0; }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  function deleteAtCursor() {
+    if (appState.resultDisplayed) { resetExpr(); renderLCD(); return; }
+    if (cursor.index > 0) {
+      cursor.slot.items.splice(cursor.index-1, 1);
+      cursor.index--;
+    } else {
+      const p = getParent();
+      if (p && p.par) {
+        const t = p.par; const ps = t.parentSlot || rootSlot;
+        const ti = ps.items.indexOf(t);
+        ps.items.splice(ti, 1);
+        cursor.slot = ps; cursor.index = Math.max(0, ti);
+      }
+    }
+    renderLCD();
+    syncBackendExpression();
+  }
+
+  // ── DOM RENDERING ──
+  function renderSlotDOM(slot) {
+    const wrap = document.createElement('span');
+    wrap.className = 'math-slot';
+    const here = cursor.slot === slot;
+    if (slot.items.length === 0) {
+      if (here && cursor.index === 0) { wrap.appendChild(makeCursor()); }
+      else { const e = document.createElement('span'); e.className = 'slot-empty'; wrap.appendChild(e); }
+      return wrap;
+    }
+    for (let i = 0; i <= slot.items.length; i++) {
+      if (here && cursor.index === i) wrap.appendChild(makeCursor());
+      if (i < slot.items.length) {
+        const item = slot.items[i];
+        if (typeof item === 'string') { wrap.appendChild(document.createTextNode(item)); }
+        else if (item.type === 'fraction') {
+          const f = el('span','math-fraction');
+          const n = el('span','math-numerator'); n.appendChild(renderSlotDOM(item.num));
+          const b = el('span','math-fraction-bar');
+          const d = el('span','math-denominator'); d.appendChild(renderSlotDOM(item.den));
+          f.append(n, b, d); wrap.appendChild(f);
+        } else if (item.type === 'radical' || item.type === 'cbrt') {
+          const r = el('span','math-radical');
+          if (item.type === 'cbrt' || (item.index)) {
+            const idx = el('span','math-root-index');
+            if (item.type === 'cbrt') idx.textContent = '3';
+            else idx.appendChild(renderSlotDOM(item.index));
+            r.appendChild(idx);
+          }
+          const sym = el('span','math-radical-symbol'); sym.textContent = '\u221a'; r.appendChild(sym);
+          const rad = el('span','math-radicand'); rad.appendChild(renderSlotDOM(item.radicand)); r.appendChild(rad);
+          wrap.appendChild(r);
+        } else if (item.type === 'power') {
+          const p = el('span','math-power');
+          const bs = el('span','math-power-base'); bs.appendChild(renderSlotDOM(item.base));
+          const ex = el('span','math-power-exp'); ex.appendChild(renderSlotDOM(item.exp));
+          p.append(bs, ex); wrap.appendChild(p);
+        } else if (item.type === 'log') {
+          const lg = el('span','math-log-base-template');
+          lg.appendChild(document.createTextNode('log'));
+          const sub = el('span','math-log-sub'); sub.appendChild(renderSlotDOM(item.base));
+          lg.appendChild(sub);
+          lg.appendChild(document.createTextNode('('));
+          const arg = el('span','math-log-arg'); arg.appendChild(renderSlotDOM(item.arg));
+          lg.appendChild(arg);
+          lg.appendChild(document.createTextNode(')'));
+          wrap.appendChild(lg);
+        } else if (item.type === 'integral') {
+          const ig = el('span','math-integral-template');
+          const col = el('span','math-int-sym-col');
+          const up = el('span','math-int-upper'); up.appendChild(renderSlotDOM(item.upper));
+          const sym = el('span','math-int-sym'); sym.textContent = '\u222b';
+          const lo = el('span','math-int-lower'); lo.appendChild(renderSlotDOM(item.lower));
+          col.append(up, sym, lo); ig.appendChild(col);
+          const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
+          ig.appendChild(bd);
+          const dx = el('span','math-int-dx'); dx.textContent = 'dx';
+          ig.appendChild(dx);
+          wrap.appendChild(ig);
+        }
+      }
+    }
+    return wrap;
+  }
+  const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+  function makeCursor() { const c = el('span','lcd-cursor'); return c; }
+
+  async function storeMatrix(name) {
+    const mat = appState.matrices[name];
+    if (!mat || mat.rows <= 0 || mat.cols <= 0) return;
+    if (FILE_MODE) return;
+    try {
+      const res = await fetch('/api/matrix/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matrix: name,
+          rows: mat.rows,
+          cols: mat.cols,
+          data: mat.data
+        })
+      });
+      const data = await res.json();
+      if (!data.ok && !data.success) {
+        console.warn('Matrix backend store error:', data.error);
+      }
+    } catch (err) {
+      console.warn('Matrix store request failed:', err);
+    }
+  }
+
+  function renderMatrixLCD() {
+    const bodyEl = document.getElementById('lcdMatrixBody');
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+
+    const matShift = document.getElementById('matIndShift');
+    const matAlpha = document.getElementById('matIndAlpha');
+    if (matShift) matShift.classList.toggle('active', appState.shift);
+    if (matAlpha) matAlpha.classList.toggle('active', appState.alpha);
+
+    const minp = appState.matrixInput;
+    if (!minp || minp.phase === 'menu' || !minp.phase) {
+      const menuGrid = el('div', 'matrix-menu-grid');
+      menuGrid.innerHTML = `
+        <div>1: MatA</div>
+        <div>2: MatB</div>
+        <div>3: MatC</div>
+        <div>4: MatD</div>
+      `;
+      bodyEl.appendChild(menuGrid);
+      return;
+    }
+
+    if (minp.phase === 'rows') {
+      const dimBox = el('div', 'matrix-dim-box');
+      const curRows = minp.dimBuffer || (appState.matrices[minp.active]?.rows > 0 ? String(appState.matrices[minp.active].rows) : '');
+      dimBox.innerHTML = `
+        <div class="matrix-dim-title">Mat${minp.active}</div>
+        <div class="matrix-dim-line">
+          <span>Rows? (1~4):</span>
+          <span class="matrix-dim-val">${curRows}<span class="lcd-cursor"></span></span>
+        </div>
+      `;
+      bodyEl.appendChild(dimBox);
+      return;
+    }
+
+    if (minp.phase === 'cols') {
+      const dimBox = el('div', 'matrix-dim-box');
+      const curCols = minp.dimBuffer || (appState.matrices[minp.active]?.cols > 0 ? String(appState.matrices[minp.active].cols) : '');
+      dimBox.innerHTML = `
+        <div class="matrix-dim-title">Mat${minp.active} (${minp.tempRows}&times;?)</div>
+        <div class="matrix-dim-line">
+          <span>Cols? (1~4):</span>
+          <span class="matrix-dim-val">${curCols}<span class="lcd-cursor"></span></span>
+        </div>
+      `;
+      bodyEl.appendChild(dimBox);
+      return;
+    }
+
+    if (minp.phase === 'grid') {
+      const mat = appState.matrices[minp.active];
+      const rows = mat.rows || 1;
+      const cols = mat.cols || 1;
+      const wrap = el('div', 'matrix-grid-container');
+
+      const tbl = el('div', 'matrix-table');
+      tbl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      const cellFontSize = rows >= 4 ? '7px' : (rows === 3 ? '8px' : '9px');
+      const cellHeight = rows >= 4 ? '7px' : (rows === 3 ? '9px' : '12px');
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = el('div', 'matrix-cell');
+          cell.style.fontSize = cellFontSize;
+          cell.style.height = cellHeight;
+          cell.style.lineHeight = cellHeight;
+          const isActive = (r === minp.row && c === minp.col);
+          if (isActive) {
+            cell.classList.add('active');
+          }
+          let displayVal = '';
+          if (isActive && minp.cellBuffer !== '') {
+            displayVal = minp.cellBuffer;
+          } else if (mat.data && mat.data[r] && mat.data[r][c] !== undefined) {
+            displayVal = String(mat.data[r][c]);
+          } else {
+            displayVal = '0';
+          }
+          cell.textContent = displayVal;
+          tbl.appendChild(cell);
+        }
+      }
+      wrap.appendChild(tbl);
+
+      const bot = el('div', 'matrix-bottom-info');
+      const curVal = minp.cellBuffer !== '' ? minp.cellBuffer : (mat.data && mat.data[minp.row] && mat.data[minp.row][minp.col] !== undefined ? mat.data[minp.row][minp.col] : '0');
+      bot.innerHTML = `
+        <span>Mat${minp.active}(${minp.row + 1},${minp.col + 1})=</span>
+        <span>${curVal}<span class="lcd-cursor"></span></span>
+      `;
+      wrap.appendChild(bot);
+      bodyEl.appendChild(wrap);
+    }
+  }
+
+  function storeVector(name) {
+    const v = appState.vectors[name];
+    if (!v) return;
+    fetch('/api/vector/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vector: name, dim: v.dim, data: v.data })
+    }).catch(() => {});
+  }
+
+  function renderVectorLCD() {
+    const bodyEl = document.getElementById('lcdVectorBody');
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+
+    const vctShift = document.getElementById('vctIndShift');
+    const vctAlpha = document.getElementById('vctIndAlpha');
+    if (vctShift) vctShift.classList.toggle('active', appState.shift);
+    if (vctAlpha) vctAlpha.classList.toggle('active', appState.alpha);
+
+    const vi = appState.vectorInput;
+    if (!vi || vi.phase === 'menu' || !vi.phase) {
+      const menuList = el('div', 'vector-menu-list');
+      menuList.innerHTML = `
+        <div>1: VctA</div>
+        <div>2: VctB</div>
+        <div>3: VctC</div>
+        <div>4: VctD</div>
+      `;
+      bodyEl.appendChild(menuList);
+      return;
+    }
+
+    if (vi.phase === 'dim') {
+      const dimBox = el('div', 'vector-dim-box');
+      const curDim = vi.dimBuffer || (appState.vectors[vi.active]?.dim > 0 ? String(appState.vectors[vi.active].dim) : '');
+      dimBox.innerHTML = `
+        <div class="vector-dim-title">Vct${vi.active}</div>
+        <div class="vector-dim-line">
+          <span>Dimension? (1~4):</span>
+          <span class="vector-dim-val">${curDim}<span class="lcd-cursor"></span></span>
+        </div>
+      `;
+      bodyEl.appendChild(dimBox);
+      return;
+    }
+
+    if (vi.phase === 'grid') {
+      const v = appState.vectors[vi.active];
+      const dim = v.dim || 1;
+      const wrap = el('div', 'vector-grid-container');
+
+      const tbl = el('div', 'vector-table');
+      tbl.style.gridTemplateColumns = `repeat(${dim}, 1fr)`;
+      const cellFontSize = '9px';
+      const cellHeight = '14px';
+
+      for (let c = 0; c < dim; c++) {
+        const cell = el('div', 'vector-cell');
+        cell.style.fontSize = cellFontSize;
+        cell.style.height = cellHeight;
+        cell.style.lineHeight = cellHeight;
+        const isActive = (c === vi.col);
+        if (isActive) {
+          cell.classList.add('active');
+        }
+        let displayVal = '';
+        if (isActive && vi.cellBuffer !== '') {
+          displayVal = vi.cellBuffer;
+        } else if (v.data && v.data[c] !== undefined) {
+          displayVal = String(v.data[c]);
+        } else {
+          displayVal = '0';
+        }
+        cell.textContent = displayVal;
+        tbl.appendChild(cell);
+      }
+      wrap.appendChild(tbl);
+
+      const bot = el('div', 'vector-bottom-info');
+      const curVal = vi.cellBuffer !== '' ? vi.cellBuffer : (v.data && v.data[vi.col] !== undefined ? v.data[vi.col] : '0');
+      bot.innerHTML = `
+        <span>Vct${vi.active}(${vi.col + 1})=</span>
+        <span>${curVal}<span class="lcd-cursor"></span></span>
+      `;
+      wrap.appendChild(bot);
+      bodyEl.appendChild(wrap);
+    }
+  }
+
+  function storeStatistics() {
+    const si = appState.statInput;
+    if (!si) return;
+    if (FILE_MODE) return;
+    fetch('/api/statistics/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: si.type, data: si.rows })
+    }).catch(() => {});
+  }
+
+  function renderStatisticsLCD() {
+    const bodyEl = document.getElementById('lcdStatisticsBody');
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+
+    const statShift = document.getElementById('statIndShift');
+    const statAlpha = document.getElementById('statIndAlpha');
+    if (statShift) statShift.classList.toggle('active', appState.shift);
+    if (statAlpha) statAlpha.classList.toggle('active', appState.alpha);
+
+    const si = appState.statInput;
+    if (!si || si.phase === 'typeMenu') {
+      const typeList = el('div', 'stat-type-list');
+      const page = si ? (si.menuPage || 0) : 0;
+      const page0Types = [
+        '1: 1-Variable',
+        '2: y=a+bx',
+        '3: y=a+bx+cx²',
+        '4: y=a+b\u00b7ln(x)'
+      ];
+      const page1Types = [
+        '1: y=a\u00b7e^(bx)',
+        '2: y=a\u00b7b^x',
+        '3: y=a\u00b7x^b',
+        '4: y=a+b/x'
+      ];
+      const items = page === 0 ? page0Types : page1Types;
+      items.forEach((itemText) => {
+        const item = el('div', 'stat-type-item');
+        item.textContent = itemText;
+        typeList.appendChild(item);
+      });
+      bodyEl.appendChild(typeList);
+
+      const hint = el('div', 'stat-scroll-hint');
+      hint.textContent = page === 0 ? '▼' : '▲';
+      bodyEl.appendChild(hint);
+      return;
+    }
+
+    if (si.phase === 'dataEntry') {
+      const isOneVar = (si.type === 1);
+      const cols = isOneVar ? 1 : 2;
+      const wrap = el('div', 'stat-grid-container');
+
+      const tbl = el('table', 'stat-table');
+      const thead = el('thead');
+      const trH = el('tr');
+      const thNum = el('th');
+      thNum.textContent = '';
+      thNum.style.width = '16px';
+      trH.appendChild(thNum);
+
+      const thX = el('th');
+      thX.textContent = 'x';
+      trH.appendChild(thX);
+
+      if (!isOneVar) {
+        const thY = el('th');
+        thY.textContent = 'y';
+        trH.appendChild(thY);
+      }
+      thead.appendChild(trH);
+      tbl.appendChild(thead);
+
+      const tbody = el('tbody');
+      const totalRows = Math.max(1, si.rows.length + 1);
+      const startRow = Math.max(0, Math.min(si.activeRow - 1, totalRows - 3));
+      const endRow = Math.min(startRow + 3, totalRows);
+
+      for (let r = startRow; r < endRow; r++) {
+        const tr = el('tr');
+        const tdNum = el('td', 'stat-row-num');
+        tdNum.textContent = String(r + 1);
+        tr.appendChild(tdNum);
+
+        // Column x (col 0)
+        const tdX = el('td');
+        const isXActive = (r === si.activeRow && si.activeCol === 0);
+        if (isXActive) tdX.classList.add('active');
+        let xVal = '';
+        if (isXActive && si.cellBuffer !== '') {
+          xVal = si.cellBuffer;
+        } else if (si.rows[r] && si.rows[r].x !== undefined) {
+          xVal = String(si.rows[r].x);
+        } else if (r < si.rows.length) {
+          xVal = '0';
+        }
+        tdX.textContent = xVal;
+        tr.appendChild(tdX);
+
+        // Column y (col 1) if 2-var
+        if (!isOneVar) {
+          const tdY = el('td');
+          const isYActive = (r === si.activeRow && si.activeCol === 1);
+          if (isYActive) tdY.classList.add('active');
+          let yVal = '';
+          if (isYActive && si.cellBuffer !== '') {
+            yVal = si.cellBuffer;
+          } else if (si.rows[r] && si.rows[r].y !== undefined) {
+            yVal = String(si.rows[r].y);
+          } else if (r < si.rows.length) {
+            yVal = '0';
+          }
+          tdY.textContent = yVal;
+          tr.appendChild(tdY);
+        }
+
+        tbody.appendChild(tr);
+      }
+      tbl.appendChild(tbody);
+      wrap.appendChild(tbl);
+
+      const bot = el('div', 'stat-bottom-info');
+      const colName = si.activeCol === 0 ? 'x' : 'y';
+      const curVal = si.cellBuffer !== '' ? si.cellBuffer
+        : (si.rows[si.activeRow] ? String(si.activeCol === 0 ? si.rows[si.activeRow].x : (si.rows[si.activeRow].y ?? '0')) : '0');
+      bot.innerHTML = `
+        <span>${colName}=</span>
+        <span>${curVal}<span class="lcd-cursor"></span></span>
+      `;
+      wrap.appendChild(bot);
+      bodyEl.appendChild(wrap);
+    }
+  }
+
+  // ── LCD RENDER ──
+  function renderLCD() {
+    const lcdEl = document.querySelector('.lcd');
+    const splashEl = document.getElementById('lcdSplash');
+    const menuEl = document.getElementById('lcdMenu');
+    const calcEl = document.getElementById('lcdCalc');
+    const matrixEl = document.getElementById('lcdMatrix');
+    const vectorEl = document.getElementById('lcdVector');
+    const statEl = document.getElementById('lcdStatistics');
+
+    if (!appState.poweredOn) {
+      lcdEl.style.background = '#111213';
+      splashEl.style.display = 'none'; menuEl.style.display = 'none'; calcEl.style.display = 'none';
+      if (matrixEl) matrixEl.style.display = 'none';
+      if (vectorEl) vectorEl.style.display = 'none';
+      if (statEl) statEl.style.display = 'none';
+      return;
+    }
+    lcdEl.style.background = '';
+
+    if (appState.splash) {
+      splashEl.style.display = 'flex'; menuEl.style.display = 'none'; calcEl.style.display = 'none';
+      if (matrixEl) matrixEl.style.display = 'none';
+      if (vectorEl) vectorEl.style.display = 'none';
+      if (statEl) statEl.style.display = 'none';
+      return;
+    }
+    splashEl.style.display = 'none';
+
+    if (appState.menuOpen) {
+      menuEl.style.display = 'flex'; calcEl.style.display = 'none';
+      if (matrixEl) matrixEl.style.display = 'none';
+      if (vectorEl) vectorEl.style.display = 'none';
+      if (statEl) statEl.style.display = 'none';
+      document.querySelectorAll('.mode-page').forEach(p => p.classList.remove('active'));
+      document.querySelector('.mode-page-' + appState.menuPage)?.classList.add('active');
+      document.querySelectorAll('.menu-icon').forEach(t => t.classList.remove('selected'));
+      const tiles = document.querySelectorAll('.mode-page-' + appState.menuPage + ' .menu-icon');
+      tiles[appState.menuSelection]?.classList.add('selected');
+      const modeNames = appState.menuPage === 1
+        ? ['1:Calculate','2:Complex','3:Base-N','4:Matrix','5:Vector','6:Statistics','7:Distribution','8:Spreadsheet']
+        : ['9:Table','10:Equation/Func','11:Inequality','12:Ratio'];
+      document.getElementById('lcdMenuLabel').textContent = modeNames[appState.menuSelection] || '1:Calculate';
+      document.getElementById('lcdPageIndicator').textContent = appState.menuPage === 1 ? '▼' : '▲';
+      return;
+    }
+    menuEl.style.display = 'none';
+
+    if (appState.mode === 'Matrix') {
+      calcEl.style.display = 'none';
+      if (vectorEl) vectorEl.style.display = 'none';
+      if (statEl) statEl.style.display = 'none';
+      if (matrixEl) {
+        matrixEl.style.display = 'flex';
+        renderMatrixLCD();
+      }
+      return;
+    }
+    if (matrixEl) matrixEl.style.display = 'none';
+
+    if (appState.mode === 'Vector') {
+      calcEl.style.display = 'none';
+      if (matrixEl) matrixEl.style.display = 'none';
+      if (statEl) statEl.style.display = 'none';
+      if (vectorEl) {
+        vectorEl.style.display = 'flex';
+        renderVectorLCD();
+      }
+      return;
+    }
+    if (vectorEl) vectorEl.style.display = 'none';
+
+    if (appState.mode === 'Statistics') {
+      calcEl.style.display = 'none';
+      if (matrixEl) matrixEl.style.display = 'none';
+      if (vectorEl) vectorEl.style.display = 'none';
+      if (statEl) {
+        statEl.style.display = 'flex';
+        renderStatisticsLCD();
+      }
+      return;
+    }
+    if (statEl) statEl.style.display = 'none';
+    calcEl.style.display = 'flex';
+
+    // In Complex mode, relabel ENG → i
+    document.querySelectorAll('.b[data-key="eng"]').forEach(btn => {
+      btn.textContent = appState.mode === 'Complex' ? 'i' : 'ENG';
+    });
+
+    // Status bar
+    document.getElementById('indShift').classList.toggle('active', appState.shift);
+    document.getElementById('indAlpha').classList.toggle('active', appState.alpha);
+    const modeTags = { 'Complex':'CMPLX','Base-N':'BASE','Matrix':'MAT','Vector':'VCT','Statistics':'STAT','Equation/Func':'EQN','Table':'TABLE','Distribution':'DIST','Inequality':'INEQ' };
+    const mt = modeTags[appState.mode];
+    const indMode = document.getElementById('indMode');
+    if (mt) { indMode.textContent = mt; indMode.classList.add('active'); } else { indMode.classList.remove('active'); }
+    const indBase = document.getElementById('indBase');
+    const baseLabels = { 2:'BIN', 8:'OCT', 10:'DEC', 16:'HEX' };
+    if (appState.mode === 'Base-N') { indBase.textContent = baseLabels[appState.base] || ''; indBase.style.display = ''; } else { indBase.style.display = 'none'; }
+
+    // Expression
+    const exprContent = document.getElementById('lcdExprContent');
+    exprContent.innerHTML = '';
+    exprContent.appendChild(renderSlotDOM(rootSlot));
+
+    // Result
+    const resultEl = document.getElementById('lcdResultLine');
+    if (appState.error) resultEl.textContent = appState.error;
+    else if (appState.resultDisplayed && appState.result !== null) resultEl.textContent = String(appState.result);
+    else resultEl.textContent = '';
+
+    // Horizontal scroll to cursor
+    const viewport = document.getElementById('lcdExprViewport');
+    const curEl = exprContent.querySelector('.lcd-cursor');
+    if (curEl) {
+      const cl = curEl.offsetLeft;
+      const vw = viewport.clientWidth;
+      if (cl > viewport.scrollLeft + vw - 20) viewport.scrollLeft = cl - vw + 30;
+      else if (cl < viewport.scrollLeft + 10) viewport.scrollLeft = Math.max(0, cl - 20);
+    }
+    document.getElementById('indLeftOverflow').style.display = viewport.scrollLeft > 5 ? 'inline' : 'none';
+    document.getElementById('indRightOverflow').style.display =
+      (exprContent.scrollWidth - viewport.scrollLeft - viewport.clientWidth > 5) ? 'inline' : 'none';
+  }
+
+  // ── BACKEND COMMUNICATION ──
+  async function evaluate() {
+    const expr = getExpr();
+    if (!expr) { appState.result = '0'; appState.resultDisplayed = true; renderLCD(); return; }
+    if (FILE_MODE) {
+      try {
+        const r = localEvaluate(expr);
+        appState.result = r; appState.resultDisplayed = true; appState.error = null;
+      } catch (e) {
+        appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
+      }
+      renderLCD();
+      return;
+    }
+    try {
+      const r = await fetch('/api/key', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key:'equals', expression: expr, shift: appState.shift, alpha: appState.alpha })
+      });
+      const s = await r.json();
+      if (s.result !== undefined && s.result !== null) {
+        appState.result = s.result; appState.resultDisplayed = true; appState.error = null;
+      } else if (s.error) {
+        appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
+      }
+      // Sync state from backend
+      if (s.modeName) appState.mode = s.modeName;
+      if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
+      renderLCD();
+    } catch(e) { console.warn('eval failed', e); }
+  }
+
+  async function backendKey(key, extra) {
+    if (FILE_MODE) { renderLCD(); return; }
+    // Handle base_switch locally (no backend call needed — but we still need to sync backend base)
+    // FIX 1: removed early-return for base_switch so the backend updates its base_n_base too
+    // (kept local immediate update for snappy UI, then let the backend confirm below)
+    if (key === 'base_switch' && extra && extra.base) {
+      appState.base = extra.base;
+      appState.baseNBase = extra.base;
+      // FIX 3: ask backend to convert the result; fall through to the fetch below
+    }
+    try {
+      const r = await fetch('/api/key', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key, shift: appState.shift, alpha: appState.alpha,
+          menuPage: appState.menuPage, menuIndex: appState.menuSelection, ...extra })
+      });
+      const s = await r.json();
+      if (s.state === 'OFF') { appState.poweredOn = false; }
+      else if (s.state === 'MENU') { appState.menuOpen = true; if (s.menuPage) appState.menuPage = s.menuPage; if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex; }
+      else if (s.modeName) {
+        if (s.modeName === 'Matrix' && appState.mode !== 'Matrix') {
+          appState.matrixInput.phase = 'menu';
+          appState.matrixInput.active = null;
+          appState.matrixInput.dimBuffer = '';
+          appState.matrixInput.cellBuffer = '';
+        }
+        if (s.modeName === 'Vector' && appState.mode !== 'Vector') {
+          appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
+        }
+        if (s.modeName === 'Statistics' && appState.mode !== 'Statistics') {
+          appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
+        }
+        appState.mode = s.modeName;
+      }
+      // FIX 1: keep appState.base in sync with backend so indicator label and digit validation are correct
+      if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
+      if (s.menuPage) appState.menuPage = s.menuPage;
+      if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex;
+      // FIX 3: if backend returned a reconverted result (e.g. after base switch), display it
+      if (s.result !== undefined && s.result !== null && s.resultDisplayed) {
+        appState.result = s.result;
+        appState.resultDisplayed = true;
+        appState.error = null;
+      }
+      renderLCD();
+    } catch(e) { console.warn('backend key failed', e); }
+  }
+
+
+  // ── KEY HANDLER ──
+  function handleKey(btn) {
+    const rawKey = btn.dataset.key;
+    const isShift = appState.shift;
+    const isAlpha = appState.alpha;
+
+    // STEP 3: In Base-N HEX mode, allow A-F keys without ALPHA modifier
+    const useAlphaForHex = appState.mode === 'Base-N' && appState.baseNBase === 16 && btn.dataset.alpha && 'ABCDEF'.includes(btn.dataset.alpha);
+    const action = (isAlpha || useAlphaForHex) && btn.dataset.alpha ? btn.dataset.alpha
+      : isShift && btn.dataset.shift ? btn.dataset.shift : rawKey;
+
+    if (rawKey !== 'shift' && rawKey !== 'alpha') { appState.shift = false; appState.alpha = false; }
+
+    if (rawKey === 'on') {
+      appState.poweredOn = true; appState.splash = true; appState.menuOpen = false;
+      appState.mode = 'Calculate';
+      appState.matrixInput = { active: null, phase: null, row: 0, col: 0, tempRows: 0, tempCols: 0, dimBuffer: '', cellBuffer: '' };
+      appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
+      appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
+      resetExpr(); renderLCD();
+      backendKey('on');
+      setTimeout(() => { appState.splash = false; renderLCD(); }, 1400);
+      return;
+    }
+    if (!appState.poweredOn) return;
+
+    if (appState.menuOpen && rawKey === 'ac') return;
+
+    if ((rawKey === 'ac' && isShift) || action === 'OFF') {
+      appState.poweredOn = false; resetExpr(); renderLCD(); backendKey('ac', { action:'OFF' }); return;
+    }
+    if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); backendKey('shift'); return; }
+    if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); backendKey('alpha'); return; }
+
+    if (rawKey === 'setup' && action !== 'SETUP') {
+      if (appState.mode === 'Statistics' && appState.statInput && appState.statInput.phase === 'dataEntry') {
+        const si = appState.statInput;
+        if (si.cellBuffer !== '') {
+          const val = parseFloat(si.cellBuffer) || 0;
+          if (!si.rows[si.activeRow]) {
+            si.rows[si.activeRow] = si.type === 1 ? { x: 0 } : { x: 0, y: 0 };
+          }
+          const colKey = si.activeCol === 0 ? 'x' : 'y';
+          si.rows[si.activeRow][colKey] = val;
+          si.cellBuffer = '';
+        }
+        storeStatistics();
+        si.phase = 'typeMenu';
+        si.type = null;
+        si.menuPage = 0;
+        si.rows = [];
+        si.activeRow = 0;
+        si.activeCol = 0;
+        si.cellBuffer = '';
+        renderLCD();
+        return;
+      }
+      if (appState.mode === 'Vector' && appState.vectorInput && appState.vectorInput.phase && appState.vectorInput.phase !== 'menu') {
+        const vi = appState.vectorInput;
+        if (vi.phase === 'grid' && vi.active) {
+          const v = appState.vectors[vi.active];
+          if (vi.cellBuffer !== '' && v && v.data) {
+            const parsed = parseFloat(vi.cellBuffer);
+            v.data[vi.col] = isNaN(parsed) ? 0 : parsed;
+            vi.cellBuffer = '';
+          }
+          storeVector(vi.active);
+        }
+        vi.phase = 'menu';
+        vi.active = null;
+        vi.col = 0;
+        vi.dimBuffer = '';
+        vi.cellBuffer = '';
+        renderLCD();
+        return;
+      }
+      if (appState.mode === 'Matrix' && appState.matrixInput && appState.matrixInput.phase && appState.matrixInput.phase !== 'menu') {
+        const minp = appState.matrixInput;
+        if (minp.phase === 'grid' && minp.active) {
+          const mat = appState.matrices[minp.active];
+          if (minp.cellBuffer !== '' && mat && mat.data) {
+            const parsed = parseFloat(minp.cellBuffer);
+            mat.data[minp.row][minp.col] = isNaN(parsed) ? 0 : parsed;
+            minp.cellBuffer = '';
+          }
+          storeMatrix(minp.active);
+        }
+        minp.phase = 'menu';
+        renderLCD();
+        return;
+      }
+      if (appState.menuOpen) return;
+      appState.menuOpen = true; renderLCD(); backendKey('menu'); return;
+    }
+
+    if (appState.menuOpen) {
+      const pts = appState.menuPage === 1 ? 8 : 4;
+      const menuNavKey = ['dpad_left', 'dpad_right', 'dpad_up', 'dpad_down'].includes(rawKey);
+      if (rawKey === 'dpad_right') {
+        if (appState.menuSelection < pts-1) appState.menuSelection++;
+        else if (appState.menuPage === 1) { appState.menuPage = 2; appState.menuSelection = 0; }
+        else { appState.menuPage = 1; appState.menuSelection = 0; }
+      } else if (rawKey === 'dpad_left') {
+        if (appState.menuSelection > 0) appState.menuSelection--;
+        else if (appState.menuPage === 2) { appState.menuPage = 1; appState.menuSelection = 7; }
+        else { appState.menuPage = 2; appState.menuSelection = 3; }
+      } else if (rawKey === 'dpad_up' && appState.menuSelection >= 4) appState.menuSelection -= 4;
+      else if (rawKey === 'dpad_down' && appState.menuSelection + 4 < pts) appState.menuSelection += 4;
+      else if (rawKey === 'equals') {
+        const modes = appState.menuPage === 1
+          ? ['Calculate','Complex','Base-N','Matrix','Vector','Statistics','Distribution','Spreadsheet']
+          : ['Table','Equation/Func','Inequality','Ratio'];
+        appState.mode = modes[appState.menuSelection] || 'Calculate';
+        if (appState.mode === 'Matrix') {
+          appState.matrixInput.phase = 'menu';
+          appState.matrixInput.active = null;
+          appState.matrixInput.dimBuffer = '';
+          appState.matrixInput.cellBuffer = '';
+        }
+        if (appState.mode === 'Vector') {
+          appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
+        }
+        if (appState.mode === 'Statistics') {
+          appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
+        }
+        appState.menuOpen = false; resetExpr();
+        backendKey('equals');
+      } else if (/^[0-9]$/.test(rawKey)) {
+        const n = parseInt(rawKey);
+        if (n >= 1 && n <= 8) {
+          appState.menuPage=1; appState.menuSelection=n-1;
+          const modes=['Calculate','Complex','Base-N','Matrix','Vector','Statistics','Distribution','Spreadsheet'];
+          appState.mode=modes[n-1];
+          if (appState.mode === 'Matrix') {
+            appState.matrixInput.phase = 'menu';
+            appState.matrixInput.active = null;
+            appState.matrixInput.dimBuffer = '';
+            appState.matrixInput.cellBuffer = '';
+          }
+          if (appState.mode === 'Vector') {
+            appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
+          }
+          if (appState.mode === 'Statistics') {
+            appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
+          }
+          appState.menuOpen=false; resetExpr(); backendKey(rawKey);
+        }
+        else if (n === 9) { appState.menuPage=2; appState.menuSelection=0; appState.mode='Table'; appState.menuOpen=false; resetExpr(); backendKey(rawKey); }
+      }
+      renderLCD();
+      if (menuNavKey) backendKey(rawKey);
+      return;
+    }
+
+    // ── MATRIX MODE KEY HANDLING ──
+    if (appState.mode === 'Matrix') {
+      const minp = appState.matrixInput;
+
+      if (!minp.phase || minp.phase === 'menu') {
+        if (/^[1-4]$/.test(rawKey)) {
+          const names = ['A', 'B', 'C', 'D'];
+          const active = names[parseInt(rawKey) - 1];
+          minp.active = active;
+          minp.phase = 'rows';
+          minp.dimBuffer = '';
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'ac') {
+          renderLCD();
+          return;
+        }
+      } else if (minp.phase === 'rows') {
+        if (/^[1-4]$/.test(rawKey)) {
+          minp.dimBuffer = rawKey;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'equals') {
+          let rows = 0;
+          if (minp.dimBuffer) {
+            rows = parseInt(minp.dimBuffer);
+          } else if (appState.matrices[minp.active] && appState.matrices[minp.active].rows > 0) {
+            rows = appState.matrices[minp.active].rows;
+          }
+          if (rows >= 1 && rows <= 4) {
+            minp.tempRows = rows;
+            minp.phase = 'cols';
+            minp.dimBuffer = '';
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'del' || rawKey === 'ac') {
+          minp.dimBuffer = '';
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'setup' || (rawKey === 'menu' && action !== 'SETUP')) {
+          minp.phase = 'menu';
+          renderLCD();
+          return;
+        }
+      } else if (minp.phase === 'cols') {
+        if (/^[1-4]$/.test(rawKey)) {
+          minp.dimBuffer = rawKey;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'equals') {
+          let cols = 0;
+          if (minp.dimBuffer) {
+            cols = parseInt(minp.dimBuffer);
+          } else if (appState.matrices[minp.active] && appState.matrices[minp.active].cols > 0) {
+            cols = appState.matrices[minp.active].cols;
+          }
+          if (cols >= 1 && cols <= 4) {
+            minp.tempCols = cols;
+            const active = minp.active;
+            const r = minp.tempRows;
+            const c = cols;
+            const existing = appState.matrices[active];
+            if (existing && existing.rows === r && existing.cols === c && Array.isArray(existing.data) && existing.data.length === r) {
+              // keep existing data
+            } else {
+              appState.matrices[active] = {
+                rows: r,
+                cols: c,
+                data: Array.from({ length: r }, () => Array(c).fill(0))
+              };
+            }
+            minp.phase = 'grid';
+            minp.row = 0;
+            minp.col = 0;
+            minp.cellBuffer = '';
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'del' || rawKey === 'ac') {
+          minp.dimBuffer = '';
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'setup' || (rawKey === 'menu' && action !== 'SETUP')) {
+          minp.phase = 'menu';
+          renderLCD();
+          return;
+        }
+      } else if (minp.phase === 'grid') {
+        const active = minp.active;
+        const mat = appState.matrices[active];
+        const rows = mat.rows;
+        const cols = mat.cols;
+
+        if (/^[0-9]$/.test(rawKey)) {
+          minp.cellBuffer += rawKey;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'decimal') {
+          if (!minp.cellBuffer.includes('.')) {
+            minp.cellBuffer += (minp.cellBuffer === '' ? '0.' : '.');
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'negate' || rawKey === 'minus') {
+          if (minp.cellBuffer.startsWith('-')) {
+            minp.cellBuffer = minp.cellBuffer.slice(1);
+          } else {
+            minp.cellBuffer = '-' + minp.cellBuffer;
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'del') {
+          if (minp.cellBuffer.length > 0) {
+            minp.cellBuffer = minp.cellBuffer.slice(0, -1);
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'ac') {
+          minp.cellBuffer = '';
+          renderLCD();
+          return;
+        }
+
+        const commitCurrentCell = () => {
+          if (minp.cellBuffer !== '') {
+            const parsed = parseFloat(minp.cellBuffer);
+            mat.data[minp.row][minp.col] = isNaN(parsed) ? 0 : (Number.isInteger(parsed) ? parsed : parsed);
+            minp.cellBuffer = '';
+          } else if (mat.data[minp.row][minp.col] === undefined) {
+            mat.data[minp.row][minp.col] = 0;
+          }
+        };
+
+        if (rawKey === 'dpad_left') {
+          commitCurrentCell();
+          if (minp.col > 0) minp.col--;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'dpad_right') {
+          commitCurrentCell();
+          if (minp.col < cols - 1) minp.col++;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'dpad_up') {
+          commitCurrentCell();
+          if (minp.row > 0) minp.row--;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'dpad_down') {
+          commitCurrentCell();
+          if (minp.row < rows - 1) minp.row++;
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'equals') {
+          commitCurrentCell();
+          if (minp.col + 1 < cols) {
+            minp.col++;
+          } else if (minp.row + 1 < rows) {
+            minp.row++;
+            minp.col = 0;
+          } else {
+            // Reached last cell & confirmed: store matrix
+            storeMatrix(active);
+          }
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'setup' || (rawKey === 'menu' && action !== 'SETUP')) {
+          commitCurrentCell();
+          storeMatrix(active);
+          minp.phase = 'menu';
+          renderLCD();
+          return;
+        }
+      }
+      return;
+    }
+
+    // ── VECTOR MODE KEY HANDLING ──
+    if (appState.mode === 'Vector') {
+      const vi = appState.vectorInput;
+      const key = rawKey;
+
+      // ── MENU phase ─────────────────────────────────────────────
+      if (vi.phase === 'menu') {
+        const vMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+        if (vMap[key]) {
+          vi.active = vMap[key];
+          vi.dimBuffer = '';
+          vi.phase = 'dim';
+          renderLCD();
+          return;
+        }
+        return; // ignore all other keys in menu phase
+      }
+
+      // ── DIM phase ──────────────────────────────────────────────
+      if (vi.phase === 'dim') {
+        if (key === 'ac') {
+          vi.dimBuffer = '';
+          renderLCD();
+          return;
+        }
+        if (key === 'equals') {
+          const entered = parseInt(vi.dimBuffer, 10);
+          const existing = appState.vectors[vi.active].dim;
+          const dim = (!vi.dimBuffer || isNaN(entered)) ? (existing || 1) : entered;
+          if (dim < 1 || dim > 4) { renderLCD(); return; }
+          // If dimension changed, reset data; otherwise preserve
+          if (dim !== existing) {
+            appState.vectors[vi.active] = { dim, data: Array(dim).fill(0) };
+          } else {
+            appState.vectors[vi.active].dim = dim;
+            if (appState.vectors[vi.active].data.length !== dim) {
+              appState.vectors[vi.active].data = Array(dim).fill(0);
+            }
+          }
+          vi.col = 0;
+          vi.cellBuffer = '';
+          vi.phase = 'grid';
+          renderLCD();
+          return;
+        }
+        const d = parseInt(key, 10);
+        if (!isNaN(d) && d >= 1 && d <= 4) {
+          vi.dimBuffer = String(d); // single digit only, replace
+          renderLCD();
+          return;
+        }
+        return; // reject invalid keys
+      }
+
+      // ── GRID phase ────────────────────────────────────────────
+      if (vi.phase === 'grid') {
+        const v = appState.vectors[vi.active];
+
+        if (key === 'ac') {
+          vi.cellBuffer = '';
+          renderLCD();
+          return;
+        }
+        if (key === 'del') {
+          vi.cellBuffer = vi.cellBuffer.slice(0, -1);
+          renderLCD();
+          return;
+        }
+        if (key === 'equals') {
+          const val = vi.cellBuffer === '' ? 0 : (parseFloat(vi.cellBuffer) || 0);
+          v.data[vi.col] = val;
+          vi.cellBuffer = '';
+          if (vi.col < v.dim - 1) {
+            vi.col++;
+          } else {
+            storeVector(vi.active);
+            vi.col = 0;
+            vi.cellBuffer = '';
+          }
+          renderLCD();
+          return;
+        }
+        if (key === 'dpad_right') {
+          if (vi.col < v.dim - 1) { vi.cellBuffer = ''; vi.col++; }
+          renderLCD(); return;
+        }
+        if (key === 'dpad_left') {
+          if (vi.col > 0) { vi.cellBuffer = ''; vi.col--; }
+          renderLCD(); return;
+        }
+        // Digit / decimal / negate input
+        if (/^[0-9]$/.test(key)) { vi.cellBuffer += key; renderLCD(); return; }
+        if (key === 'decimal' && !vi.cellBuffer.includes('.')) { vi.cellBuffer += '.'; renderLCD(); return; }
+        if (key === 'negate' && !vi.cellBuffer.startsWith('-')) { vi.cellBuffer = '-' + vi.cellBuffer; renderLCD(); return; }
+        return;
+      }
+    }
+
+    // ── STATISTICS MODE KEY HANDLING ──
+    if (appState.mode === 'Statistics') {
+      const si = appState.statInput;
+      const key = rawKey;
+      const isOneVar = si.type === 1;
+
+      // ── TYPE MENU phase ──────────────────────────────────────────
+      if (si.phase === 'typeMenu') {
+        // D-pad down: scroll to page 1 if on page 0
+        if (key === 'dpad_down' && si.menuPage === 0) {
+          si.menuPage = 1; renderLCD(); return;
+        }
+        // D-pad up: scroll back to page 0 if on page 1
+        if (key === 'dpad_up' && si.menuPage === 1) {
+          si.menuPage = 0; renderLCD(); return;
+        }
+        // Number keys 1-8 select type
+        const typeNum = parseInt(key, 10);
+        if (!isNaN(typeNum) && typeNum >= 1 && typeNum <= 4 && si.menuPage === 0) {
+          si.type = typeNum;
+          si.rows = [];
+          si.activeRow = 0;
+          si.activeCol = 0;
+          si.cellBuffer = '';
+          si.phase = 'dataEntry';
+          renderLCD(); return;
+        }
+        if (!isNaN(typeNum) && typeNum >= 1 && typeNum <= 4 && si.menuPage === 1) {
+          si.type = typeNum + 4;
+          si.rows = [];
+          si.activeRow = 0;
+          si.activeCol = 0;
+          si.cellBuffer = '';
+          si.phase = 'dataEntry';
+          renderLCD(); return;
+        }
+        return; // ignore all other keys in type menu
+      }
+
+      // ── DATA ENTRY phase ──────────────────────────────────────────
+      if (si.phase === 'dataEntry') {
+        const colCount = isOneVar ? 1 : 2;
+
+        if (key === 'ac') {
+          si.cellBuffer = ''; renderLCD(); return;
+        }
+        if (key === 'del') {
+          si.cellBuffer = si.cellBuffer.slice(0, -1); renderLCD(); return;
+        }
+        if (key === 'equals') {
+          // Commit current cell
+          const val = si.cellBuffer === '' ? 0 : (parseFloat(si.cellBuffer) || 0);
+          if (!si.rows[si.activeRow]) {
+            si.rows[si.activeRow] = isOneVar ? { x: 0 } : { x: 0, y: 0 };
+          }
+          const colKey = si.activeCol === 0 ? 'x' : 'y';
+          si.rows[si.activeRow][colKey] = val;
+          si.cellBuffer = '';
+          // Advance
+          if (si.activeCol < colCount - 1) {
+            si.activeCol++;
+          } else {
+            si.activeRow++;
+            si.activeCol = 0;
+          }
+          renderLCD(); return;
+        }
+        // D-pad navigation
+        if (key === 'dpad_down') {
+          si.activeRow = Math.min(si.activeRow + 1, si.rows.length);
+          si.cellBuffer = '';
+          renderLCD(); return;
+        }
+        if (key === 'dpad_up') {
+          si.activeRow = Math.max(si.activeRow - 1, 0);
+          si.cellBuffer = '';
+          renderLCD(); return;
+        }
+        if (key === 'dpad_right' && colCount > 1) {
+          si.activeCol = Math.min(si.activeCol + 1, colCount - 1);
+          si.cellBuffer = '';
+          renderLCD(); return;
+        }
+        if (key === 'dpad_left' && colCount > 1) {
+          si.activeCol = Math.max(si.activeCol - 1, 0);
+          si.cellBuffer = '';
+          renderLCD(); return;
+        }
+        // Digit / decimal / negate
+        if (/^[0-9]$/.test(key)) { si.cellBuffer += key; renderLCD(); return; }
+        if (key === 'decimal' && !si.cellBuffer.includes('.')) { si.cellBuffer += '.'; renderLCD(); return; }
+        if (key === 'negate') {
+          si.cellBuffer = si.cellBuffer.startsWith('-') ? si.cellBuffer.slice(1) : '-' + si.cellBuffer;
+          renderLCD(); return;
+        }
+        return;
+      }
+    }
+
+    if (rawKey === 'dpad_left') { moveCursorLeft(); return; }
+    if (rawKey === 'dpad_right') { moveCursorRight(); return; }
+    if (rawKey === 'dpad_up') { moveCursorUp(); return; }
+    if (rawKey === 'dpad_down') { moveCursorDown(); return; }
+    if (rawKey === 'ac') { resetExpr(); renderLCD(); backendKey('ac'); return; }
+    if (rawKey === 'del') { deleteAtCursor(); return; }
+    if (rawKey === 'equals') { evaluate(); return; }
+
+    // STEP 2: Base-N mode — intercept base-switch keys before local expression append
+    if (appState.mode === 'Base-N') {
+      const baseNSwitchKeys = ['square', 'power', 'log', 'ln'];
+      if (baseNSwitchKeys.includes(rawKey)) {
+        backendKey(rawKey, { shift: isShift, alpha: isAlpha });
+        return;
+      }
+    }
+
+    if (rawKey === 'fraction') { insertFraction(); return; }
+    if (rawKey === 'sqrt') { isShift ? insertRadical(true,false) : insertRadical(false,false); return; }
+    if (rawKey === 'power') { isShift ? insertRadical(false,true) : insertPower(null); return; }
+    if (rawKey === 'square') {
+      if (appState.mode === 'Base-N' && isShift) { appState.base = 16; renderLCD(); backendKey('base_switch', {base: 16}); return; }
+      isShift ? insertPower('3') : insertPower('2'); return;
+    }
+    if (rawKey === 'inverse') { 
+      if (isShift) { insertToken('!'); return; }
+      if (isAlpha || useAlphaForHex) { insertToken('C'); return; }
+      insertPower('-1'); return; 
+    }
+    if (rawKey === 'ellipsis') { 
+      if (isShift) { insertToken('\u00b0\u2032\u2033'); return; }
+      if (isAlpha || useAlphaForHex) { insertToken('B'); return; }
+      insertToken('\u00b0\u2032\u2033'); return; 
+    }
+    if (rawKey === 'integral') { isShift ? insertToken('\u03a3(') : insertIntegral(); return; }
+    if (rawKey === 'log') {
+      if (appState.mode === 'Base-N' && isShift) { appState.base = 2; renderLCD(); backendKey('base_switch', {base: 2}); return; }
+      isShift ? insertToken('10^(') : insertLog(); return;
+    }
+    if (rawKey === 'ln') {
+      if (appState.mode === 'Base-N' && isShift) { appState.base = 8; renderLCD(); backendKey('base_switch', {base: 8}); return; }
+      insertToken(isShift ? 'e^(' : 'ln('); return;
+    }
+
+    if (rawKey === 'sin') {
+      if (appState.mode === 'Base-N' && isShift) { appState.base = 10; renderLCD(); backendKey('base_switch', {base: 10}); return; }
+      insertToken(isShift ? 'sin\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'D') : 'sin('); return;
+    }
+    if (rawKey === 'cos') { insertToken(isShift ? 'cos\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'E') : 'cos('); return; }
+    if (rawKey === 'tan') { insertToken(isShift ? 'tan\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? 'F' : 'tan('); return; }
+
+    if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
+    if (rawKey === 'ans') { insertToken(isAlpha ? 'e' : 'Ans'); return; }
+    if (rawKey === 'variable') { insertToken(isShift ? 'd/dx(' : 'x'); return; }
+    if (rawKey === 'negate') { insertToken((isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'A') : '(-'); return; }
+    if (rawKey === 'left_paren') { insertToken(isShift ? 'Abs(' : '('); return; }
+    if (rawKey === 'right_paren') { insertToken(isAlpha ? 'x' : ')'); return; }
+
+    const tkMap = {
+      '0': isShift ? 'round(' : '0', '1':'1','2':'2','3':'3','4':'4',
+      '5':'5','6':'6','7':'7','8':'8','9':'9',
+      'decimal': isShift ? 'Ran#' : isAlpha ? 'RanInt(' : '.',
+      'plus': isShift ? 'Pol(' : '+',
+      'minus': isShift ? 'Rec(' : '\u2212',
+      'multiply': isShift ? 'nPr' : '\u00d7',
+      'divide': isShift ? 'nCr' : '\u00f7',
+    };
+    if (tkMap[rawKey] !== undefined) {
+      const tok = tkMap[rawKey];
+      if (appState.mode === 'Base-N' && /^[0-9]$/.test(tok) && parseInt(tok) >= appState.base) return;
+      insertToken(tok);
+      return;
+    }
+  }
+
+  document.querySelectorAll('[data-key]').forEach(btn => {
+    btn.addEventListener('click', () => handleKey(btn));
+  });
+
+  renderLCD();
+</script>
+
+</body>
+</html>
