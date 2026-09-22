@@ -10,6 +10,7 @@ class TokenKind(Enum):
     MINUS = "MINUS"
     TIMES = "TIMES"
     SLASH = "SLASH"
+    POWER = "POWER"
     LPAREN = "LPAREN"
     RPAREN = "RPAREN"
 
@@ -50,6 +51,12 @@ def tokenize(text):
 
         if char.isspace():
             i += 1
+            continue
+
+        # Power operator '**' (must be checked before single '*')
+        if char == '*' and i + 1 < length and text[i + 1] == '*':
+            tokens.append(Token(TokenKind.POWER, '**', i))
+            i += 2
             continue
 
         if char.isdigit() or char == ".":

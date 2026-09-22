@@ -248,11 +248,12 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
     s = s.replace('×', '*').replace('÷', '/').replace('−', '-')
     s = s.replace('Ans', f'({ans_val})').replace('ans', f'({ans_val})')
 
+    # Powers ^ -> ** (must run BEFORE special functions so recursive
+    # calls inside _transform_special_functions see '**', not '^')
+    s = s.replace('^', '**')
+
     # Handle supported special functions (integral, log_base, xroot, cbrt, sqrt)
     s = _transform_special_functions(s, ans_val, angle_unit)
-
-    # Powers ^ -> **
-    s = s.replace('^', '**')
 
     # Factorials n! -> math.factorial(n)
     s = re.sub(r'(\d+)!', r'math.factorial(\1)', s)
@@ -328,6 +329,11 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
         if isinstance(x, (int, float)):
             return float(converted.real)
         return converted
+
+    # Second pass: catch any trig calls revealed by earlier substitutions
+    # (e.g. after Ans/pi substitution exposes a new sin(...) call) so trig
+    # always routes through the angle-aware path.
+    s = _transform_special_functions(s, ans_val, angle_unit)
 
     try:
         val = evaluate(parse(tokenize(s)))

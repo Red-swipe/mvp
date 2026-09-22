@@ -79,6 +79,32 @@ class _Parser:
                 return node
 
     def _factor(self):
+        return self._power()
+
+    def _power(self):
+        node = self._unary()
+        token = self._peek()
+        if token is not None and token.kind == TokenKind.POWER:
+            self._advance()
+            # Right-associative: 2**3**2 == 2**(3**2)
+            right = self._power()
+            node = BinaryOpNode(node, token.kind, right)
+        return node
+
+    def _unary(self):
+        token = self._peek()
+        if token is not None and token.kind == TokenKind.PLUS:
+            self._advance()
+            return self._unary()
+        if token is not None and token.kind == TokenKind.MINUS:
+            self._advance()
+            operand = self._unary()
+            if isinstance(operand, NumberNode):
+                return NumberNode(-operand.number)
+            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
+        return self._primary()
+
+    def _primary(self):
         token = self._peek()
         if token is None:
             raise ParseError("Unexpected end of expression")

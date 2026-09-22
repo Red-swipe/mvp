@@ -26,6 +26,8 @@ def evaluate(node):
             return left * right
         if node.op is TokenKind.SLASH:
             return left / right
+        if node.op is TokenKind.POWER:
+            return left ** right
         raise TypeError(f"Unsupported operator {node.op}")
 
     raise TypeError(f"Unknown node type: {type(node).__name__}")
