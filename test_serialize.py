@@ -25,7 +25,7 @@ def serializeSlot(slot):
             out = out.replace("sin\u207b\u00b9(", "asin(")
             out = out.replace("cos\u207b\u00b9(", "acos(")
             out = out.replace("tan\u207b\u00b9(", "atan(")
-            out = out.replace("\u00d710\^", "*10^")
+            out = out.replace("\u00d710\\^", "*10^")
             out = out.replace("\u00d7", "*")
             out = out.replace("\u00f7", "/")
             out = out.replace("\u2212", "-")

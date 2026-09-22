@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import time
 import sys
@@ -17,7 +18,7 @@ with CONTROLLER_LOCK:
     CONTROLLER.shift = False
     CONTROLLER.alpha = False
 
-proc = subprocess.Popen([sys.executable, 'mvp_server.py', '--port', '8080'], cwd=r'E:\A.G\casio_mvp', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+proc = subprocess.Popen([sys.executable, 'mvp_server.py', '--port', '8080'], cwd=os.path.dirname(os.path.abspath(__file__)), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 time.sleep(2)
 
 import urllib.request

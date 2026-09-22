@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import threading
 import time
@@ -11,7 +12,7 @@ from mvp_server import CONTROLLER, CONTROLLER_LOCK
 def start_server():
     proc = subprocess.Popen(
         [sys.executable, 'mvp_server.py', '--port', '8080'],
-        cwd=r'E:\A.G\casio_mvp',
+        cwd=os.path.dirname(os.path.abspath(__file__)),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )

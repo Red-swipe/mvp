@@ -1,4 +1,5 @@
 import subprocess
+import os
 import sys
 import time
 import urllib.request
@@ -7,7 +8,7 @@ import json
 # Start the server in a subprocess
 proc = subprocess.Popen(
     [sys.executable, 'mvp_server.py'],
-    cwd=r'E:\A.G\casio_mvp',
+    cwd=os.path.dirname(os.path.abspath(__file__)),
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE
 )

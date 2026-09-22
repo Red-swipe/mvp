@@ -609,7 +609,6 @@ class CalculatorController:
         self.last_result = None
         self.result_displayed = False
         self.expression_viewport = 0
-        self.ans = "0"
         self.shift = False
         self.alpha = False
         self.insert_mode = False
@@ -621,6 +620,11 @@ class CalculatorController:
         self.menu_page = 1
         self.menu_index = 0
         self.base_n_base = 10
+        self.spreadsheet_engine = SpreadsheetEngine()
+        self._init_state()
+
+    def _init_state(self) -> None:
+        self.ans = "0"
         self.settings = dict(DEFAULT_SETTINGS)
         self.setup_settings = dict(DEFAULT_SETUP_SETTINGS)
         self.matrices = {
@@ -641,7 +645,6 @@ class CalculatorController:
         }
         self.distribution = {"type": 0, "params": {}, "result": None}
         self.spreadsheet = {}  # { "A1": {"value": "123", "formula": ""}, ... }
-        self.spreadsheet_engine = SpreadsheetEngine()
         self.ratio = {"type": 1, "a": None, "b": None, "c_or_d": None, "x": None}
         self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
 
@@ -702,7 +705,7 @@ class CalculatorController:
 
     def set_settings(self, new_settings: dict) -> dict:
         if not isinstance(new_settings, dict):
-            return {"ok": False, "success": False, "error": "Settings must be a JSON object"}
+            return {"ok": False, "error": "Settings must be a JSON object"}
         updated = dict(self.settings)
         pairs = {
             "inputOutput": "inputOutput", "input_output": "inputOutput",
@@ -720,7 +723,7 @@ class CalculatorController:
                 if key in new_settings:
                     updated[target] = self._validate_setting(key, new_settings[key])
         except (ValueError, TypeError):
-            return {"ok": False, "success": False, "error": "Invalid setting value"}
+            return {"ok": False, "error": "Invalid setting value"}
         self.settings = updated
         self.setup_settings["angle_unit"] = self.settings["angleUnit"]
         return {"ok": True, "success": True, "settings": dict(self.settings)}
@@ -746,27 +749,27 @@ class CalculatorController:
     def set_matrix(self, matrix_name: str, rows: int, cols: int, data: list) -> dict:
         name = str(matrix_name).strip().upper()
         if name not in {"A", "B", "C", "D"}:
-            return {"ok": False, "success": False, "error": f"Invalid matrix name '{matrix_name}'. Must be A, B, C, or D."}
+            return {"ok": False, "error": f"Invalid matrix name '{matrix_name}'. Must be A, B, C, or D."}
         try:
             rows_int = int(rows)
             cols_int = int(cols)
         except (ValueError, TypeError):
-            return {"ok": False, "success": False, "error": "Rows and cols must be integers."}
+            return {"ok": False, "error": "Rows and cols must be integers."}
         if not (1 <= rows_int <= 4 and 1 <= cols_int <= 4):
-            return {"ok": False, "success": False, "error": "Matrix dimensions must be between 1x1 and 4x4."}
+            return {"ok": False, "error": "Matrix dimensions must be between 1x1 and 4x4."}
         if not isinstance(data, list) or len(data) != rows_int:
-            return {"ok": False, "success": False, "error": f"Data row count ({len(data) if isinstance(data, list) else 0}) does not match rows ({rows_int})."}
+            return {"ok": False, "error": f"Data row count ({len(data) if isinstance(data, list) else 0}) does not match rows ({rows_int})."}
         cleaned_data = []
         for r_idx, row in enumerate(data):
             if not isinstance(row, list) or len(row) != cols_int:
-                return {"ok": False, "success": False, "error": f"Data col count at row {r_idx} does not match cols ({cols_int})."}
+                return {"ok": False, "error": f"Data col count at row {r_idx} does not match cols ({cols_int})."}
             cleaned_row = []
             for val in row:
                 try:
                     f_val = float(val) if val not in ("", None) else 0.0
                     cleaned_row.append(int(f_val) if f_val.is_integer() else f_val)
                 except (ValueError, TypeError):
-                    return {"ok": False, "success": False, "error": f"Invalid numeric value in matrix data: {val!r}"}
+                    return {"ok": False, "error": f"Invalid numeric value in matrix data: {val!r}"}
             cleaned_data.append(cleaned_row)
 
         self.matrices[name] = {
@@ -779,22 +782,22 @@ class CalculatorController:
     def set_vector(self, vector_name: str, dim: int, data: list) -> dict:
         name = str(vector_name).strip().upper()
         if name not in {"A", "B", "C", "D"}:
-            return {"ok": False, "success": False, "error": f"Invalid vector name '{vector_name}'. Must be A, B, C, or D."}
+            return {"ok": False, "error": f"Invalid vector name '{vector_name}'. Must be A, B, C, or D."}
         try:
             dim_int = int(dim)
         except (ValueError, TypeError):
-            return {"ok": False, "success": False, "error": "Dim must be an integer."}
+            return {"ok": False, "error": "Dim must be an integer."}
         if not (1 <= dim_int <= 4):
-            return {"ok": False, "success": False, "error": "Vector dimension must be between 1 and 4."}
+            return {"ok": False, "error": "Vector dimension must be between 1 and 4."}
         if not isinstance(data, list) or len(data) != dim_int:
-            return {"ok": False, "success": False, "error": f"Data length ({len(data) if isinstance(data, list) else 0}) does not match dim ({dim_int})."}
+            return {"ok": False, "error": f"Data length ({len(data) if isinstance(data, list) else 0}) does not match dim ({dim_int})."}
         cleaned = []
         for val in data:
             try:
                 f_val = float(val) if val not in ("", None) else 0.0
                 cleaned.append(int(f_val) if isinstance(f_val, float) and f_val.is_integer() else f_val)
             except (ValueError, TypeError):
-                return {"ok": False, "success": False, "error": f"Invalid numeric value: {val!r}"}
+                return {"ok": False, "error": f"Invalid numeric value: {val!r}"}
         self.vectors[name] = {"dim": dim_int, "data": cleaned}
         return {"ok": True, "success": True}
 
@@ -802,27 +805,27 @@ class CalculatorController:
         try:
             t = int(stat_type)
         except (ValueError, TypeError):
-            return {"ok": False, "success": False, "error": "Type must be an integer 1-8."}
+            return {"ok": False, "error": "Type must be an integer 1-8."}
         if not (1 <= t <= 8):
-            return {"ok": False, "success": False, "error": "Statistics type must be 1-8."}
+            return {"ok": False, "error": "Statistics type must be 1-8."}
         if not isinstance(data, list):
-            return {"ok": False, "success": False, "error": "Data must be a list."}
+            return {"ok": False, "error": "Data must be a list."}
         is_one_var = (t == 1)
         cleaned = []
         for i, row in enumerate(data):
             if not isinstance(row, dict):
-                return {"ok": False, "success": False, "error": f"Row {i} must be a dict."}
+                return {"ok": False, "error": f"Row {i} must be a dict."}
             try:
                 x_val = float(row.get("x", 0))
             except (ValueError, TypeError):
-                return {"ok": False, "success": False, "error": f"Invalid x at row {i}."}
+                return {"ok": False, "error": f"Invalid x at row {i}."}
             if is_one_var:
                 cleaned.append({"x": x_val})
             else:
                 try:
                     y_val = float(row.get("y", 0))
                 except (ValueError, TypeError):
-                    return {"ok": False, "success": False, "error": f"Invalid y at row {i}."}
+                    return {"ok": False, "error": f"Invalid y at row {i}."}
                 cleaned.append({"x": x_val, "y": y_val})
         self.statistics = {"type": t, "data": cleaned}
         return {"ok": True, "success": True}
@@ -853,7 +856,7 @@ class CalculatorController:
                           8: self.engine.stats_inverse_regression}[t]()
             return {"ok": True, "success": True, "type": t, "result": result}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def calculate_table(self, expr: str, x_start: float, x_end: float, x_step: float) -> dict:
         try:
@@ -863,7 +866,7 @@ class CalculatorController:
             self.engine.table_set_f(str(expr).replace("^", "**"))
             return {"ok": True, "success": True, "rows": self.engine.table_generate(float(x_start), float(x_end), float(x_step))}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def solve_equation(self, kind: str, coefficients, count_or_degree: int) -> dict:
         try:
@@ -897,7 +900,7 @@ class CalculatorController:
             return response
         except Exception as exc:
             print(f"[EQUATION] error={exc!r}", flush=True)
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def solve_inequality(self, degree: int, operator: str, coefficients: list) -> dict:
         try:
@@ -910,7 +913,7 @@ class CalculatorController:
             else: raise ValueError("degree must be 2-4")
             return {"ok": True, "success": True, "result": self.engine.inequality_solve(), "solution": self.engine.inequality_solution_as_string()}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def calculate_distribution(self, dist_type: int, params: dict) -> dict:
         try:
@@ -954,19 +957,19 @@ class CalculatorController:
                     float(params['x']), float(params['lambda'])
                 )
             else:
-                return {"ok": False, "success": False, "error": f"Invalid distribution type {t}"}
+                return {"ok": False, "error": f"Invalid distribution type {t}"}
             formatted = self._format_result(result)
             self.distribution = {"type": t, "params": params, "result": formatted}
             return {"ok": True, "success": True, "result": formatted}
         except KeyError as exc:
-            return {"ok": False, "success": False, "error": f"Missing parameter: {exc}"}
+            return {"ok": False, "error": f"Missing parameter: {exc}"}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def set_spreadsheet_cell(self, cell_ref: str, value: str) -> dict:
         ref = str(cell_ref).strip().upper()
         if not re.fullmatch(r"[A-Z][1-9][0-9]{0,3}", ref):
-            return {"ok": False, "success": False, "error": "Invalid cell reference"}
+            return {"ok": False, "error": "Invalid cell reference"}
         val_str = str(value).strip()
         if not val_str:
             try:
@@ -983,7 +986,7 @@ class CalculatorController:
             computed = self.spreadsheet_engine.get_cell_value(ref)
             formatted_computed = self._format_result(computed) if computed is not None else ""
         except Exception:
-            return {"ok": False, "success": False, "error": "Formula error"}
+            return {"ok": False, "error": "Formula error"}
 
         self.spreadsheet[ref] = {
             "raw": val_str,
@@ -1012,14 +1015,14 @@ class CalculatorController:
             try:
                 self.spreadsheet_engine.set_cell(ref, raw)
             except Exception:
-                return {"ok": False, "success": False, "error": "Formula error"}
+                return {"ok": False, "error": "Formula error"}
         for ref, item in list(self.spreadsheet.items()):
             raw = item.get("raw", item.get("value", ""))
             try:
                 computed = self.spreadsheet_engine.get_cell_value(ref)
                 res_fmt = self._format_result(computed) if computed is not None else ""
             except Exception:
-                return {"ok": False, "success": False, "error": "Formula error"}
+                return {"ok": False, "error": "Formula error"}
             self.spreadsheet[ref]["value"] = res_fmt if raw.startswith("=") else raw
             results[ref] = self.spreadsheet[ref]["value"]
         return {"ok": True, "success": True, "results": results, "cells": self.spreadsheet}
@@ -1033,9 +1036,9 @@ class CalculatorController:
             self.ratio = {"type": t, "a": fa, "b": fb, "c_or_d": fcd, "x": formatted}
             return {"ok": True, "success": True, "result": formatted, "x": formatted}
         except ZeroDivisionError:
-            return {"ok": False, "success": False, "error": "Math ERROR"}
+            return {"ok": False, "error": "Math ERROR"}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
+            return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def convert_units_calc(self, category: str, from_unit: str, to_unit: str, value: float) -> dict:
         try:
@@ -1044,7 +1047,7 @@ class CalculatorController:
             formatted = self._format_result(res)
             return {"ok": True, "success": True, "result": formatted, "numericResult": res}
         except Exception as exc:
-            return {"ok": False, "success": False, "error": f"Conversion ERROR: {exc}"}
+            return {"ok": False, "error": f"Conversion ERROR: {exc}"}
 
     def get_constants(self) -> dict:
         return {"ok": True, "success": True, "constants": SCIENTIFIC_CONSTANTS}
@@ -1064,17 +1067,8 @@ class CalculatorController:
             self.distribution = {"type": 0, "params": {}, "result": None}
             return {"ok": True, "success": True}
         elif t in ("all", "initialize_all"):
-            self.settings = dict(DEFAULT_SETTINGS)
-            self.setup_settings = dict(DEFAULT_SETUP_SETTINGS)
-            self.ans = "0"
-            self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
-            self.matrices = {k: {"rows": 0, "cols": 0, "data": []} for k in ("A", "B", "C", "D")}
-            self.vectors = {k: {"dim": 0, "data": []} for k in ("A", "B", "C", "D")}
-            self.statistics = {"type": 0, "data": []}
-            self.distribution = {"type": 0, "params": {}, "result": None}
-            self.spreadsheet = {}
+            self._init_state()
             self.spreadsheet_engine.clear_all()
-            self.ratio = {"type": 1, "a": None, "b": None, "c_or_d": None, "x": None}
             self.expression = ""
             self.cursor_position = 0
             self.last_result = None
@@ -1085,7 +1079,7 @@ class CalculatorController:
             self.state = "INPUT"
             return {"ok": True, "success": True, "state": self._state()}
         else:
-            return {"ok": False, "success": False, "error": f"Unknown reset target: {target}"}
+            return {"ok": False, "error": f"Unknown reset target: {target}"}
 
     def _convert_base(self, value_str, from_base, to_base):
         try:
@@ -1666,7 +1660,6 @@ class MvpHandler(BaseHTTPRequestHandler):
             "/api/matrix": {"operation": str},
             "/api/statistics": {"data": list},
             # Concrete route names currently used by frontend.html.
-            "/api/calculate": {"expression": str},
             "/api/equation/solve": {"coefficients": list},
             "/api/spreadsheet/set": {"cell": str, "value": str},
             "/api/distribution/calculate": {"type": (int, str), "params": dict},
@@ -1726,20 +1719,12 @@ class MvpHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True})
             return
 
-        if path == "/api/state":
-            self._send_json(CONTROLLER.get_state())
-            return
-
         if path == "/api/settings":
             self._send_json({"ok": True, "settings": CONTROLLER.get_settings()})
             return
 
         if path == "/setup_get":
             self._send_json({"settings": dict(CONTROLLER.setup_settings)})
-            return
-
-        if path == "/api/constants":
-            self._send_json(CONTROLLER.get_constants())
             return
 
         if path in {"/api/spreadsheet", "/api/spreadsheet/get"}:
@@ -1752,13 +1737,13 @@ class MvpHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
         if content_type != "application/json":
-            self._send_json({"error": "Content-Type must be application/json"}, 400)
+            self._send_json({"ok": False, "error": "Content-Type must be application/json"}, 400)
             return
         try:
             payload = self._read_json()
             validation_error = self._validate_required_fields(path, payload)
             if validation_error:
-                self._send_json({"error": validation_error}, 422)
+                self._send_json({"ok": False, "error": validation_error}, 422)
                 return
             with CONTROLLER_LOCK:
                 if path == "/api/key":
@@ -1768,7 +1753,7 @@ class MvpHandler(BaseHTTPRequestHandler):
                     response = CONTROLLER.press_key(payload)
                 elif path == "/api/fraction":
                     if "value" not in payload:
-                        response = {"error": "missing value", "success": False}
+                        response = {"ok": False, "error": "missing value"}
                     else:
                         value = float(payload["value"])
                         mixed = bool(payload.get("mixed", False))
@@ -1782,15 +1767,10 @@ class MvpHandler(BaseHTTPRequestHandler):
                         else:
                             result = f"{frac.numerator}/{frac.denominator}"
                         response = {"result": result, "success": True, "ok": True}
-                elif path == "/api/mode":
-                    response = CONTROLLER.set_mode(payload.get("mode", ""), payload.get("number", ""))
                 elif path == "/api/settings":
                     response = CONTROLLER.set_settings(payload)
                 elif path == "/setup_update":
                     response = CONTROLLER.update_setup_setting(payload.get("key"), payload.get("value"))
-                elif path == "/api/calculate":
-                    payload["key"] = "equals"
-                    response = CONTROLLER.press_key(payload)
                 elif path == "/api/matrix/set":
                     matrix_name = payload.get("matrix", "")
                     rows = payload.get("rows", 0)
@@ -1818,16 +1798,12 @@ class MvpHandler(BaseHTTPRequestHandler):
                     response = CONTROLLER.solve_equation(payload.get("kind", "polynomial"), payload.get("coefficients", []), payload.get("count", payload.get("degree", 2)))
                 elif path == "/api/inequality/solve":
                     response = CONTROLLER.solve_inequality(payload.get("degree", 2), payload.get("operator", ">"), payload.get("coefficients", []))
-                elif path in {"/api/constants"}:
-                    response = CONTROLLER.get_constants()
                 elif path in {"/api/spreadsheet", "/api/spreadsheet/get"}:
                     response = CONTROLLER.get_spreadsheet()
                 elif path == "/api/spreadsheet/set":
                     ref = payload.get("cell", payload.get("cell_ref", ""))
                     val = payload.get("value", payload.get("formula", payload.get("val", "")))
                     response = CONTROLLER.set_spreadsheet_cell(ref, val)
-                elif path == "/api/spreadsheet/eval":
-                    response = CONTROLLER.eval_spreadsheet()
                 elif path == "/api/spreadsheet/clear":
                     response = CONTROLLER.clear_spreadsheet()
                 elif path == "/api/ratio/calculate":
@@ -1858,7 +1834,7 @@ class MvpHandler(BaseHTTPRequestHandler):
             message = str(exc)
             if message not in {"Invalid JSON", "Payload must be a JSON object"}:
                 message = "Invalid JSON"
-            self._send_json({"error": message}, 400)
+            self._send_json({"ok": False, "error": message}, 400)
         except Exception as exc:
             print(f"request error: {exc}", file=sys.stderr)
             self._send_json({"ok": False, "error": "invalid request"}, 400)
