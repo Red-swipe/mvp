@@ -195,6 +195,18 @@
   .mode-page.active{display:block;}
   .lcd-page-indicator{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);pointer-events:none;}
 
+  .lcd-menu-top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    height: 10px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+  }
+
   .lcd-menu-bottom{
     display:flex;
     justify-content:space-between;
@@ -203,11 +215,6 @@
     font-size:14px;
     font-weight:700;
     line-height:1;
-  }
-  .lcd-menu-bottom .status-right{
-    position:absolute;
-    top:4px;
-    right:6px;
   }
 
   /* MATRIX SCREEN */
@@ -1554,9 +1561,18 @@
 
   /* subtle lower-body taper illusion */
   .bottom-pad{height:1px;}
-  
+
+  /* KaTeX scoped to LCD only — outer LCD keeps Casio ClassWiz TTF; KaTeX fonts apply inside child wrapper only */
+  #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+  #lcdDisplay .katex-lcd-wrap.katex-block { display: block; text-align: center; }
+  #lcdDisplay .katex { color: inherit; background: transparent; font-size: 1.02em; white-space: nowrap; }
+  #lcdDisplay .katex-display { margin: 0; padding: 0; }
+  #lcdDisplay .katex-display > .katex { white-space: nowrap; }
 
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 </head>
 <body>
 
@@ -1569,12 +1585,16 @@
     </div>
 
     <div class="lcd-bezel">
-      <div class="lcd">
+      <div class="lcd" id="lcdDisplay">
         <!-- SPLASH SCREEN -->
         <div id="lcdSplash">MENTIS</div>
 
         <!-- MENU SCREEN -->
         <div id="lcdMenu">
+          <div class="lcd-menu-top">
+            <span id="menuScrollIndLeft"  class="scroll-ind" style="display:none;">◀</span>
+            <span id="menuScrollIndRight" class="scroll-ind" style="display:none;">▶</span>
+          </div>
           <div class="mode-page mode-page-1 active">
             <div class="menu-icons">
               <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
@@ -1596,12 +1616,8 @@
             </div>
           </div>
            <div class="lcd-menu-bottom">
-             <div class="status-right">
-               <span id="menuScrollIndLeft"  class="scroll-ind" style="display:none;">◀</span>
-               <span id="menuScrollIndRight" class="scroll-ind" style="display:none;">▶</span>
-             </div>
-             <span id="lcdMenuLabel">1:Calculate</span>
-           </div>
+              <span id="lcdMenuLabel">1:Calculate</span>
+            </div>
         </div>
 
         <!-- CALCULATION SCREEN -->
@@ -1971,6 +1987,66 @@
 </div>
 
 <script>
+  // KaTeX Integration — Mentis ClassWiz — Sept 2026
+  // Scoped math typesetting: KaTeX renders ONLY inside #lcdDisplay (the LCD
+  // container). Never auto-render the whole page. The outer LCD
+  // keeps the Casio ClassWiz TTF; KaTeX output lives in a child span/div
+  // (.katex-lcd-wrap) so container styling is preserved. Main expression line
+  // uses displayMode=true (block); secondary/result lines use false (inline).
+  // On any KaTeX error, falls back to plain text so no mode ever breaks.
+  function exprToLatex(expr) {
+    try {
+      let s = String(expr == null ? '' : expr);
+      if (!s) return '';
+      s = s.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/π/g, '\\pi ');
+      // integral(body,lower,upper) -> \int_{lower}^{upper} body \, dx
+      s = s.replace(/integral\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\int_{$2}^{$3}($1)\\,dx');
+      s = s.replace(/log_base\(([^,()]+),([^,()]+)\)/g, '\\log_{$1}{$2}');
+      s = s.replace(/xroot\(([^,()]+),([^,()]+)\)/g, '\\sqrt[$1]{$2}');
+      s = s.replace(/cbrt\(([^()]+)\)/g, '\\sqrt[3]{$1}');
+      s = s.replace(/sqrt\(([^()]+)\)/g, '\\sqrt{$1}');
+      // ((num))/((den)) fraction pattern from serializeSlot -> \frac{num}{den}
+      s = s.replace(/\(\(\s*(.+?)\s*\)\)\/\(\(\s*(.+?)\s*\)\)/g, '\\frac{$1}{$2}');
+      // (base)^(exp) power pattern -> base^{exp}
+      s = s.replace(/\(\(\s*(.+?)\s*\)\^\(\s*(.+?)\s*\)\)/g, '{$1}^{$2}');
+      s = s.replace(/\^/g, '^');
+      s = s.replace(/\*/g, '\\cdot ');
+      return s;
+    } catch (e) { try { return String(expr); } catch (_) { return ''; } }
+  }
+  function renderMath(latexString, elementId, displayMode) {
+    try {
+      const host = document.getElementById(elementId);
+      if (!host) return;
+      // Safety scope: only render inside #lcdDisplay. Refuse whole-page targets.
+      const lcdRoot = document.getElementById('lcdDisplay');
+      if (lcdRoot && host !== lcdRoot && !lcdRoot.contains(host)) return;
+      const raw = (latexString == null) ? '' : String(latexString);
+      // Empty: clear to plain text (keeps layout stable, no broken symbols).
+      if (!raw) { host.textContent = ''; return; }
+      // If KaTeX failed to load (offline/file://), fall back to plain text.
+      if (typeof katex === 'undefined') { host.textContent = raw; return; }
+      // Preserve outer LCD styling: render into a CHILD wrapper only.
+      host.textContent = '';
+      const wrap = document.createElement(displayMode ? 'div' : 'span');
+      wrap.className = 'katex-lcd-wrap' + (displayMode ? ' katex-block' : ' katex-inline');
+      host.appendChild(wrap);
+      try {
+        katex.render(raw, wrap, { displayMode: !!displayMode, throwOnError: false, strict: false, trust: false });
+      } catch (inner) {
+        wrap.textContent = raw;
+      }
+    } catch (e) {
+      try {
+        const host = document.getElementById(elementId);
+        if (host) host.textContent = String(latexString == null ? '' : latexString);
+      } catch (_) {}
+    }
+  }
+  // Re-typeset once deferred KaTeX CDN scripts finish loading (no auto-render of body).
+  window.addEventListener('load', function () {
+    try { if (typeof renderLCD === 'function' && typeof katex !== 'undefined') renderLCD(); } catch (e) {}
+  });
   // ── SETTINGS PERSISTENCE & DEFAULTS ──
   const SETTINGS_STORAGE_KEY = 'casio_fx991ex_settings';
 
@@ -4783,16 +4859,23 @@
       indMath.textContent = appState.settings.inputOutput.startsWith('Math') ? 'Math' : 'Line';
     }
 
-    // Expression
+    // Expression — manual slot DOM preserves cursor/editing while typing;
+    // KaTeX display-mode (block) typesets the main line once the result is shown.
     const exprContent = document.getElementById('lcdExprContent');
     exprContent.innerHTML = '';
     exprContent.appendChild(renderSlotDOM(rootSlot));
+    try {
+      if (appState.resultDisplayed && !appState.error) {
+        const __latex = exprToLatex(getExpr());
+        if (__latex && typeof katex !== 'undefined') renderMath(__latex, 'lcdExprContent', true);
+      }
+    } catch (e) {}
 
-    // Result
+    // Result — KaTeX inline mode for secondary/result line (fallback = plain text).
     const resultEl = document.getElementById('lcdResultLine');
-    if (appState.error) resultEl.textContent = appState.error;
-    else if (appState.resultDisplayed && appState.result !== null) resultEl.textContent = String(appState.result);
-    else resultEl.textContent = '';
+    if (appState.error) renderMath(appState.error, 'lcdResultLine', false);
+    else if (appState.resultDisplayed && appState.result !== null) renderMath(String(appState.result), 'lcdResultLine', false);
+    else renderMath('', 'lcdResultLine', false);
 
     // Horizontal scroll to cursor
     const viewport = document.getElementById('lcdExprViewport');
