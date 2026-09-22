@@ -12,6 +12,7 @@ import re
 import sys
 import threading
 import webbrowser
+from fractions import Fraction
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -21,6 +22,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 from engine.engine import Engine
 from engine.calculus.calculus_engine import CalculusEngine
 from engine.spreadsheet.spreadsheet_engine import SpreadsheetEngine
+from engine.evaluator import evaluate
+from engine.parser import parse
+from engine.tokenizer import tokenize
 
 MODE_MAP = {
     "Calculate": "CALC",
@@ -47,7 +51,7 @@ MENU_PAGES = [
 
 CALC_ENGINE = CalculusEngine()
 
-_SPECIAL_FUNCS = ('integral', 'log_base', 'xroot', 'cbrt', 'sqrt')
+_SPECIAL_FUNCS = ('integral', 'log_base', 'xroot', 'cbrt', 'sqrt', 'sin', 'cos', 'tan', 'asinh', 'acosh', 'atanh', 'nCr', 'nPr')
 
 
 DEFAULT_SETTINGS = {
@@ -60,6 +64,24 @@ DEFAULT_SETTINGS = {
     "statisticsFrequency": False,
     "autoCalc": True,
     "showCell": "Value",
+}
+
+DEFAULT_SETUP_SETTINGS = {
+    "input_output":          "MathI/MathO",
+    "angle_unit":            "Degree",
+    "number_format":         "Norm",
+    "number_format_digits":  2,
+    "engineering_symbols":   False,
+    "fraction_result":       "ab/c",
+    "stat_frequency":        True,
+    "spreadsheet_auto_calc": True,
+    "spreadsheet_show":      "value",
+    "equation_complex":      False,
+    "table_mode":            "f(x)",
+    "decimal_mark":          "Dot",
+    "digit_separator":       False,
+    "multiline_font":        "Normal",
+    "contrast":              5,
 }
 
 
@@ -164,6 +186,49 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: cbrt expects 1 argument")
             replacement = f'({safe_evaluate_expression(args[0], ans_val, angle_unit) ** (1 / 3)!r})'
+        elif name in {'sin', 'cos', 'tan'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError(f"Math ERROR: {name} expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit)
+            if angle_unit == "Radian":
+                radians = value
+            elif angle_unit == "Gradian":
+                radians = value * (math.pi / 200.0)
+            else:
+                radians = value * (math.pi / 180.0)
+            if name == 'sin':
+                result = math.sin(radians)
+            elif name == 'cos':
+                result = math.cos(radians)
+            else:
+                cosine = math.cos(radians)
+                if abs(cosine) < 1e-12:
+                    raise ValueError("Math ERROR")
+                result = math.tan(radians)
+            replacement = f'({result!r})'
+        elif name in {'nCr', 'nPr'}:
+            if len(args) != 2 or not all(args):
+                raise ValueError(f"Math ERROR: {name} expects 2 arguments")
+            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit)
+            r_val = safe_evaluate_expression(args[1], ans_val, angle_unit)
+            if not float(n_val).is_integer() or not float(r_val).is_integer():
+                raise ValueError("Math ERROR")
+            n_int, r_int = int(n_val), int(r_val)
+            if n_int < 0 or r_int < 0 or r_int > n_int:
+                raise ValueError("Math ERROR")
+            result = math.comb(n_int, r_int) if name == 'nCr' else math.factorial(n_int) // math.factorial(n_int - r_int)
+            replacement = f'({result!r})'
+        elif name in {'asinh', 'acosh', 'atanh'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError(f"Math ERROR: {name} expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit)
+            if name == 'asinh':
+                result = math.asinh(value)
+            elif name == 'acosh':
+                result = math.acosh(value)
+            else:
+                result = math.atanh(value)
+            replacement = f'({result!r})'
         else:  # sqrt
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: sqrt expects 1 argument")
@@ -264,33 +329,8 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
             return float(converted.real)
         return converted
 
-    # Prepare safe evaluation namespace
-    math_ns = {
-        'math': math,
-        'sin': _safe_sin,
-        'cos': _safe_cos,
-        'tan': _safe_tan,
-        'asin': _safe_asin,
-        'acos': _safe_acos,
-        'atan': _safe_atan,
-        'sinh': cmath.sinh,
-        'cosh': cmath.cosh,
-        'tanh': cmath.tanh,
-        'sqrt': cmath.sqrt,
-        'log': cmath.log10,
-        'log10': cmath.log10,
-        'ln': cmath.log,
-        'exp': cmath.exp,
-        'abs': abs,
-        'Abs': abs,
-        'e': math.e,
-        'pi': math.pi,
-        'round': round,
-        'j': complex(0, 1),
-    }
-
     try:
-        val = eval(s, {'__builtins__': {}}, math_ns)
+        val = evaluate(parse(tokenize(s)))
         if isinstance(val, complex):
             if abs(val.imag) < 1e-14:
                 return float(val.real)
@@ -299,7 +339,7 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
     except ZeroDivisionError:
         raise
     except Exception as exc:
-        raise ValueError(f"Math ERROR: {exc}")
+        raise ValueError(f"Math ERROR: {exc}") from exc
 
 
 def evaluate_base_n(expr_str: str, base: int) -> str:
@@ -576,6 +616,7 @@ class CalculatorController:
         self.menu_index = 0
         self.base_n_base = 10
         self.settings = dict(DEFAULT_SETTINGS)
+        self.setup_settings = dict(DEFAULT_SETUP_SETTINGS)
         self.matrices = {
             "A": {"rows": 0, "cols": 0, "data": []},
             "B": {"rows": 0, "cols": 0, "data": []},
@@ -601,86 +642,100 @@ class CalculatorController:
     def get_settings(self) -> dict:
         return dict(self.settings)
 
+    def _validate_setting(self, key, value):
+        aliases = {
+            "angle_unit": {"Deg": "Degree", "Rad": "Radian", "Gra": "Gradian"},
+            "input_output": {"MthIO": "MathI/MathO", "MthO": "MathI/DecimalO", "LineIO": "LineI/LineO", "LineO": "LineI/DecimalO"},
+        }
+        if key in {"angleUnit", "angle_unit"}:
+            normalized = aliases["angle_unit"].get(str(value).strip(), str(value).strip())
+            if normalized not in {"Degree", "Radian", "Gradian"}:
+                raise ValueError
+            return normalized
+        if key in {"inputOutput", "input_output"}:
+            normalized = aliases["input_output"].get(str(value).strip(), str(value).strip())
+            if normalized not in {"MathI/MathO", "MathI/DecimalO", "LineI/LineO", "LineI/DecimalO"}:
+                raise ValueError
+            return normalized
+        if key in {"numberFormat", "number_format"}:
+            normalized = str(value).strip()
+            if normalized not in {"Fix", "Sci", "Norm"}:
+                raise ValueError
+            return normalized
+        if key in {"numberFormatPrecision", "number_format_precision", "number_format_digits"}:
+            if isinstance(value, bool):
+                raise ValueError
+            normalized = int(value)
+            if not 0 <= normalized <= 9:
+                raise ValueError
+            return normalized
+        if key in {"fractionResult", "fraction_result"}:
+            normalized = str(value).strip()
+            if normalized not in {"ab/c", "d/c"}:
+                raise ValueError
+            return normalized
+        if key in {"showCell", "spreadsheet_show"}:
+            normalized = str(value).strip()
+            if normalized in {"formula", "Formula"}:
+                return "Formula" if key == "showCell" else "formula"
+            if normalized in {"value", "Value"}:
+                return "Value" if key == "showCell" else "value"
+            raise ValueError
+        if key in {"engineeringSymbols", "engineering_symbols", "statisticsFrequency", "stat_frequency", "autoCalc", "spreadsheet_auto_calc"}:
+            if not isinstance(value, bool):
+                raise ValueError
+            return value
+        if key in {"contrast"}:
+            normalized = int(value)
+            if not 0 <= normalized <= 10:
+                raise ValueError
+            return normalized
+        if key in self.setup_settings:
+            return value
+        raise ValueError
+
     def set_settings(self, new_settings: dict) -> dict:
         if not isinstance(new_settings, dict):
             return {"ok": False, "success": False, "error": "Settings must be a JSON object"}
-
-        valid_io = {"MathI/MathO", "MathI/DecimalO", "LineI/LineO", "LineI/DecimalO"}
-        valid_angle = {"Degree", "Radian", "Gradian"}
-        valid_num_fmt = {"Fix", "Sci", "Norm"}
-        valid_frac = {"ab/c", "d/c"}
-        valid_show_cell = {"Value", "Formula"}
-
         updated = dict(self.settings)
-
-        # inputOutput / input_output
-        io_val = new_settings.get("inputOutput", new_settings.get("input_output"))
-        if io_val is not None:
-            io_val = str(io_val).strip()
-            if io_val not in valid_io:
-                return {"ok": False, "success": False, "error": f"Invalid inputOutput: {io_val}"}
-            updated["inputOutput"] = io_val
-
-        # angleUnit / angle_unit
-        au_val = new_settings.get("angleUnit", new_settings.get("angle_unit"))
-        if au_val is not None:
-            au_val = str(au_val).strip()
-            if au_val not in valid_angle:
-                return {"ok": False, "success": False, "error": f"Invalid angleUnit: {au_val}"}
-            updated["angleUnit"] = au_val
-
-        # numberFormat / number_format
-        nf_val = new_settings.get("numberFormat", new_settings.get("number_format"))
-        if nf_val is not None:
-            nf_val = str(nf_val).strip()
-            if nf_val not in valid_num_fmt:
-                return {"ok": False, "success": False, "error": f"Invalid numberFormat: {nf_val}"}
-            updated["numberFormat"] = nf_val
-
-        # numberFormatPrecision / number_format_precision
-        nfp_val = new_settings.get("numberFormatPrecision", new_settings.get("number_format_precision"))
-        if nfp_val is not None:
-            try:
-                p = int(nfp_val)
-                if not (0 <= p <= 9):
-                    return {"ok": False, "success": False, "error": f"Precision must be between 0 and 9: {p}"}
-                updated["numberFormatPrecision"] = p
-            except (ValueError, TypeError):
-                return {"ok": False, "success": False, "error": "Invalid precision"}
-
-        # engineeringSymbols / engineering_symbols
-        es_val = new_settings.get("engineeringSymbols", new_settings.get("engineering_symbols"))
-        if es_val is not None:
-            updated["engineeringSymbols"] = bool(es_val)
-
-        # fractionResult / fraction_result
-        fr_val = new_settings.get("fractionResult", new_settings.get("fraction_result"))
-        if fr_val is not None:
-            fr_val = str(fr_val).strip()
-            if fr_val not in valid_frac:
-                return {"ok": False, "success": False, "error": f"Invalid fractionResult: {fr_val}"}
-            updated["fractionResult"] = fr_val
-
-        # statisticsFrequency / statistics_frequency
-        sf_val = new_settings.get("statisticsFrequency", new_settings.get("statistics_frequency"))
-        if sf_val is not None:
-            updated["statisticsFrequency"] = bool(sf_val)
-
-        # autoCalc / auto_calc
-        ac_val = new_settings.get("autoCalc", new_settings.get("auto_calc"))
-        if ac_val is not None:
-            updated["autoCalc"] = bool(ac_val)
-
-        # showCell / show_cell
-        sc_val = new_settings.get("showCell", new_settings.get("show_cell"))
-        if sc_val is not None:
-            sc_val = str(sc_val).strip()
-            if sc_val not in valid_show_cell:
-                return {"ok": False, "success": False, "error": f"Invalid showCell: {sc_val}"}
-            updated["showCell"] = sc_val
-
+        pairs = {
+            "inputOutput": "inputOutput", "input_output": "inputOutput",
+            "angleUnit": "angleUnit", "angle_unit": "angleUnit",
+            "numberFormat": "numberFormat", "number_format": "numberFormat",
+            "numberFormatPrecision": "numberFormatPrecision", "number_format_precision": "numberFormatPrecision",
+            "engineeringSymbols": "engineeringSymbols", "engineering_symbols": "engineeringSymbols",
+            "fractionResult": "fractionResult", "fraction_result": "fractionResult",
+            "statisticsFrequency": "statisticsFrequency", "statistics_frequency": "statisticsFrequency",
+            "autoCalc": "autoCalc", "auto_calc": "autoCalc",
+            "showCell": "showCell", "show_cell": "showCell",
+        }
+        try:
+            for key, target in pairs.items():
+                if key in new_settings:
+                    updated[target] = self._validate_setting(key, new_settings[key])
+        except (ValueError, TypeError):
+            return {"ok": False, "success": False, "error": "Invalid setting value"}
         self.settings = updated
+        self.setup_settings["angle_unit"] = self.settings["angleUnit"]
         return {"ok": True, "success": True, "settings": dict(self.settings)}
+
+    def update_setup_setting(self, key, value) -> dict:
+        if key not in self.setup_settings:
+            return {"ok": False, "error": "unknown key"}
+        try:
+            normalized = self._validate_setting(key, value)
+        except (ValueError, TypeError):
+            return {"ok": False, "error": f"Invalid value for setting: {key}"}
+        self.setup_settings[key] = normalized
+        mapping = {
+            "angle_unit": "angleUnit", "input_output": "inputOutput", "number_format": "numberFormat",
+            "number_format_digits": "numberFormatPrecision", "engineering_symbols": "engineeringSymbols",
+            "fraction_result": "fractionResult", "stat_frequency": "statisticsFrequency",
+            "spreadsheet_auto_calc": "autoCalc", "spreadsheet_show": "showCell",
+        }
+        if key in mapping:
+            self.settings[mapping[key]] = normalized
+        return {"ok": True, "settings": dict(self.setup_settings)}
 
     def set_matrix(self, matrix_name: str, rows: int, cols: int, data: list) -> dict:
         name = str(matrix_name).strip().upper()
@@ -806,6 +861,7 @@ class CalculatorController:
 
     def solve_equation(self, kind: str, coefficients, count_or_degree: int) -> dict:
         try:
+            print(f"[EQUATION] request kind={kind!r} count_or_degree={count_or_degree!r} coefficients={coefficients!r}", flush=True)
             self.engine.set_mode("EQUATION")
             if kind == "simultaneous":
                 n = int(count_or_degree)
@@ -830,8 +886,11 @@ class CalculatorController:
                 if isinstance(value, dict):
                     return {key: json_safe(item) for key, item in value.items()}
                 return value
-            return {"ok": True, "success": True, "result": json_safe(result)}
+            response = {"ok": True, "success": True, "result": json_safe(result)}
+            print(f"[EQUATION] parsed={vals!r} result={response['result']!r}", flush=True)
+            return response
         except Exception as exc:
+            print(f"[EQUATION] error={exc!r}", flush=True)
             return {"ok": False, "success": False, "error": f"Math ERROR: {exc}"}
 
     def solve_inequality(self, degree: int, operator: str, coefficients: list) -> dict:
@@ -900,7 +959,7 @@ class CalculatorController:
 
     def set_spreadsheet_cell(self, cell_ref: str, value: str) -> dict:
         ref = str(cell_ref).strip().upper()
-        if not ref:
+        if not re.fullmatch(r"[A-Z][1-9][0-9]{0,3}", ref):
             return {"ok": False, "success": False, "error": "Invalid cell reference"}
         val_str = str(value).strip()
         if not val_str:
@@ -917,8 +976,8 @@ class CalculatorController:
             self.spreadsheet_engine.set_cell(ref, val_str)
             computed = self.spreadsheet_engine.get_cell_value(ref)
             formatted_computed = self._format_result(computed) if computed is not None else ""
-        except Exception as exc:
-            formatted_computed = "ERROR"
+        except Exception:
+            return {"ok": False, "success": False, "error": "Formula error"}
 
         self.spreadsheet[ref] = {
             "raw": val_str,
@@ -926,7 +985,9 @@ class CalculatorController:
             "formula": val_str if val_str.startswith("=") else ""
         }
         if self.settings.get("autoCalc", True):
-            self.eval_spreadsheet()
+            evaluated = self.eval_spreadsheet()
+            if not evaluated.get("ok"):
+                return evaluated
 
         return {"ok": True, "success": True, "cell": ref, "data": self.spreadsheet.get(ref), "cells": self.spreadsheet}
 
@@ -945,14 +1006,14 @@ class CalculatorController:
             try:
                 self.spreadsheet_engine.set_cell(ref, raw)
             except Exception:
-                pass
+                return {"ok": False, "success": False, "error": "Formula error"}
         for ref, item in list(self.spreadsheet.items()):
             raw = item.get("raw", item.get("value", ""))
             try:
                 computed = self.spreadsheet_engine.get_cell_value(ref)
                 res_fmt = self._format_result(computed) if computed is not None else ""
             except Exception:
-                res_fmt = "ERROR"
+                return {"ok": False, "success": False, "error": "Formula error"}
             self.spreadsheet[ref]["value"] = res_fmt if raw.startswith("=") else raw
             results[ref] = self.spreadsheet[ref]["value"]
         return {"ok": True, "success": True, "results": results, "cells": self.spreadsheet}
@@ -986,6 +1047,7 @@ class CalculatorController:
         t = str(target).strip().lower()
         if t in ("setup", "setup_data"):
             self.settings = dict(DEFAULT_SETTINGS)
+            self.setup_settings = dict(DEFAULT_SETUP_SETTINGS)
             return {"ok": True, "success": True, "settings": dict(self.settings)}
         elif t == "memory":
             self.ans = "0"
@@ -997,6 +1059,7 @@ class CalculatorController:
             return {"ok": True, "success": True}
         elif t in ("all", "initialize_all"):
             self.settings = dict(DEFAULT_SETTINGS)
+            self.setup_settings = dict(DEFAULT_SETUP_SETTINGS)
             self.ans = "0"
             self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
             self.matrices = {k: {"rows": 0, "cols": 0, "data": []} for k in ("A", "B", "C", "D")}
@@ -1399,7 +1462,7 @@ class CalculatorController:
 
                 try:
                     # Evaluate with safe mathematical evaluator
-                    angle_u = self.settings.get("angleUnit", self.settings.get("angle_unit", "Degree"))
+                    angle_u = self.setup_settings["angle_unit"]
                     res_val = safe_evaluate_expression(eval_expr, ans_float, angle_u)
                     self.last_result = self._format_result(res_val)
                     self.ans = self.last_result
@@ -1573,11 +1636,53 @@ class MvpHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _read_json(self):
-        length = int(self.headers.get("Content-Length", "0"))
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Invalid JSON") from exc
         if length > 64 * 1024:
             raise ValueError("request too large")
         raw = self.rfile.read(length)
-        return json.loads(raw.decode("utf-8")) if raw else {}
+        try:
+            payload = json.loads(raw.decode("utf-8")) if raw else {}
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("Invalid JSON") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("Payload must be a JSON object")
+        return payload
+
+    def _validate_required_fields(self, path, payload):
+        required = {
+            "/api/evaluate": {"expression": str},
+            "/api/equation": {"coefficients": list, "degree": int},
+            "/api/spreadsheet": {"cell": str, "value": str},
+            "/api/distribution": {"type": str, "params": dict},
+            "/api/matrix": {"operation": str},
+            "/api/statistics": {"data": list},
+            # Concrete route names currently used by frontend.html.
+            "/api/calculate": {"expression": str},
+            "/api/equation/solve": {"coefficients": list},
+            "/api/spreadsheet/set": {"cell": str, "value": str},
+            "/api/distribution/calculate": {"type": (int, str), "params": dict},
+            "/api/statistics/set": {"data": list},
+            "/api/statistics/calculate": {"data": list},
+        }
+        if path == "/api/equation/solve":
+            required[ path ]["degree"] = int
+            if "degree" not in payload and "count" in payload:
+                required[path].pop("degree")
+                required[path]["count"] = int
+        checks = required.get(path)
+        if checks is None:
+            return None
+        for name, expected_type in checks.items():
+            value = payload.get(name)
+            valid = name in payload and isinstance(value, expected_type)
+            if expected_type is int and isinstance(value, bool):
+                valid = False
+            if not valid:
+                return f"Missing field: {name}"
+        return None
 
     def do_GET(self):
         path = unquote(urlparse(self.path).path)
@@ -1623,6 +1728,10 @@ class MvpHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "settings": CONTROLLER.get_settings()})
             return
 
+        if path == "/setup_get":
+            self._send_json({"settings": dict(CONTROLLER.setup_settings)})
+            return
+
         if path == "/api/constants":
             self._send_json(CONTROLLER.get_constants())
             return
@@ -1635,15 +1744,44 @@ class MvpHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json({"error": "Content-Type must be application/json"}, 400)
+            return
         try:
             payload = self._read_json()
+            validation_error = self._validate_required_fields(path, payload)
+            if validation_error:
+                self._send_json({"error": validation_error}, 422)
+                return
             with CONTROLLER_LOCK:
                 if path == "/api/key":
                     response = CONTROLLER.press_key(payload)
+                elif path == "/api/evaluate":
+                    payload["key"] = "equals"
+                    response = CONTROLLER.press_key(payload)
+                elif path == "/api/fraction":
+                    if "value" not in payload:
+                        response = {"error": "missing value", "success": False}
+                    else:
+                        value = float(payload["value"])
+                        mixed = bool(payload.get("mixed", False))
+                        frac = Fraction(value).limit_denominator(10000)
+                        if frac.denominator == 1:
+                            result = str(frac.numerator)
+                        elif mixed and abs(frac.numerator) > frac.denominator:
+                            whole = int(frac.numerator / frac.denominator)
+                            remainder = abs(frac.numerator) % frac.denominator
+                            result = f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
+                        else:
+                            result = f"{frac.numerator}/{frac.denominator}"
+                        response = {"result": result, "success": True, "ok": True}
                 elif path == "/api/mode":
                     response = CONTROLLER.set_mode(payload.get("mode", ""), payload.get("number", ""))
                 elif path == "/api/settings":
                     response = CONTROLLER.set_settings(payload)
+                elif path == "/setup_update":
+                    response = CONTROLLER.update_setup_setting(payload.get("key"), payload.get("value"))
                 elif path == "/api/calculate":
                     payload["key"] = "equals"
                     response = CONTROLLER.press_key(payload)
@@ -1704,7 +1842,17 @@ class MvpHandler(BaseHTTPRequestHandler):
                 else:
                     self._send_json({"ok": False, "error": "not found"}, 404)
                     return
-            self._send_json(response, 200 if response.get("ok") or response.get("success") else 400)
+            error_text = str(response.get("error", ""))
+            if error_text == "Invalid cell reference" or error_text == "Formula error" or error_text.startswith("Invalid value for setting:"):
+                status = 422
+            else:
+                status = 200 if response.get("ok") or response.get("success") else 400
+            self._send_json(response, status)
+        except ValueError as exc:
+            message = str(exc)
+            if message not in {"Invalid JSON", "Payload must be a JSON object"}:
+                message = "Invalid JSON"
+            self._send_json({"error": message}, 400)
         except Exception as exc:
             print(f"request error: {exc}", file=sys.stderr)
             self._send_json({"ok": False, "error": "invalid request"}, 400)

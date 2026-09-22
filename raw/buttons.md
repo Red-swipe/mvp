@@ -1,0 +1,299 @@
+# Calculator
+
+- D-Pad
+    - TOP
+    - BOTTOM
+    - LEFT
+    - RIGHT
+- Shift
+    - Turns Shift on
+- Alpha
+    - Turns Alpha on
+- Menu-Setup
+    - Calculate (+-x/)
+    - Complex
+    - Base-N
+        - Shift + x^2 → DEC
+        - SHIFT + x^[input box] → HEX
+        - SHIFT+ log[][] → BIN
+        - SHIFT + Ln {} → OCT
+    - Matrix
+        - [1] Matrix A
+            - Number of rows
+            - number of columns
+        - [2] Matrix B
+            - Number of rows
+            - number of columns
+        - [3] Matrix C
+            - Number of rows
+            - number of columns
+        - [4] Matrix D
+            - Number of rows
+            - number of columns
+    - Vector
+        - Vct A
+            - Vct A Dimensions (1~4)
+        - Vct B
+            - Vct B Dimensions (1~4)
+        - Vct C
+            - Vct C Dimensions (1~4)
+        - Vct D
+            - Vct D Dimensions (1~4)
+    - Statistics
+        1. 1 - Variable
+        2. y = a+bx
+        3. y = a + bx + cx^2
+        4. y = a + b*Ln[x]
+        - SCROLL DOWN (D PAD DOWN)
+        1. y = a * e^(bx) 
+        2. y = a*b^x
+        3. y = a.x^b
+        4. y = a+b/x 
+        - DISTRIBUTION
+            - Normal PD
+                - x - INPUT
+                - **σ - 1 [INPUT]**
+                - μ - 0 [INPUT]
+            - Normal CD
+                - lower : input
+                - Upper : Input
+                - **σ : INPUT**
+            - Inverse Normal
+                - Area : 0 [INPUT]
+                - **σ  : 3 [INPUT]**
+                - μ : [INPUT]
+            - Binomial PD
+                - List
+                - Variable
+                    - x : INPUT
+                    - N : INPUT
+                    - P : INPUT
+            - SCROLL DOWN (D PAD DOWN)
+            - Binomial CD
+                - list
+                - Variable
+                    - x : INPUT
+                    - N : INPUT
+                    - P : INPUT
+            - Posson PD
+                - List
+                - Variable
+                    - x : 9 [INPUT]
+                    - λ : 0 INPUT
+            - Posson CD
+                - list
+                - Variable
+                    - x : 9 INPUT
+                    - λ : 0 INPUT
+        - Spreadsheet [Prebuilt spreadsheet, expands as user travels through it using D PAD]
+        - Columns [A-Z]
+        - Rows [1-10] [Denary]
+    - Table
+        - f(x) = ?
+    - Equation/Func
+        - Simultaneous Equation
+            - Number of Equations 2~4
+                - if 2, then 2 equations, if 3 then 3 if 4, then 4
+                - example
+                - _x + _y = _
+                - _x + _y = _
+                
+                _ → representing area to enter value
+        - Polynomial
+            - Polynomial Degree Select 2~4
+                - ax^2 + bx + c = 0
+                    - equation input area, gives max of y min of y, aswell as x roots, or middle term breaking answer
+                - ax³ + bx² + cx + d = 0
+                - ax⁴ + bx³ + cx² + dx + e = 0
+    - Inequality
+        - Polynomial Degree Select 2~4
+            - 2 [show all options in list form]
+                1. ax^2 + bx + c > 0 
+                2. ax^2 + bx + c < 0 
+                3. ax^2 + bx + c ≥ 0 
+                4. ax^2 + bx + c ≤ 0 
+            - 3 [if selected show all in list form]
+                - ax³ + bx² + cx + d > 0
+                - ax³ + bx² + cx + d < 0
+                - ax³ + bx² + cx + d ≥ 0
+                - ax³ + bx² + cx + d ≤ 0
+            - 4 [if selected show all in list form]
+                - ax⁴ + bx³ + cx² + dx + e > 0
+                - ax⁴ + bx³ + cx² + dx + e < 0
+                - ax⁴ + bx³ + cx² + dx + e ≥ 0
+                - ax⁴ + bx³ + cx² + dx + e ≤ 0
+    - RATIO
+        - 1 : A:B = X:D
+        - 2: A:B = C:X
+- SHIFT + MENU SETUP
+    - INPUT/OUTPUT
+        - MathI/Matho
+        - MathI/Decimalo
+        - LineI/Lineo
+        - LineI/DecimalO
+    - Angel Unit
+        - Degree
+        - Radian
+        - Gradian
+    - Number Fromat
+        - Fix
+        - Norm
+        - Sci
+    - Engineering symbols
+        - on
+        - off
+    - Fraction Result
+        - ab/c
+        - d/c
+    - Statistics
+        - frequency
+            - on
+            - off
+    - Spreadsheet
+        - Auto Calc
+            - On
+            - off
+        - Show Calc
+            - formula
+            - value
+    - Equation/Func
+        - complex result
+            - on
+            - off
+    - Table
+        - f(x)
+        - f(x),g(x)
+    - Decimal Mark
+        - Dot
+        - Comma
+    - Digit Seperator
+        - on
+        - off
+    - Multiline Font
+        - Normal Font
+        - small font
+    - QR Code
+        - show QR CODE FOR [[https://mentisai-delta.vercel.app/](https://mentisai-delta.vercel.app/)]
+    - Contrast
+        - Dpad left [less contrast]
+        - D pad right [more contrast]
+- OPTN
+    - Hyperbolic Function
+        - Sinh
+        - Cosh
+        - tanh
+        - sin^-1h
+        - cos^-1h
+        - tan^-1h
+    - Angle Unit
+        - (degree sign)
+        - (radian sign)
+        - (gradian sign)
+    - SHIFT + OPTN → QR [should show QR code for [[https://mentisai-delta.vercel.app/](https://mentisai-delta.vercel.app/)]
+- Calc
+    - SHIFT + Calc → Solve
+    - ALPHA + Calc → =
+- ∫ [with three input boxes]
+    - SHIFT + ∫ → d/dx [input box]
+    - Alpha + ∫ → :
+- **𝑥**
+    - shift + **𝑥 → Σ [with three input boxes, 1 on top of it, with beneath it, x = [] and  one infront of it]**
+- []/[] {fraction sign}
+    - shift + []/[] → [] []/[] {proper fraction}
+- √[]
+    - shift + √ → ∛
+- **𝑥^2**
+    - shift + **𝑥^2 → x^3**
+- **𝑥^[]**
+    - shift + **𝑥[] → []√[]**
+- log [] [] (both are input boxes, 1 for base, other for value)
+    - shift + log [] [] → 10^[]
+- Ln
+    - shift + Ln → e^[]
+- (-)
+    - SHIFT + (-) → log(
+    - Apha + (-) → A
+- °′″
+    - shift + °′″ → FACT
+    - Alpha + °′″ → B
+- x^-1
+    - shift + x^-1 → x!
+    - alpha + x^-1 → C
+- sin
+    - shift + sin → sin^-1(
+    - alpha + sin → D
+- cos
+    - shift + cos → cos^-1(
+    - alpha + cos → E
+- tan
+    - SHIFT + tan → tan^-1(
+    - Alpha + tan → F
+- **~~STO~~**
+    - SHIFT + STO → STO
+- ENG
+    - SHIFT + ENG → <
+    - Alpha + ENG → **𝒊**
+- (
+    - shift + ( → Abs
+- )
+    - SHIFT + ) → ,
+    - ALpha + ) → x
+- s ↔ d [decimal to fraction]
+    - shift + s↔d → a b/c → d/c [when answer written in improper fraction, it will convert into proper fraction]
+    - alpha + s↔d → y
+- M+
+    - shift + M+ → M-
+    - Alpha + M+ → M
+- 7
+    - shift + 7
+        - Universal
+        - Electromagnetic
+        - Atomic & Nuclear
+        - Phyisico-Chem
+        - adopted values
+        - other
+- 8
+    - shift + 8
+        - length
+        - area
+        - volume
+        - mass
+        - velocity
+        - pressure
+        - power
+        - temperature
+- 9
+    - shift + 9 → Reset
+        - SETUP DATA
+            - are you sure (= for yes, a/c for no)
+        - Memory
+            - are you sure (= for yes, a/c for no)
+        - Initialize all
+            - are you sure (= for yes, a/c for no)
+- DEL
+    - shift + DEL → INS
+    - alpha + DEL → UNDO
+- AC
+    - AC + shift → off
+- 4,5,6
+- x
+    - shift + x → nPr
+- /
+    - shift + / → nCr
+- 1,2,3
+- +
+    - shift + + → Pol
+- -
+    - shift + - → Rec
+- 0
+    - shift + 0 → RnD
+- .
+    - shift + . →RAN#
+    - alpha + . Ranint(
+- *10^x
+    - shift + *10^x → pi
+    - alpha + *10^x → e
+- ANS
+    - shift + ANS → %
+- =
+    - shift + = → ≈

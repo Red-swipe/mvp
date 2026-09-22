@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casio fx-991EX ClassWiz — OG-style mockup</title>
+<title>Casio fx-991EX ClassWiz - OG-style mockup</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   @font-face {
     font-family: 'CASIO ClassWiz';
-    src: url('/ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype'),
-         url('/fonts/CASIO%20ClassWiz.ttf') format('truetype'),
-         url('ClassWizFontSet/CASIO%20ClassWiz.ttf') format('truetype');
+    src: url('/ClassWizFontSet/CASIOClassWizCW01.ttf') format('truetype'),
+         url('/fonts/CASIOClassWizCW01.ttf') format('truetype'),
+         url('ClassWizFontSet/CASIOClassWizCW01.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
   }
@@ -40,6 +41,7 @@
     --cyan:#4aa6d5;
     --lcd:#d5dfb8;
     --ink:#141614;
+    --calc-contrast:.5;
   }
 
   body{
@@ -70,6 +72,7 @@
     width:100%;
     border-radius:31px 31px 24px 24px;
     padding:17px 14px 15px;
+    overflow:hidden;
     background:
       radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
       linear-gradient(180deg,#303031 0%,#29292a 55%,#262627 100%);
@@ -127,11 +130,13 @@
       inset 0 2px 5px rgba(0,0,0,.17),
       inset 0 0 0 1px rgba(255,255,255,.35);
     color:var(--ink);
-    font-family:'CASIO ClassWiz', monospace;
     padding:4px 6px;
     overflow:hidden;
     pointer-events:none;
+    filter:contrast(calc(0.7 + var(--calc-contrast) * 0.6));
   }
+
+  .small-font { font-size:0.75em; }
 
   /* SPLASH SCREEN */
   #lcdSplash{
@@ -139,7 +144,6 @@
     align-items:center;
     justify-content:center;
     height:100%;
-    font-family:'CASIO ClassWiz', sans-serif;
     font-size:24px;
     font-weight:900;
     letter-spacing:2px;
@@ -198,6 +202,11 @@
     font-weight:700;
     line-height:1;
   }
+  .lcd-menu-bottom .status-right{
+    position:absolute;
+    top:4px;
+    right:6px;
+  }
 
   /* MATRIX SCREEN */
   #lcdMatrix{
@@ -207,7 +216,6 @@
     height:100%;
     position:relative;
     color:var(--ink);
-    font-family:'CASIO ClassWiz', monospace;
   }
   .matrix-menu-grid{
     display:grid;
@@ -284,7 +292,6 @@
     height:100%;
     position:relative;
     color:var(--ink);
-    font-family:'CASIO ClassWiz', monospace;
   }
   .vector-menu-list{
     display:grid;
@@ -361,7 +368,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
   /* DISTRIBUTION SCREEN */
   #lcdDistribution {
@@ -371,24 +377,28 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
+    font-family: 'Courier New', Courier, monospace;
   }
-  .dist-type-list { font-family: 'ClassWizText', monospace; font-size: 11px; line-height: 14px; padding: 2px 4px; }
+  #lcdDistribution * { font-family: 'Courier New', Courier, monospace; }
+  .dist-type-list { font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 14px; padding: 2px 4px; }
   .dist-type-item { display: block; }
   .dist-type-item.selected { background: var(--lcd-fg, var(--ink)); color: var(--lcd-bg, #c5ccb8); }
-  .dist-submenu { font-family: 'ClassWizText', monospace; font-size: 11px; padding: 4px; }
-  .dist-field-list { font-family: 'ClassWizText', monospace; font-size: 11px; padding: 2px 4px; }
+  .dist-submenu { font-family: 'Courier New', Courier, monospace; font-size: 11px; padding: 4px; }
+  .dist-field-list { font-family: 'Courier New', Courier, monospace; font-size: 11px; padding: 2px 4px; }
   .dist-field-row { display: flex; justify-content: space-between; line-height: 15px; }
   .dist-field-row.active { background: var(--lcd-fg, var(--ink)); color: var(--lcd-bg, #c5ccb8); }
-  .dist-result-screen { font-family: 'ClassWizText', monospace; font-size: 12px; padding: 4px; }
+  .dist-result-screen { font-family: 'Courier New', Courier, monospace; font-size: 12px; padding: 4px; }
   .dist-scroll-hint { font-size: 9px; text-align: right; padding-right: 4px; }
   .stat-type-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    padding: 1px 4px;
+    align-items: flex-start;
+    gap: 0px;
+    margin-top: 2px;
+    padding: 0 4px;
     font-size: 11px;
     font-weight: 700;
+    width: 100%;
   }
   .stat-type-item {
     display: flex;
@@ -408,7 +418,6 @@
   .stat-table {
     width: 100%;
     border-collapse: collapse;
-    font-family: 'CASIO ClassWiz', monospace;
     font-size: 10px;
     margin: 1px 0;
   }
@@ -468,7 +477,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
   .setup-menu-list {
     display: flex;
@@ -498,6 +506,11 @@
     background: var(--ink);
     color: #dce6c2;
   }
+  .setup-main-menu-row {
+    height: 18px;
+    line-height: 18px;
+    font-size: 13px;
+  }
   .setup-prompt-box {
     display: flex;
     flex-direction: column;
@@ -522,49 +535,55 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
+    font-family: 'Courier New', Courier, monospace;
   }
+  #lcdSpreadsheet * { font-family: 'Courier New', Courier, monospace; }
   .sheet-grid-container {
     display: flex;
     flex-direction: column;
-    height: calc(100% - 22px);
+    height: calc(100% - 20px);
     overflow: hidden;
   }
   .sheet-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 10px;
+    table-layout: fixed;
+    font-size: 8px;
   }
   .sheet-table th {
-    font-size: 9px;
+    font-size: 8px;
     text-align: center;
     border-bottom: 1px solid var(--ink);
     border-right: 1px solid var(--ink);
-    padding: 0 2px;
+    padding: 0 1px;
+    height: 9px;
+    line-height: 9px;
     background: rgba(0,0,0,0.05);
   }
   .sheet-table td {
     border: 1px solid var(--ink);
-    padding: 0 3px;
+    padding: 0 1px;
     text-align: right;
-    height: 14px;
-    line-height: 14px;
-    font-size: 9px;
+    height: 9px;
+    line-height: 9px;
+    font-size: 8px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 40px;
+    min-width: 0;
   }
+  .sheet-table th:first-child,
+  .sheet-table td:first-child { width: 14px; }
   .sheet-table td.active {
     background: var(--ink);
     color: #dce6c2;
     font-weight: bold;
   }
   .sheet-row-header {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
     text-align: center !important;
-    min-width: 16px !important;
+    min-width: 14px !important;
     background: rgba(0,0,0,0.05);
     border: 1px solid var(--ink);
   }
@@ -587,7 +606,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
   .ratio-menu-list {
     display: flex;
@@ -635,7 +653,7 @@
   }
 
   /* TABLE SCREEN */
-  #lcdTable { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); font-family:'CASIO ClassWiz', monospace; }
+  #lcdTable { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); }
   .table-input-view { display:flex; flex-direction:column; gap:8px; padding:8px 7px; font-size:12px; font-weight:700; }
   .table-input-line { min-height:18px; white-space:nowrap; overflow:hidden; }
   .table-grid { display:grid; grid-template-columns:1fr 1.35fr; margin:2px 4px; border:1px solid var(--ink); gap:1px; background:var(--ink); font-size:10px; }
@@ -643,7 +661,7 @@
   .table-grid > .table-head { text-align:center; font-weight:700; background:rgba(0,0,0,.08); }
   .table-grid > .table-selected { background:var(--ink); color:#dce6c2; font-weight:700; }
   .table-footer { display:flex; justify-content:space-between; padding:1px 5px; font-size:9px; }
-  #lcdInequality { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); font-family:'CASIO ClassWiz', monospace; }
+  #lcdInequality { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); }
   .ineq-view { padding:5px 6px; font-size:11px; font-weight:700; }
   .ineq-title { font-size:12px; margin-bottom:5px; }
   .ineq-option { line-height:15px; padding:0 3px; }
@@ -653,7 +671,7 @@
   .ineq-coeff.selected { background:var(--ink); color:#dce6c2; }
   .ineq-result { padding:7px 5px; font-size:11px; font-weight:700; }
   /* EQUATION / FUNCTION SCREEN */
-  #lcdEquation { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); font-family:'CASIO ClassWiz', monospace; }
+  #lcdEquation { display:none; flex-direction:column; height:100%; position:relative; color:var(--ink); }
   .eq-view { padding:3px 4px; font-size:10px; font-weight:700; overflow:hidden; }
   .eq-title { font-size:11px; margin-bottom:3px; }
   .eq-option { line-height:14px; padding:0 3px; }
@@ -667,6 +685,7 @@
   .eq-coeff-row { display:flex; justify-content:space-between; line-height:14px; padding:0 3px; }
   .eq-coeff-row.active { background:var(--ink); color:#dce6c2; }
   .eq-result { padding:5px 4px; font-size:11px; font-weight:700; line-height:16px; }
+  .eq-solution { white-space:pre-line; }
 
   /* CONSTANTS SCREEN */
   #lcdConstants {
@@ -676,7 +695,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
 
   /* CONVERSION SCREEN */
@@ -687,7 +705,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
 
   /* RESET SCREEN */
@@ -698,7 +715,6 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'CASIO ClassWiz', monospace;
   }
   .reset-confirm-box {
     display: flex;
@@ -753,11 +769,35 @@
     border-radius:1px;
     font-family: Arial, Helvetica, sans-serif;
   }
-  .status-tag.active{display:inline-block;}
+   .status-tag.active{display:inline-block;}
+   .scroll-ind{
+     font-size:8px;
+     line-height:9px;
+     margin-left:1px;
+     font-family:Arial,Helvetica,sans-serif;
+   }
   .status-indicator{
     font-size:9px;
     font-weight:bold;
   }
+
+  .menu-overlay{
+    position:absolute;
+    inset:2px 4px 4px;
+    z-index:20;
+    padding:5px;
+    background:#dce6c2;
+    border:1px solid #353735;
+    color:var(--ink);
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:10px;
+    pointer-events:auto;
+  }
+  .optn-section-label{font-weight:700; margin:2px 0 3px;}
+  .optn-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-bottom:5px;}
+  .optn-grid button{padding:3px 1px; border:1px solid #353735; background:rgba(255,255,255,.2); color:var(--ink); font:700 9px Arial, sans-serif;}
+  .menu-overlay .menu-item{padding:2px 4px; font:700 11px/15px Arial, sans-serif; cursor:pointer;}
+  .menu-overlay .menu-item:hover{background:var(--ink); color:#dce6c2;}
 
   /* EXPRESSION VIEWPORT */
   .lcd-expr-viewport{
@@ -775,7 +815,7 @@
     display:inline-flex;
     align-items:baseline;
     position:relative;
-    font-family:'CASIO ClassWiz', monospace;
+    font-family:monospace;
     font-size:16px;
     color:var(--ink);
   }
@@ -788,7 +828,7 @@
     font-size:20px;
     font-weight:bold;
     line-height:1;
-    font-family:'CASIO ClassWiz', monospace;
+    font-family:monospace;
     text-align:right;
     white-space:nowrap;
     max-width:96%;
@@ -1494,37 +1534,16 @@
   }
 
 
-  /* Top controls: labels stay above, all four round buttons share the D-pad centerline. */
+  /* Top controls: all four round buttons share the D-pad centerline. */
   .top-controls{
-    align-items:start;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    justify-content:space-between;
+    gap:4px;
   }
   .top-controls .bwc{
-    display:grid;
-    grid-template-rows:10px 67px;
-    align-items:start;
-    justify-items:center;
-  }
-  .top-controls .bwc .lbl{
-    height:10px;
-    line-height:9px;
-    align-self:start;
-  }
-  .top-controls .bwc .bc{
-    align-self:center;
-  }
-  .top-controls .dpo{
-    align-self:start;
-  }
-
-  /* subtle lower-body taper illusion */
-  .bottom-pad{height:1px;}
-
-  /* Refined top row: compact label-to-button spacing + groups centered with D-pad. */
-  .top-controls{
-    align-items:center !important;
-  }
-  .top-controls .bwc{
-    display:flex !important;
+    display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
@@ -1532,20 +1551,23 @@
     gap:1px;
   }
   .top-controls .bwc .lbl{
-    height:8px !important;
+    height:8px;
     min-height:8px;
-    line-height:8px !important;
-    margin:0 0 1px 0 !important;
-    padding:0 !important;
+    line-height:8px;
+    margin:0 0 1px 0;
+    padding:0;
   }
   .top-controls .bwc .bc{
     align-self:center;
-    margin:0 !important;
+    margin:0;
   }
   .top-controls .dpo,
   .top-controls .dpad{
-    align-self:center !important;
+    align-self:center;
   }
+
+  /* subtle lower-body taper illusion */
+  .bottom-pad{height:1px;}
   
 
 </style>
@@ -1567,7 +1589,6 @@
 
         <!-- MENU SCREEN -->
         <div id="lcdMenu">
-          <div class="lcd-page-indicator" id="lcdPageIndicator">▼</div>
           <div class="mode-page mode-page-1 active">
             <div class="menu-icons">
               <button class="menu-icon selected" data-mode="Calculate"><span class="mi-main">×÷<br>+−</span><small>1</small></button>
@@ -1588,9 +1609,13 @@
               <button class="menu-icon" data-mode="Ratio"><span class="mi-main">a:b</span><small>12</small></button>
             </div>
           </div>
-          <div class="lcd-menu-bottom">
-            <span id="lcdMenuLabel">1:Calculate</span>
-          </div>
+           <div class="lcd-menu-bottom">
+             <div class="status-right">
+               <span id="menuScrollIndLeft"  class="scroll-ind" style="display:none;">◀</span>
+               <span id="menuScrollIndRight" class="scroll-ind" style="display:none;">▶</span>
+             </div>
+             <span id="lcdMenuLabel">1:Calculate</span>
+           </div>
         </div>
 
         <!-- CALCULATION SCREEN -->
@@ -1599,20 +1624,42 @@
             <div class="status-left">
               <span id="indShift" class="status-tag">S</span>
               <span id="indAlpha" class="status-tag">A</span>
+              <span id="indMemory" class="status-tag">M</span>
               <span id="indMode" class="status-tag"></span>
               <span id="indAngle" class="status-indicator">D</span>
               <span id="indMath" class="status-indicator">Math</span>
-              <span id="indBase" class="status-tag" style="display:none;"></span>
             </div>
-            <div class="status-right">
-              <span id="indLeftOverflow" style="display:none;">◀</span>
-              <span id="indRightOverflow" style="display:none;">▶</span>
-            </div>
+<div class="status-right">
+                <span id="indBase" class="status-tag" style="display:none;"></span>
+                <span id="calcScrollIndUp"    class="scroll-ind" style="display:none;">▲</span>
+                <span id="calcScrollIndDown"  class="scroll-ind" style="display:none;">▼</span>
+                <span id="calcScrollIndLeft"  class="scroll-ind" style="display:none;">◀</span>
+                <span id="calcScrollIndRight" class="scroll-ind" style="display:none;">▶</span>
+              </div>
           </div>
           <div class="lcd-expr-viewport" id="lcdExprViewport">
             <div class="lcd-expr-content" id="lcdExprContent"></div>
           </div>
           <div class="lcd-result-line" id="lcdResultLine"></div>
+          <div id="optn-panel" class="menu-overlay" style="display:none;">
+            <div id="optn-main-menu">
+              <div class="menu-item" onclick="optnSelectCategory(1)">1&nbsp;&nbsp;Hyperbolic</div>
+              <div class="menu-item" onclick="optnSelectCategory(2)">2&nbsp;&nbsp;Angle Unit</div>
+            </div>
+            <div id="optn-hyp-menu" style="display:none;">
+              <div class="menu-item" onclick="insertOptn('sinh(')">1&nbsp;&nbsp;sinh</div>
+              <div class="menu-item" onclick="insertOptn('cosh(')">2&nbsp;&nbsp;cosh</div>
+              <div class="menu-item" onclick="insertOptn('tanh(')">3&nbsp;&nbsp;tanh</div>
+              <div class="menu-item" onclick="insertOptn('asinh(')">4&nbsp;&nbsp;sinh⁻¹</div>
+              <div class="menu-item" onclick="insertOptn('acosh(')">5&nbsp;&nbsp;cosh⁻¹</div>
+              <div class="menu-item" onclick="insertOptn('atanh(')">6&nbsp;&nbsp;tanh⁻¹</div>
+            </div>
+            <div id="optn-angle-menu" style="display:none;">
+              <div class="menu-item" onclick="insertOptn('°')">1&nbsp;&nbsp;°&nbsp;&nbsp;Degree</div>
+              <div class="menu-item" onclick="insertOptn('r')">2&nbsp;&nbsp;r&nbsp;&nbsp;Radian</div>
+              <div class="menu-item" onclick="insertOptn('g')">3&nbsp;&nbsp;g&nbsp;&nbsp;Gradian</div>
+            </div>
+          </div>
         </div>
 
         <!-- MATRIX SCREEN -->
@@ -1680,9 +1727,10 @@
               <span id="setupIndAngle" class="status-indicator">D</span>
               <span id="setupIndMath" class="status-indicator">Math</span>
             </div>
-            <div class="status-right">
-              <span id="setupIndScroll" class="status-indicator">▼</span>
-            </div>
+<div class="status-right">
+                <span id="setupScrollIndUp"    class="scroll-ind" style="display:none;">▲</span>
+                <span id="setupScrollIndDown"  class="scroll-ind" style="display:none;">▼</span>
+              </div>
           </div>
           <div id="lcdSetupBody" style="flex:1; display:flex; flex-direction:column; justify-content:space-between;"></div>
         </div>
@@ -1992,7 +2040,7 @@
   async function syncBackendSettings(settings) {
     if (window.location.protocol === 'file:') return;
     try {
-      await fetch('/api/settings', {
+      const response = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2005,8 +2053,9 @@
           statistics_frequency: settings.statisticsFrequency
         })
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
     } catch (e) {
-      console.warn('Failed to sync settings to backend', e);
+      console.warn('Settings sync failed:', e);
     }
   }
 
@@ -2174,21 +2223,58 @@
     "Length", "Area", "Volume", "Mass", "Velocity", "Pressure", "Power", "Temperature"
   ];
 
+  const SETUP_MENU = [
+    { id:"input_output", label:"InputOutput", options:[{label:"1:MathI/MathO",value:"MathI/MathO"},{label:"2:MathI/DecimalO",value:"MathI/DecimalO"},{label:"3:LineI/LineO",value:"LineI/LineO"},{label:"4:LineI/DecimalO",value:"LineI/DecimalO"}] },
+    { id:"angle_unit", label:"Angle Unit", options:[{label:"1:Degree",value:"Degree"},{label:"2:Radian",value:"Radian"},{label:"3:Gradian",value:"Gradian"}] },
+    { id:"number_format", label:"Number Format", options:[{label:"1:Fix",value:"Fix",needsDigit:true},{label:"2:Sci",value:"Sci",needsDigit:true},{label:"3:Norm",value:"Norm",subOptions:[{label:"1:Norm1",value:1},{label:"2:Norm2",value:2}]}] },
+    { id:"engineering_symbols", label:"Eng Symbol", options:[{label:"1:On",value:true},{label:"2:Off",value:false}] },
+    { id:"fraction_result", label:"Fraction Res", options:[{label:"1:ab/c",value:"ab/c"},{label:"2:d/c",value:"d/c"}] },
+    { id:"stat_frequency", label:"Statistics", options:[{label:"1:Frequency On",value:true},{label:"2:Frequency Off",value:false}] },
+    { id:"spreadsheet", label:"Spreadsheet", subCategories:[{id:"spreadsheet_auto_calc",label:"Auto Calc",options:[{label:"1:On",value:true},{label:"2:Off",value:false}]},{id:"spreadsheet_show",label:"Show Cell",options:[{label:"1:Formula",value:"formula"},{label:"2:Value",value:"value"}]}] },
+    { id:"equation_complex", label:"Equation/Func", options:[{label:"1:ComplxResult On",value:true},{label:"2:ComplxResult Off",value:false}] },
+    { id:"table_mode", label:"Table", options:[{label:"1:f(x)",value:"f(x)"},{label:"2:f(x),g(x)",value:"f(x),g(x)"}] },
+    { id:"decimal_mark", label:"Decimal Mark", options:[{label:"1:Dot",value:"Dot"},{label:"2:Comma",value:"Comma"}] },
+    { id:"digit_separator", label:"Digit Sep", options:[{label:"1:On",value:true},{label:"2:Off",value:false}] },
+    { id:"multiline_font", label:"Multiline Font", options:[{label:"1:Normal Font",value:"Normal"},{label:"2:Small Font",value:"Small"}] },
+    { id:"qr_code", label:"QR Code", special:"qr" }, { id:"contrast", label:"Contrast", special:"contrast" }
+  ];
+
+  let setupSettings = { input_output:"MathI/MathO", angle_unit:"Degree", number_format:"Norm", number_format_digits:2, engineering_symbols:false, fraction_result:"ab/c", stat_frequency:true, spreadsheet_auto_calc:true, spreadsheet_show:"value", equation_complex:false, table_mode:"f(x)", decimal_mark:"Dot", digit_separator:false, multiline_font:"Normal", contrast:5 };
+  const setupState = { active:false, level:0, cursor:0, parentCursor:0, currentCat:null, currentSubCat:null, awaitingDigit:null, awaitingNorm:false };
+
+  const spreadsheetData = {
+    cells: {},
+    selectedRow: 1,
+    selectedCol: 0,
+    startRow: 1,
+    startCol: 0,
+    maxRows: 10,
+    maxCols: 6,
+    cellBuffer: '',
+  };
+  const cellSeq = {};
+
+  function resetSpreadsheetData() {
+    spreadsheetData.cells = {};
+    spreadsheetData.selectedRow = 1;
+    spreadsheetData.selectedCol = 0;
+    spreadsheetData.startRow = 1;
+    spreadsheetData.startCol = 0;
+    spreadsheetData.maxRows = 10;
+    spreadsheetData.maxCols = 6;
+    spreadsheetData.cellBuffer = '';
+  }
+
   const appState = {
     poweredOn: true, mode: 'Calculate', menuOpen: false, menuPage: 1,
     menuSelection: 0, shift: false, alpha: false, splash: false,
-    result: null, resultDisplayed: false, error: null,
+    result: null, lastAnswer: null, resultDisplayed: false, error: null,
+    isFractionMode: false, memoryValue: 0, hasMemory: false,
     base: 10, baseNBase: 10,
     insertMode: false,
     undoStack: [],
     settings: loadSavedSettings(),
-    setupState: {
-      open: false,
-      page: 1,          // 1 or 2
-      selection: 0,     // 0..3 on page 1, 0..2 on page 2
-      submenu: null,    // null | 'inputOutput' | 'angleUnit' | 'numberFormat' | 'fixPrompt' | 'sciPrompt' | 'normPrompt' | 'engSymbols' | 'fractionResult' | 'statistics' | 'statFrequency' | 'spreadsheet' | 'autoCalc' | 'showCell'
-      subSelection: 0
-    },
+    setupState,
     matrices: {
       A: { rows: 0, cols: 0, data: [] },
       B: { rows: 0, cols: 0, data: [] },
@@ -2242,16 +2328,7 @@
       cellBuffer: '',
       result: null,         // formatted result string from backend
     },
-    spreadsheet: {
-      cells: {},
-      selectedRow: 1,
-      selectedCol: 0,
-      startRow: 1,
-      startCol: 0,
-      maxRows: 10,
-      maxCols: 6,
-      cellBuffer: '',
-    },
+    spreadsheet: spreadsheetData,
     ratio: {
       phase: 'menu',      // 'menu' | 'input' | 'result'
       type: 1,            // 1: A:B=X:D, 2: A:B=C:X
@@ -2302,6 +2379,29 @@
   // Sync initial loaded settings with backend
   syncBackendSettings(appState.settings);
 
+  async function loadSetupSettings() {
+    if (window.location.protocol === 'file:') { applyContrast(); document.querySelector('.lcd')?.classList.toggle('small-font', setupSettings.multiline_font === 'Small'); return; }
+    try {
+      const res = await fetch('/setup_get');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.settings) Object.assign(setupSettings, data.settings);
+      appState.settings.inputOutput = setupSettings.input_output;
+      appState.settings.angleUnit = setupSettings.angle_unit;
+      appState.settings.numberFormat = setupSettings.number_format;
+      appState.settings.numberFormatPrecision = setupSettings.number_format_digits;
+      appState.settings.engineeringSymbols = setupSettings.engineering_symbols;
+      appState.settings.fractionResult = setupSettings.fraction_result;
+      appState.settings.statisticsFrequency = setupSettings.stat_frequency;
+      appState.settings.autoCalc = setupSettings.spreadsheet_auto_calc;
+      appState.settings.showCell = setupSettings.spreadsheet_show === 'formula' ? 'Formula' : 'Value';
+      applyContrast();
+      document.querySelector('.lcd')?.classList.toggle('small-font', setupSettings.multiline_font === 'Small');
+      renderLCD();
+    } catch (e) { applyContrast(); }
+  }
+  setTimeout(loadSetupSettings, 0);
+
   // ── SERIALIZATION ──
   function serializeSlot(slot) {
     if (!slot || !slot.items) return '';
@@ -2340,6 +2440,14 @@
     return out;
   }
   const getExpr = () => serializeSlot(rootSlot);
+
+  function prepareExpressionForEvaluation(expression) {
+    let prepared = String(expression || '');
+    prepared = prepared.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
+    prepared = prepared.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
+    prepared = prepared.replace(/\bM\b/g, String(appState.memoryValue || 0));
+    return prepared;
+  }
 
   // ── LOCAL EVALUATION BRIDGE (file:// mode) ──
   // Mirrors mvp_server.safe_evaluate_expression plus Simpson integration so the
@@ -2496,6 +2604,8 @@
       return u === 'Degree' ? rad * 180 / Math.PI : u === 'Gradian' ? rad * 200 / Math.PI : rad;
     },
     sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+    asinh: Math.asinh, acosh: (x) => { if (x < 1) throw new Error('Math ERROR'); return Math.acosh(x); },
+    atanh: (x) => { if (Math.abs(x) >= 1) throw new Error('Math ERROR'); return Math.atanh(x); },
     sqrt: (x) => { if (x < 0) throw new Error('Math ERROR'); return Math.sqrt(x); },
     log: Math.log10, log10: Math.log10, ln: Math.log,
     exp: (x) => { const r = Math.exp(x); if (!isFinite(r) && isFinite(x)) throw new Error('Math ERROR'); return r; },
@@ -2511,7 +2621,7 @@
     return Math.pow(b, ex);
   }
 
-  const _SPECIAL_FUNCS = ['integral', 'log_base', 'xroot', 'cbrt', 'sqrt'];
+  const _SPECIAL_FUNCS = ['integral', 'log_base', 'xroot', 'cbrt', 'sqrt', 'nCr', 'nPr'];
 
   function _findSpecialCall(s) {
     let best = null;
@@ -2582,6 +2692,18 @@
       } else if (name === 'cbrt') {
         if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
         rep = '(' + _reprNum(Math.pow(_evalStr(args[0]), 1 / 3)) + ')';
+      } else if (name === 'nCr' || name === 'nPr') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const n = _evalStr(args[0]), r = _evalStr(args[1]);
+        if (!Number.isInteger(n) || !Number.isInteger(r) || n < 0 || r < 0 || r > n) throw new Error('Math ERROR');
+        let value = 1;
+        if (name === 'nCr') {
+          const k = Math.min(r, n - r);
+          for (let i = 1; i <= k; i++) value = value * (n - k + i) / i;
+        } else {
+          for (let i = 0; i < r; i++) value *= n - i;
+        }
+        rep = '(' + _reprNum(value) + ')';
       } else {
         if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
         rep = '(' + _reprNum(Math.sqrt(_evalStr(args[0]))) + ')';
@@ -2597,6 +2719,19 @@
       if (c === ' ') { i++; continue; }
       if ((c >= '0' && c <= '9') || (c === '.' && s[i + 1] >= '0' && s[i + 1] <= '9')) {
         let j = i;
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         while (j < s.length && s[j] >= '0' && s[j] <= '9') j++;
         if (s[j] === '.') { j++; while (j < s.length && s[j] >= '0' && s[j] <= '9') j++; }
         if (s[j] === 'e' || s[j] === 'E') {
@@ -2868,7 +3003,8 @@
   function resetExpr() {
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
-    appState.result = null; appState.resultDisplayed = false; appState.error = null;
+    appState.result = null; appState.lastAnswer = null; appState.resultDisplayed = false; appState.error = null;
+    appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
   }
 
@@ -3065,6 +3201,12 @@
   }
   const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
   function makeCursor() { const c = el('span','lcd-cursor'); return c; }
+  function showMathError() {
+    appState.error = 'Math ERROR';
+    appState.result = null;
+    appState.resultDisplayed = false;
+    renderLCD();
+  }
 
   async function storeMatrix(name) {
     const mat = appState.matrices[name];
@@ -3081,13 +3223,12 @@
           data: mat.data
         })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!data.ok && !data.success) {
         console.warn('Matrix backend store error:', data.error);
       }
-    } catch (err) {
-      console.warn('Matrix store request failed:', err);
-    }
+    } catch (err) { showMathError(); }
   }
 
   function renderMatrixLCD() {
@@ -3187,14 +3328,18 @@
     }
   }
 
-  function storeVector(name) {
+  async function storeVector(name) {
     const v = appState.vectors[name];
     if (!v) return;
-    fetch('/api/vector/set', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vector: name, dim: v.dim, data: v.data })
-    }).catch(() => {});
+    try {
+      const response = await fetch('/api/vector/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vector: name, dim: v.dim, data: v.data })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await response.json();
+    } catch (e) { showMathError(); }
   }
 
   function renderVectorLCD() {
@@ -3297,14 +3442,17 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: si.type, data: si.rows })
-    }).catch(() => {});
+    }).then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }).catch(() => { showMathError(); });
   }
 
   function calculateStatisticsRemote() {
     const si = appState.statInput;
     fetch('/api/statistics/calculate', {method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:si.type, data:si.rows})
-    }).then(r => r.json()).then(data => { si.result=data.ok ? data.result : (data.error || 'Math ERROR'); si.phase='result'; renderLCD();
+    }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(data => { si.result=data.ok ? data.result : (data.error || 'Math ERROR'); si.phase='result'; renderLCD();
     }).catch(() => { si.result='Math ERROR'; si.phase='result'; renderLCD(); });
   }
 
@@ -3320,7 +3468,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: di.type, params })
     })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
     .then(data => {
       if (data.ok) {
         appState.distInput.result = data.result;
@@ -3372,9 +3520,8 @@
       });
       bodyEl.appendChild(typeList);
 
-      const hint = el('div', 'stat-scroll-hint');
-      hint.textContent = page === 0 ? '▼' : '▲';
-      bodyEl.appendChild(hint);
+      const maxStatPage = 1;
+      updateScrollIndicators(page > 0, page < maxStatPage, false, false, 'calc');
       return;
     }
 
@@ -3509,252 +3656,165 @@
     }
   }
 
-  function renderSetupLCD() {
-    const bodyEl = document.getElementById('lcdSetupBody');
-    if (!bodyEl) return;
-    bodyEl.innerHTML = '';
+  function renderSetup() { renderLCD(); }
 
-    const setupShift = document.getElementById('setupIndShift');
-    const setupAlpha = document.getElementById('setupIndAlpha');
-    const setupAngle = document.getElementById('setupIndAngle');
-    const setupMath = document.getElementById('setupIndMath');
-    const setupScroll = document.getElementById('setupIndScroll');
+  function applyContrast() {
+    document.documentElement.style.setProperty('--calc-contrast', Number(setupSettings.contrast) / 10);
+  }
 
-    if (setupShift) setupShift.classList.toggle('active', appState.shift);
-    if (setupAlpha) setupAlpha.classList.toggle('active', appState.alpha);
-    if (setupAngle) {
-      setupAngle.textContent = appState.settings.angleUnit === 'Degree' ? 'D' : appState.settings.angleUnit === 'Radian' ? 'R' : 'G';
-    }
-    if (setupMath) {
-      setupMath.textContent = appState.settings.inputOutput.startsWith('Math') ? 'Math' : 'Line';
-    }
-
-    const st = appState.setupState;
-
-    const selectOption = (patch) => {
-      Object.assign(appState.settings, patch);
-      saveSettings(appState.settings);
-      syncBackendSettings(appState.settings);
-      appState.setupState.open = false;
-      appState.setupState.submenu = null;
-      renderLCD();
+  function applySetupSetting(key, value) {
+    setupSettings[key] = value;
+    const legacy = {
+      input_output:'inputOutput', angle_unit:'angleUnit', number_format:'numberFormat',
+      number_format_digits:'numberFormatPrecision', engineering_symbols:'engineeringSymbols',
+      fraction_result:'fractionResult', stat_frequency:'statisticsFrequency',
+      spreadsheet_auto_calc:'autoCalc'
     };
+    if (legacy[key]) appState.settings[legacy[key]] = value;
+    if (key === 'spreadsheet_show') appState.settings.showCell = value === 'formula' ? 'Formula' : 'Value';
+    if (key === 'contrast') { applyContrast(); return; }
+    if (key === 'multiline_font') document.querySelector('.lcd')?.classList.toggle('small-font', value === 'Small');
+    saveSettings(appState.settings);
+    if (!FILE_MODE) fetch('/setup_update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key, value})})
+      .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .catch(() => { showMathError(); });
+    if (key === 'angle_unit') appState.settings.angleUnit = value;
+  }
 
-    if (st.submenu) {
-      if (setupScroll) setupScroll.textContent = '';
+  function openCategory(cat) {
+    setupState.parentCursor = setupState.cursor;
+    setupState.currentCat = cat;
+    setupState.currentSubCat = null;
+    setupState.cursor = 0;
+    setupState.awaitingDigit = null;
+    setupState.awaitingNorm = false;
+    setupState.level = cat.special === 'qr' ? 99 : cat.special === 'contrast' ? 98 : 1;
+    renderSetup();
+  }
 
-      if (st.submenu === 'inputOutput') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:MathI/MathO', '2:MathI/DecimalO', '3:LineI/LineO', '4:LineI/DecimalO'];
-        const values = ['MathI/MathO', 'MathI/DecimalO', 'LineI/LineO', 'LineI/DecimalO'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ inputOutput: values[idx] }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
+  function openSetup() {
+    setupState.active = true; setupState.level = 0; setupState.cursor = 0;
+    setupState.currentCat = null; setupState.currentSubCat = null;
+    setupState.awaitingDigit = null; setupState.awaitingNorm = false;
+    appState.menuOpen = false; renderSetup();
+  }
+
+  function restoreDisplayAfterSetup() { renderLCD(); }
+  function closeSetup() {
+    setupState.active = false; setupState.level = 0; setupState.cursor = 0;
+    setupState.currentCat = null; setupState.currentSubCat = null;
+    setupState.awaitingDigit = null; setupState.awaitingNorm = false;
+    restoreDisplayAfterSetup();
+  }
+
+  function renderSetupLCD() {
+    const body = document.getElementById('lcdSetupBody'); if (!body) return;
+    body.innerHTML = '';
+    const st = setupState;
+    const rows = (items, title='') => {
+      const wrap = el('div','setup-menu-list');
+      if (title) { const t=el('div','setup-prompt-title'); t.textContent=title; wrap.appendChild(t); }
+      items.forEach((item,i) => { const row=el('div','setup-menu-item'+(i===st.cursor?' selected':'')); row.textContent=item; wrap.appendChild(row); });
+      body.appendChild(wrap);
+    };
+    const currentValue = (cat, opt) => setupSettings[cat.id] === opt.value;
+    if (st.level === 0) {
+      const items = SETUP_MENU;
+      const itemCount = items.length;
+      const cursor = st.cursor;
+      let startIndex;
+      if (cursor <= 1) startIndex = 0;
+      else if (cursor >= itemCount - 2) startIndex = Math.max(0, itemCount - 3);
+      else startIndex = cursor - 1;
+
+      const wrap = el('div', 'setup-menu-list setup-main-menu-list');
+      for (let row = 0; row < 3; row++) {
+        const itemIndex = startIndex + row;
+        const item = items[itemIndex];
+        const menuRow = el('div', 'setup-menu-item setup-main-menu-row' + (itemIndex === cursor ? ' selected' : ''));
+        menuRow.textContent = `${itemIndex + 1}. ${item.label}`;
+        wrap.appendChild(menuRow);
       }
-
-      if (st.submenu === 'angleUnit') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Degree', '2:Radian', '3:Gradian'];
-        const values = ['Degree', 'Radian', 'Gradian'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ angleUnit: values[idx] }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'numberFormat') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Fix', '2:Sci', '3:Norm'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => {
-            if (idx === 0) { st.submenu = 'fixPrompt'; st.subSelection = 0; }
-            else if (idx === 1) { st.submenu = 'sciPrompt'; st.subSelection = 0; }
-            else if (idx === 2) { st.submenu = 'normPrompt'; st.subSelection = 0; }
-            renderLCD();
-          });
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'fixPrompt') {
-        const box = el('div', 'setup-prompt-box');
-        box.innerHTML = `
-          <div class="setup-prompt-title">Fix 0~9?</div>
-          <div class="setup-prompt-hint">Select digit 0–9</div>
-        `;
-        bodyEl.appendChild(box);
-        return;
-      }
-
-      if (st.submenu === 'sciPrompt') {
-        const box = el('div', 'setup-prompt-box');
-        box.innerHTML = `
-          <div class="setup-prompt-title">Sci 0~9?</div>
-          <div class="setup-prompt-hint">Select digit 0–9</div>
-        `;
-        bodyEl.appendChild(box);
-        return;
-      }
-
-      if (st.submenu === 'normPrompt') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Norm1', '2:Norm2'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ numberFormat: 'Norm', numberFormatPrecision: idx + 1 }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'engSymbols') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:On', '2:Off'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ engineeringSymbols: idx === 0 }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'fractionResult') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:ab/c', '2:d/c'];
-        const values = ['ab/c', 'd/c'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ fractionResult: values[idx] }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'statistics') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Frequency'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => {
-            st.submenu = 'statFrequency';
-            st.subSelection = 0;
-            renderLCD();
-          });
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'statFrequency') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:On', '2:Off'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ statisticsFrequency: idx === 0 }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'spreadsheet') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Auto Calc', '2:Show Cell'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => {
-            if (idx === 0) { st.submenu = 'autoCalc'; st.subSelection = 0; }
-            else if (idx === 1) { st.submenu = 'showCell'; st.subSelection = 0; }
-            renderLCD();
-          });
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'autoCalc') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:On', '2:Off'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ autoCalc: idx === 0 }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
-
-      if (st.submenu === 'showCell') {
-        const list = el('div', 'setup-menu-list');
-        const items = ['1:Value', '2:Formula'];
-        const values = ['Value', 'Formula'];
-        items.forEach((txt, idx) => {
-          const item = el('div', 'setup-menu-item' + (idx === st.subSelection ? ' selected' : ''));
-          item.textContent = txt;
-          item.addEventListener('click', () => selectOption({ showCell: values[idx] }));
-          list.appendChild(item);
-        });
-        bodyEl.appendChild(list);
-        return;
-      }
+       body.appendChild(wrap);
+        const maxSetupPage = Math.ceil(itemCount / 3) - 1;
+        st.page = Math.floor(startIndex / 3);
+        updateScrollIndicators(st.page > 0, st.page < maxSetupPage, false, false, 'setup');
+     } else if (st.level === 1 && st.currentCat.id === 'spreadsheet') {
+      rows(st.currentCat.subCategories.map((x,i)=>`${i+1}:${x.label}`),'Spreadsheet');
+    } else if (st.level === 1) {
+      rows(st.currentCat.options.map((opt)=>`${currentValue(st.currentCat,opt)?'▶ ':'  '}${opt.label}`),st.currentCat.label);
+    } else if (st.level === 2 && st.awaitingDigit) {
+      rows([`${st.awaitingDigit} 0~9 ?`,'0 1 2 3 4 5 6 7 8 9']);
+    } else if (st.level === 2 && st.awaitingNorm) {
+      rows(st.currentCat._normOpt.subOptions.map(x=>x.label),'Norm');
+    } else if (st.level === 2 && st.currentSubCat) {
+      rows(st.currentSubCat.options.map(opt=>`${setupSettings[st.currentSubCat.id]===opt.value?'▶ ': '  '}${opt.label}`),st.currentSubCat.label);
+    } else if (st.level === 98) {
+      rows(['Contrast', '█'.repeat(Number(setupSettings.contrast))+'░'.repeat(10-Number(setupSettings.contrast)), '◄ − − − − − − − ►']);
+    } else if (st.level === 99) {
+      const q=el('div','setup-prompt-box'); q.innerHTML='<div id="qr-tmp"></div><div>mentisai-delta.vercel.app</div>'; body.appendChild(q);
+      if (window.QRCode) new QRCode(document.getElementById('qr-tmp'), {text:'https://mentisai-delta.vercel.app/',width:120,height:120,colorDark:'#000000',colorLight:'#ffffff'});
     }
+    const angle = document.getElementById('setupIndAngle'); if(angle) angle.textContent=setupSettings.angle_unit==='Degree'?'D':setupSettings.angle_unit==='Radian'?'R':'G';
+    const math = document.getElementById('setupIndMath'); if(math) math.textContent=setupSettings.input_output.startsWith('Math')?'Math':'Line';
+  }
 
-    // Main SETUP Menu (Pages 1 and 2)
-    if (setupScroll) {
-      setupScroll.textContent = st.page === 1 ? '▼' : '▲';
+  function setupSelect(cat, option) {
+    if (!option) return;
+    if (option.needsDigit) { setupState.awaitingDigit=option.value; setupState.level=2; }
+    else if (option.subOptions) { setupState.awaitingNorm=true; cat._normOpt=option; setupState.level=2; setupState.cursor=0; }
+    else { applySetupSetting(cat.id,option.value); setupState.level=0; setupState.cursor=setupState.parentCursor; }
+    renderSetup();
+  }
+
+  function handleSetupKey(key) {
+    const st=setupState, digit=/^[0-9]$/.test(key)?Number(key):null;
+    if (key==='menu' || key==='setup') { closeSetup(); return; }
+    if (st.level===99) { st.level=0; st.cursor=st.parentCursor; renderSetup(); return; }
+    if (st.level===98) { if(key==='dpad_left') applySetupSetting('contrast',Math.max(0,Number(setupSettings.contrast)-1)); else if(key==='dpad_right') applySetupSetting('contrast',Math.min(10,Number(setupSettings.contrast)+1)); else { applyContrast(); st.level=0; st.cursor=st.parentCursor; } renderSetup(); return; }
+    if (st.level===0) {
+      if(key==='dpad_up') st.cursor=(st.cursor-1+SETUP_MENU.length)%SETUP_MENU.length;
+      else if(key==='dpad_down') st.cursor=(st.cursor+1)%SETUP_MENU.length;
+      else if(key==='dpad_right'||key==='equals') openCategory(SETUP_MENU[st.cursor]);
+      else if(key==='ac') { closeSetup(); return; }
+      else if(digit!==null && digit>0 && digit<=SETUP_MENU.length) { st.cursor=digit-1; openCategory(SETUP_MENU[digit-1]); return; }
+      renderSetup(); return;
     }
-
-    const page1Items = [
-      { text: '1:Input/Output', sub: 'inputOutput' },
-      { text: '2:Angle Unit', sub: 'angleUnit' },
-      { text: '3:Number Format', sub: 'numberFormat' },
-      { text: '4:Engineer Symbol', sub: 'engSymbols' },
-    ];
-    const page2Items = [
-      { text: '1:Fraction Result', sub: 'fractionResult' },
-      { text: '2:Statistics', sub: 'statistics' },
-      { text: '3:Spreadsheet', sub: 'spreadsheet' },
-    ];
-
-    const currentItems = st.page === 1 ? page1Items : page2Items;
-    const list = el('div', 'setup-menu-list');
-    currentItems.forEach((entry, idx) => {
-      const item = el('div', 'setup-menu-item' + (idx === st.selection ? ' selected' : ''));
-      item.textContent = entry.text;
-      item.addEventListener('click', () => {
-        st.selection = idx;
-        st.submenu = entry.sub;
-        st.subSelection = 0;
-        renderLCD();
-      });
-      list.appendChild(item);
-    });
-    bodyEl.appendChild(list);
+    if(st.level===1 && st.currentCat.id==='spreadsheet') {
+      const list=st.currentCat.subCategories;
+      if(key==='dpad_up') st.cursor=(st.cursor-1+list.length)%list.length;
+      else if(key==='dpad_down') st.cursor=(st.cursor+1)%list.length;
+      else if(key==='dpad_left'||key==='ac') { st.level=0; st.cursor=st.parentCursor; }
+      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) { st.currentSubCat=list[digit!==null?digit-1:st.cursor]; st.cursor=0; st.level=2; }
+      renderSetup(); return;
+    }
+    if(st.level===1) {
+      const list=st.currentCat.options;
+      if(key==='dpad_up') st.cursor=(st.cursor-1+list.length)%list.length;
+      else if(key==='dpad_down') st.cursor=(st.cursor+1)%list.length;
+      else if(key==='dpad_left'||key==='ac') { st.level=0; st.cursor=st.parentCursor; }
+      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) setupSelect(st.currentCat,list[digit!==null?digit-1:st.cursor]);
+      renderSetup(); return;
+    }
+    if(st.level===2 && st.awaitingDigit) {
+      if(digit!==null) { applySetupSetting('number_format',st.awaitingDigit); applySetupSetting('number_format_digits',digit); st.awaitingDigit=null; st.level=0; st.cursor=st.parentCursor; }
+      else if(key==='ac'||key==='dpad_left') { st.awaitingDigit=null; st.level=1; st.cursor=0; }
+      renderSetup(); return;
+    }
+    if(st.level===2 && st.awaitingNorm) {
+      const list=st.currentCat._normOpt.subOptions;
+      if(key==='dpad_up'||key==='dpad_down') st.cursor=(st.cursor+(key==='dpad_up'?list.length-1:1))%list.length;
+      else if(key==='ac'||key==='dpad_left') { st.awaitingNorm=false; st.level=1; st.cursor=0; }
+      else if(key==='dpad_right'||key==='equals'||digit===1||digit===2) { const opt=list[digit===1?0:digit===2?1:st.cursor]; applySetupSetting('number_format','Norm'); applySetupSetting('number_format_digits',opt.value); st.awaitingNorm=false; st.level=0; st.cursor=st.parentCursor; }
+      renderSetup(); return;
+    }
+    if(st.level===2 && st.currentSubCat) {
+      const list=st.currentSubCat.options;
+      if(key==='dpad_up'||key==='dpad_down') st.cursor=(st.cursor+(key==='dpad_up'?list.length-1:1))%list.length;
+      else if(key==='ac'||key==='dpad_left') { st.currentSubCat=null; st.level=1; st.cursor=0; }
+      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) { applySetupSetting(st.currentSubCat.id,list[digit!==null?digit-1:st.cursor].value); st.currentSubCat=null; st.level=0; st.cursor=st.parentCursor; }
+      renderSetup();
+    }
   }
 
   function renderDistributionLCD() {
@@ -3780,7 +3840,8 @@
       bodyEl.appendChild(typeList);
 
       const hint = el('div', 'dist-scroll-hint');
-      hint.textContent = page === 0 ? '▼' : '▲';
+        const maxDistPage = 1;
+        updateScrollIndicators(page > 0, page < maxDistPage, false, false, 'calc');
       bodyEl.appendChild(hint);
       return;
     }
@@ -3923,22 +3984,25 @@
       renderLCD();
       return;
     }
+    cellSeq[cellRef] = (cellSeq[cellRef] || 0) + 1;
+    const requestSeq = cellSeq[cellRef];
     try {
       const resp = await fetch('/api/spreadsheet/set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cell: cellRef, value: val })
       });
+      if (requestSeq !== cellSeq[cellRef]) return;
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
+      if (requestSeq !== cellSeq[cellRef]) return;
       if (data && data.cells) {
         appState.spreadsheet.cells = data.cells;
       } else if (data && data.data) {
         appState.spreadsheet.cells[cellRef] = data.data;
       }
       renderLCD();
-    } catch (e) {
-      console.warn('syncSpreadsheetCell error', e);
-    }
+    } catch (e) { showMathError(); }
   }
 
   async function calculateRatioRemote() {
@@ -3955,6 +4019,7 @@
           c_or_d: parseFloat(r.c_or_d || '0')
         })
       });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data && data.result !== undefined) {
         r.result = data.result;
@@ -3964,9 +4029,7 @@
         r.result = null;
       }
       renderLCD();
-    } catch (e) {
-      console.warn('calculateRatioRemote error', e);
-    }
+    } catch (e) { showMathError(); }
   }
 
   async function performConversionRemote() {
@@ -3986,6 +4049,7 @@
           value: parseFloat(cv.valueBuffer || '0')
         })
       });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data && data.result !== undefined) {
         cv.result = data.result;
@@ -3995,22 +4059,19 @@
         cv.result = null;
       }
       renderLCD();
-    } catch (e) {
-      console.warn('performConversionRemote error', e);
-    }
+    } catch (e) { showMathError(); }
   }
 
   async function performResetRemote(target) {
     if (FILE_MODE) return;
     try {
-      await fetch('/api/reset', {
+      const response = await fetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target: target })
       });
-    } catch (e) {
-      console.warn('performResetRemote error', e);
-    }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (e) { showMathError(); }
   }
 
   function renderSpreadsheetLCD() {
@@ -4024,8 +4085,8 @@
     if (sheetAlpha) sheetAlpha.classList.toggle('active', appState.alpha);
 
     const sheet = appState.spreadsheet;
-    const VISIBLE_ROWS = 4;
-    const VISIBLE_COLS = 2;
+    const VISIBLE_ROWS = 7;
+    const VISIBLE_COLS = 4;
 
     // Auto-scroll viewport to follow selected cell
     if (sheet.selectedRow < sheet.startRow) {
@@ -4354,35 +4415,74 @@
 
   // ── LCD RENDER ──
   function enterTableMode() {
-    appState.table = { phase:'function', functionExpr:'', start:'', end:'', step:'', rows:[], selectedRow:0, startRow:0, cellBuffer:'' };
+    appState.table = { phase:'function', functionExpr:'', start:'', end:'', step:'', rows:[], selectedRow:0, startRow:0, cellBuffer:'', error:null };
   }
 
   function calculateTableRemote() {
     const t = appState.table;
     fetch('/api/table/calculate', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ expression:t.functionExpr, start:Number(t.start), end:Number(t.end), step:Number(t.step) })
-    }).then(r => r.json()).then(data => {
+    }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(data => {
       if (!data.ok) throw new Error(data.error || 'Math ERROR');
       t.rows = data.rows.map(row => ({x:localFormat(row.x), value:localFormat(row.f)}));
+      t.error = null;
       t.selectedRow = 0; t.startRow = 0; t.phase = 'display'; renderLCD();
-    }).catch(() => { t.rows = []; t.phase = 'display'; renderLCD(); });
+    }).catch(() => { t.error = 'Math ERROR'; t.phase = 'display'; renderLCD(); });
   }
 
   function solveEquationRemote() {
     const eq = appState.equation;
     const kind = eq.selectedType;
     const coefficients = kind === 'simultaneous' ? eq.coefficientValues : (eq.coefficientValues[0] || []);
-    fetch('/api/equation/solve', {method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({kind, coefficients, count:kind === 'simultaneous' ? eq.numberOfEquations : eq.polynomialDegree})
-    }).then(r => r.json()).then(data => { eq.resultState = data.ok ? data.result : (data.error || 'Math ERROR'); eq.phase='result'; renderLCD();
-    }).catch(() => { eq.resultState='Math ERROR'; eq.phase='result'; renderLCD(); });
+    const request = {kind, coefficients, count:kind === 'simultaneous' ? eq.numberOfEquations : eq.polynomialDegree};
+    console.debug('[EQUATION-TRACE-REQUEST]', JSON.stringify({url:'/api/equation/solve', method:'POST', body:request}));
+    fetch('/api/equation/solve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(request)})
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        console.debug('[EQUATION-TRACE-RESPONSE]', JSON.stringify({status:response.status, body:data}));
+        return {response, data};
+      })
+      .then(({response, data}) => {
+        if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        console.debug('[EQUATION-TRACE-NORMALIZE]', JSON.stringify({input:data.result, type:Array.isArray(data.result) ? 'array' : typeof data.result}));
+        eq.resultState = data.result;
+        eq.phase='result'; renderLCD();
+      })
+      .catch(error => {
+        console.error('[EQUATION-TRACE-ERROR]', error);
+        eq.resultState='Math ERROR'; eq.phase='result'; renderLCD();
+      });
+  }
+
+  function formatEquationRoot(root) {
+    let real, imag;
+    if (root && typeof root === 'object' && !Array.isArray(root)) {
+      real = Number(root.real); imag = Number(root.imag || 0);
+    } else if (Array.isArray(root)) {
+      real = Number(root[0]); imag = Number(root[1] || 0);
+    } else {
+      real = Number(root); imag = 0;
+    }
+    if (!Number.isFinite(real) || !Number.isFinite(imag)) throw new Error('Math ERROR');
+    if (Math.abs(real) < 1e-12) real = 0;
+    if (Math.abs(imag) < 1e-12) return localFormat(real);
+    const imaginary = Math.abs(imag) === 1 ? 'i' : `${localFormat(Math.abs(imag))}i`;
+    if (real === 0) return imag < 0 ? `-${imaginary}` : imaginary;
+    return `${localFormat(real)} ${imag < 0 ? '-' : '+'} ${imaginary}`;
+  }
+
+  function formatEquationResult(eq) {
+    if (typeof eq.resultState === 'string') return eq.resultState;
+    if (eq.selectedType !== 'polynomial' || !Array.isArray(eq.resultState)) return JSON.stringify(eq.resultState ?? '');
+    return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${formatEquationRoot(root)}`).join('\n');
   }
 
   function solveInequalityRemote() {
     const iq = appState.inequality;
     fetch('/api/inequality/solve', {method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({degree:iq.degree, operator:iq.operators[iq.operatorIndex], coefficients:iq.coefficients})
-    }).then(r => r.json()).then(data => { iq.result = data.ok ? (data.solution || data.result) : (data.error || 'Math ERROR'); iq.phase='result'; renderLCD();
+    }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(data => { iq.result = data.ok ? (data.solution || data.result) : (data.error || 'Math ERROR'); iq.phase='result'; renderLCD();
     }).catch(() => { iq.result='Math ERROR'; iq.phase='result'; renderLCD(); });
   }
 
@@ -4403,6 +4503,12 @@
     const t = appState.table;
     document.getElementById('tableIndShift')?.classList.toggle('active', appState.shift);
     document.getElementById('tableIndAlpha')?.classList.toggle('active', appState.alpha);
+    if (t.error) {
+      const error = el('div', 'table-footer');
+      error.textContent = 'Math ERROR';
+      body.appendChild(error);
+      return;
+    }
     if (t.phase !== 'display') {
       const view = el('div', 'table-input-view'), title = el('div');
       title.textContent = t.phase === 'function' ? 'f(x) =' : t.phase === 'start' ? 'Start value' : t.phase === 'end' ? 'End value' : 'Step value';
@@ -4488,12 +4594,30 @@
     } else if (eq.phase === 'polynomialInput') {
       const t=el('div','eq-template'); t.textContent=equationTemplate(eq); view.appendChild(t); const names=['a','b','c','d','e'].slice(0,eq.polynomialDegree+1); const vals=eq.coefficientValues[0]||[];
       names.forEach((name,i)=>{const row=el('div','eq-coeff-row'+(i===eq.currentCoefficient?' active':''));row.innerHTML=`<span>${name} =</span><span>${i===eq.currentCoefficient&&eq.inputBuffer?eq.inputBuffer:(vals[i]??'')}<span class="lcd-cursor"></span></span>`;view.appendChild(row);});
-    } else { const result=el('div','eq-result'); result.innerHTML=eq.selectedType==='polynomial' ? `<div>${formatPolynomial(eq)}</div><div>Solution</div><div>${JSON.stringify(eq.resultState || '')}</div>` : `<div>Solution</div><div>${JSON.stringify(eq.resultState || '')}</div>`; view.appendChild(result); }
+    } else {
+      const result=el('div','eq-result');
+      const expression=el('div'); expression.textContent=eq.selectedType==='polynomial' ? formatPolynomial(eq) : '';
+      const title=el('div'); title.textContent='Solution';
+      const solution=el('div','eq-solution');
+      try { solution.textContent=formatEquationResult(eq); }
+      catch (error) { console.error('[EQUATION] render failed', error); solution.textContent='Math ERROR'; }
+      result.append(expression, title, solution); view.appendChild(result);
+    }
     body.appendChild(view);
   }
 
-  function renderLCD() {
-    const lcdEl = document.querySelector('.lcd');
+  function updateScrollIndicators(canUp, canDown, canLeft, canRight, prefix) {
+    prefix = prefix || 'calc';
+    const set = (id, visible) => { const e = document.getElementById(id); if (e) e.style.display = visible ? '' : 'none'; };
+    set(prefix+'ScrollIndUp',    canUp);
+    set(prefix+'ScrollIndDown',  canDown);
+    set(prefix+'ScrollIndLeft',  canLeft);
+    set(prefix+'ScrollIndRight', canRight);
+  }
+
+   function renderLCD() {
+     updateScrollIndicators(false, false, false, false, 'calc');
+     const lcdEl = document.querySelector('.lcd');
     const splashEl = document.getElementById('lcdSplash');
     const menuEl = document.getElementById('lcdMenu');
     const calcEl = document.getElementById('lcdCalc');
@@ -4559,7 +4683,7 @@
       return;
     }
 
-    if (appState.setupState && appState.setupState.open) {
+    if (setupState.active) {
       hideAllScreens();
       if (setupEl) {
         setupEl.style.display = 'flex';
@@ -4569,6 +4693,7 @@
     }
 
     if (appState.menuOpen) {
+      const maxMenuPage = 2;
       hideAllScreens();
       if (menuEl) menuEl.style.display = 'flex';
       document.querySelectorAll('.mode-page').forEach(p => p.classList.remove('active'));
@@ -4580,7 +4705,7 @@
         ? ['1:Calculate','2:Complex','3:Base-N','4:Matrix','5:Vector','6:Statistics','7:Distribution','8:Spreadsheet']
         : ['9:Table','10:Equation/Func','11:Inequality','12:Ratio'];
       document.getElementById('lcdMenuLabel').textContent = modeNames[appState.menuSelection] || '1:Calculate';
-      document.getElementById('lcdPageIndicator').textContent = appState.menuPage === 1 ? '▼' : '▲';
+      updateScrollIndicators(false, false, appState.menuPage > 0, appState.menuPage < maxMenuPage, 'menu');
       return;
     }
 
@@ -4667,13 +4792,14 @@
     // Status bar
     document.getElementById('indShift').classList.toggle('active', appState.shift);
     document.getElementById('indAlpha').classList.toggle('active', appState.alpha);
+    updateMemoryIndicator();
     const modeTags = { 'Complex':'CMPLX','Base-N':'BASE','Matrix':'MAT','Vector':'VCT','Statistics':'STAT','Equation/Func':'EQN','Table':'TABLE','Distribution':'DIST','Inequality':'INEQ' };
     const mt = modeTags[appState.mode];
     const indMode = document.getElementById('indMode');
     if (mt) { indMode.textContent = mt; indMode.classList.add('active'); } else { indMode.classList.remove('active'); }
     const indBase = document.getElementById('indBase');
-    const baseLabels = { 2:'BIN', 8:'OCT', 10:'DEC', 16:'HEX' };
-    if (appState.mode === 'Base-N') { indBase.textContent = baseLabels[appState.base] || ''; indBase.style.display = ''; } else { indBase.style.display = 'none'; }
+    const baseLabels = { 2:'[BIN]', 8:'[OCT]', 10:'[DEC]', 16:'[HEX]' };
+    if (appState.mode === 'Base-N') { indBase.textContent = baseLabels[appState.baseNBase] || ''; indBase.classList.add('active'); indBase.style.display = ''; } else { indBase.classList.remove('active'); indBase.style.display = 'none'; }
     const indAngle = document.getElementById('indAngle');
     if (indAngle) {
       indAngle.textContent = appState.settings.angleUnit === 'Degree' ? 'D' : appState.settings.angleUnit === 'Radian' ? 'R' : 'G';
@@ -4703,19 +4829,24 @@
       if (cl > viewport.scrollLeft + vw - 20) viewport.scrollLeft = cl - vw + 30;
       else if (cl < viewport.scrollLeft + 10) viewport.scrollLeft = Math.max(0, cl - 20);
     }
-    document.getElementById('indLeftOverflow').style.display = viewport.scrollLeft > 5 ? 'inline' : 'none';
-    document.getElementById('indRightOverflow').style.display =
-      (exprContent.scrollWidth - viewport.scrollLeft - viewport.clientWidth > 5) ? 'inline' : 'none';
+    const canUp = false;
+    const canDown = false;
+    const canLeft = viewport.scrollLeft > 5;
+    const canRight = exprContent.scrollWidth - viewport.scrollLeft - viewport.clientWidth > 5;
+    updateScrollIndicators(canUp, canDown, canLeft, canRight, 'calc');
   }
 
   // ── BACKEND COMMUNICATION ──
+  let backendKeySequence = 0;
+
   async function evaluate() {
     const expr = getExpr();
-    if (!expr) { appState.result = '0'; appState.resultDisplayed = true; renderLCD(); return; }
+    if (!expr) { appState.result = '0'; appState.lastAnswer = '0'; appState.resultDisplayed = true; renderLCD(); return; }
+    const evalExpr = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
       try {
-        const r = localEvaluate(expr);
-        appState.result = r; appState.resultDisplayed = true; appState.error = null;
+        const r = localEvaluate(evalExpr);
+        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
       } catch (e) {
         appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
       }
@@ -4725,11 +4856,12 @@
     try {
       const r = await fetch('/api/key', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ key:'equals', expression: expr, shift: appState.shift, alpha: appState.alpha })
+        body: JSON.stringify({ key:'equals', expression: evalExpr, shift: appState.shift, alpha: appState.alpha })
       });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const s = await r.json();
       if (s.result !== undefined && s.result !== null) {
-        appState.result = s.result; appState.resultDisplayed = true; appState.error = null;
+        appState.result = s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
       } else if (s.error) {
         appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
       }
@@ -4737,11 +4869,12 @@
       if (s.modeName) appState.mode = s.modeName;
       if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
       renderLCD();
-    } catch(e) { console.warn('eval failed', e); }
+    } catch(e) { showMathError(); }
   }
 
   async function backendKey(key, extra) {
     if (FILE_MODE) { renderLCD(); return; }
+    const requestSequence = ++backendKeySequence;
     // Handle base_switch locally (no backend call needed — but we still need to sync backend base)
     // FIX 1: removed early-return for base_switch so the backend updates its base_n_base too
     // (kept local immediate update for snappy UI, then let the backend confirm below)
@@ -4756,7 +4889,12 @@
         body: JSON.stringify({ key, shift: appState.shift, alpha: appState.alpha,
           menuPage: appState.menuPage, menuIndex: appState.menuSelection, ...extra })
       });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const s = await r.json();
+      if (requestSequence !== backendKeySequence) {
+        console.debug('[KEY-TRACE-DROP]', JSON.stringify({key, requestSequence, latestSequence:backendKeySequence}));
+        return;
+      }
       if (s.state === 'OFF') { appState.poweredOn = false; }
       else if (s.state === 'MENU') { appState.menuOpen = true; if (s.menuPage) appState.menuPage = s.menuPage; if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex; }
       else if (s.modeName) {
@@ -4787,11 +4925,168 @@
       // FIX 3: if backend returned a reconverted result (e.g. after base switch), display it
       if (s.result !== undefined && s.result !== null && s.resultDisplayed) {
         appState.result = s.result;
+        appState.lastAnswer = s.result;
         appState.resultDisplayed = true;
         appState.error = null;
       }
       renderLCD();
-    } catch(e) { console.warn('backend key failed', e); }
+    } catch(e) { showMathError(); }
+  }
+
+  function updateMemoryIndicator() {
+    const indicator = document.getElementById('indMemory');
+    if (indicator) indicator.classList.toggle('active', appState.hasMemory === true);
+  }
+
+  function flashStatusIndicator(label) {
+    const indicator = document.getElementById('indMemory');
+    if (!indicator) return;
+    indicator.textContent = label;
+    indicator.classList.add('active');
+    clearTimeout(flashStatusIndicator.timer);
+    flashStatusIndicator.timer = setTimeout(() => {
+      indicator.textContent = 'M';
+      updateMemoryIndicator();
+    }, 700);
+  }
+
+  function openOptnPanel() {
+    const main = document.getElementById('optn-main-menu');
+    const hyperbolic = document.getElementById('optn-hyp-menu');
+    const angle = document.getElementById('optn-angle-menu');
+    if (main) main.style.display = 'block';
+    if (hyperbolic) hyperbolic.style.display = 'none';
+    if (angle) angle.style.display = 'none';
+    const panel = document.getElementById('optn-panel');
+    if (panel) panel.style.display = 'block';
+  }
+
+  function optnSelectCategory(num) {
+    const main = document.getElementById('optn-main-menu');
+    const hyperbolic = document.getElementById('optn-hyp-menu');
+    const angle = document.getElementById('optn-angle-menu');
+    if (main) main.style.display = 'none';
+    if (hyperbolic) hyperbolic.style.display = num === 1 ? 'block' : 'none';
+    if (angle) angle.style.display = num === 2 ? 'block' : 'none';
+  }
+
+  function handleOptnKey(key) {
+    const panel = document.getElementById('optn-panel');
+    if (!panel || panel.style.display !== 'block') return false;
+    if (key === 'ac') { closeOptnPanel(); return true; }
+    if (key === 'optn') { closeOptnPanel(); return true; }
+    if (key === 'dpad_left') { openOptnPanel(); return true; }
+    const main = document.getElementById('optn-main-menu');
+    const hyperbolic = document.getElementById('optn-hyp-menu');
+    const angle = document.getElementById('optn-angle-menu');
+    const n = Number.parseInt(key, 10);
+    if (main?.style.display !== 'none' && (n === 1 || n === 2)) {
+      optnSelectCategory(n);
+      return true;
+    }
+    if (hyperbolic?.style.display !== 'none' && n >= 1 && n <= 6) {
+      insertOptn(['sinh(', 'cosh(', 'tanh(', 'asinh(', 'acosh(', 'atanh('][n - 1]);
+      return true;
+    }
+    if (angle?.style.display !== 'none' && n >= 1 && n <= 3) {
+      insertOptn(['°', 'r', 'g'][n - 1]);
+      return true;
+    }
+    return true;
+  }
+
+  function closeOptnPanel() {
+    const panel = document.getElementById('optn-panel');
+    if (panel) panel.style.display = 'none';
+  }
+
+  function insertOptn(text) {
+    insertToken(text);
+    closeOptnPanel();
+  }
+
+  function answerAsNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    const text = String(value ?? '').trim();
+    const mixed = text.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
+    if (mixed) {
+      const whole = Number(mixed[1]);
+      const sign = whole < 0 ? -1 : 1;
+      return whole + sign * Number(mixed[2]) / Number(mixed[3]);
+    }
+    const fraction = text.match(/^(-?\d+)\/(\d+)$/);
+    if (fraction) return Number(fraction[1]) / Number(fraction[2]);
+    return Number.parseFloat(text);
+  }
+
+  function fractionString(value, mixed = false) {
+    const sign = value < 0 ? -1 : 1;
+    let numerator = Math.round(Math.abs(value) * 1000);
+    let denominator = 1000;
+    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+    const divisor = gcd(numerator, denominator);
+    numerator = sign * (numerator / divisor);
+    denominator /= divisor;
+    if (mixed && Math.abs(numerator) >= denominator) {
+      const whole = Math.trunc(numerator / denominator);
+      const remainder = Math.abs(numerator) % denominator;
+      return remainder === 0 ? String(whole) : `${whole} ${remainder}/${denominator}`;
+    }
+    return `${numerator}/${denominator}`;
+  }
+
+  async function toggleAnswerFormat(mixed = false) {
+    if (!appState.resultDisplayed || appState.result === null) return;
+    const current = String(appState.result);
+    const numeric = answerAsNumber(current);
+    if (!Number.isFinite(numeric)) return;
+    try {
+      if (mixed || !appState.isFractionMode) {
+        if (FILE_MODE) {
+          appState.result = fractionString(numeric, mixed);
+        } else {
+          const response = await fetch('/api/fraction', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ value: numeric, mixed })
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          if (!data.success) throw new Error(data.error || 'Math ERROR');
+        appState.result = data.result;
+        appState.lastAnswer = data.result;
+        }
+        appState.resultDisplayed = true;
+        appState.isFractionMode = true;
+      } else {
+        if (FILE_MODE) {
+          appState.result = localEvaluate(current);
+        } else {
+          const response = await fetch('/api/evaluate', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ expression: current })
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          if (data.result === undefined || data.result === null) throw new Error(data.error || 'Math ERROR');
+          appState.result = data.result;
+          appState.lastAnswer = data.result;
+        }
+        appState.resultDisplayed = true;
+        appState.isFractionMode = false;
+      }
+      renderLCD();
+    } catch (e) {
+      showMathError();
+    }
+  }
+
+  function updateMemory(delta) {
+    const currentAnswer = answerAsNumber(appState.lastAnswer ?? appState.result);
+    if (!appState.resultDisplayed || !Number.isFinite(currentAnswer)) return;
+    appState.memoryValue = (appState.memoryValue || 0) + delta * currentAnswer;
+    appState.hasMemory = delta > 0 ? true : appState.memoryValue !== 0;
+    flashStatusIndicator(delta > 0 ? 'M+' : 'M-');
+    updateMemoryIndicator();
   }
 
 
@@ -4801,16 +5096,26 @@
     const isShift = appState.shift;
     const isAlpha = appState.alpha;
 
+    if (setupState.active) { handleSetupKey(rawKey); return; }
+
     // STEP 3: In Base-N HEX mode, allow A-F keys without ALPHA modifier
     const useAlphaForHex = appState.mode === 'Base-N' && appState.baseNBase === 16 && btn.dataset.alpha && 'ABCDEF'.includes(btn.dataset.alpha);
     const action = (isAlpha || useAlphaForHex) && btn.dataset.alpha ? btn.dataset.alpha
       : isShift && btn.dataset.shift ? btn.dataset.shift : rawKey;
+
+    const shiftIndicatorActive = document.getElementById('indShift')?.classList.contains('active');
+    if (rawKey === 'setup' && (isShift || shiftIndicatorActive || action === 'SETUP')) {
+      appState.shift = false;
+      openSetup();
+      return;
+    }
 
     if (rawKey !== 'shift' && rawKey !== 'alpha') { appState.shift = false; appState.alpha = false; }
 
     if (rawKey === 'on') {
       appState.poweredOn = true; appState.splash = true; appState.menuOpen = false;
       appState.mode = 'Calculate';
+      resetSpreadsheetData();
       appState.matrixInput = { active: null, phase: null, row: 0, col: 0, tempRows: 0, tempCols: 0, dimBuffer: '', cellBuffer: '' };
       appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
       appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
@@ -4828,6 +5133,7 @@
     if (appState.menuOpen && rawKey === 'ac') return;
     if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); backendKey('shift'); return; }
     if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); backendKey('alpha'); return; }
+    if (!isShift && !isAlpha && handleOptnKey(rawKey)) return;
 
     // SHIFT + 7 -> CONSTANTS
     if ((isShift && rawKey === '7') || action === 'CONST') {
@@ -4914,6 +5220,8 @@
             appState.vectors = { A: { dim: 0, data: [] }, B: { dim: 0, data: [] }, C: { dim: 0, data: [] }, D: { dim: 0, data: [] } };
             appState.statistics = { type: 0, data: [] };
             appState.distribution = { type: 0, params: {}, result: null };
+            appState.memoryValue = 0;
+            appState.hasMemory = false;
             resetExpr();
             backendKey('ac', { reset: 'memory' });
             performResetRemote('memory');
@@ -4927,7 +5235,9 @@
             appState.vectors = { A: { dim: 0, data: [] }, B: { dim: 0, data: [] }, C: { dim: 0, data: [] }, D: { dim: 0, data: [] } };
             appState.statistics = { type: 0, data: [] };
             appState.distribution = { type: 0, params: {}, result: null };
-            appState.spreadsheet = { cells: {}, selectedRow: 1, selectedCol: 0, startRow: 1, startCol: 0, maxRows: 10, maxCols: 6, cellBuffer: '' };
+            appState.memoryValue = 0;
+            appState.hasMemory = false;
+            resetSpreadsheetData();
             appState.ratio = { phase: 'menu', type: 1, a: '', b: '', c_or_d: '', activeField: 0, cellBuffer: '', result: null, error: null };
             resetExpr();
             backendKey('ac', { reset: 'all' });
@@ -5109,14 +5419,9 @@
     }
 
     // SHIFT + MENU -> SETUP
-    if ((isShift && (rawKey === 'setup' || rawKey === 'menu')) || action === 'SETUP') {
-      appState.setupState.open = true;
-      appState.setupState.page = 1;
-      appState.setupState.selection = 0;
-      appState.setupState.submenu = null;
-      appState.setupState.subSelection = 0;
-      appState.menuOpen = false;
-      renderLCD();
+    if (isShift && rawKey === 'setup') {
+      appState.shift = false;
+      openSetup();
       return;
     }
 
@@ -5575,16 +5880,27 @@
       }
       if (eq.phase === 'simultaneousInput' || eq.phase === 'polynomialInput') {
         const rows=eq.selectedType==='simultaneous'?eq.numberOfEquations:1, cols=eq.selectedType==='simultaneous'?eq.numberOfEquations+1:eq.polynomialDegree+1;
-        const commit=()=>{if(eq.inputBuffer!==''){if(!eq.coefficientValues[eq.currentEquation])eq.coefficientValues[eq.currentEquation]=[];eq.coefficientValues[eq.currentEquation][eq.currentCoefficient]=eq.inputBuffer;eq.inputBuffer='';}};
+        const commit=()=>{if(eq.inputBuffer!==''){if(!eq.coefficientValues[eq.currentEquation])eq.coefficientValues[eq.currentEquation]=[];eq.coefficientValues[eq.currentEquation][eq.currentCoefficient]=Number(eq.inputBuffer);eq.inputBuffer='';}};
         if (/^[0-9]$/.test(rawKey)) eq.inputBuffer += rawKey;
         else if (rawKey === 'decimal' && !eq.inputBuffer.includes('.')) eq.inputBuffer=(eq.inputBuffer||'0')+'.';
-        else if (rawKey === 'negate') eq.inputBuffer=eq.inputBuffer.startsWith('-')?eq.inputBuffer.slice(1):'-'+eq.inputBuffer;
+        else if (rawKey === 'negate' || rawKey === 'minus') {
+          eq.inputBuffer=eq.inputBuffer.startsWith('-')?eq.inputBuffer.slice(1):'-'+eq.inputBuffer;
+          console.debug('[EQUATION-TRACE-MINUS]', JSON.stringify({rawKey, inputBuffer:eq.inputBuffer, type:typeof eq.inputBuffer}));
+        }
         else if (rawKey === 'del') eq.inputBuffer=eq.inputBuffer.slice(0,-1);
         else if (rawKey === 'dpad_up') {commit(); eq.currentEquation=Math.max(0,eq.currentEquation-1);}
         else if (rawKey === 'dpad_down') {commit(); eq.currentEquation=Math.min(rows-1,eq.currentEquation+1);}
         else if (rawKey === 'dpad_left') {commit(); eq.currentCoefficient=Math.max(0,eq.currentCoefficient-1);}
         else if (rawKey === 'dpad_right') {commit(); eq.currentCoefficient=Math.min(cols-1,eq.currentCoefficient+1);}
-        else if (rawKey === 'equals') {commit(); if(eq.currentCoefficient<cols-1)eq.currentCoefficient++; else if(eq.currentEquation<rows-1){eq.currentEquation++;eq.currentCoefficient=0;} else {solveEquationRemote(); return;} }
+        else if (rawKey === 'equals') {
+          commit();
+          if (eq.currentCoefficient<cols-1) eq.currentCoefficient++;
+          else if (eq.currentEquation<rows-1) { eq.currentEquation++; eq.currentCoefficient=0; }
+          else {
+            console.debug('[EQUATION-TRACE-STATE]', JSON.stringify({degree:eq.polynomialDegree, coefficients:eq.coefficientValues, types:eq.coefficientValues.map(row=>row.map(value=>typeof value))}));
+            solveEquationRemote(); return;
+          }
+        }
         renderLCD(); return;
       }
       if (eq.phase === 'result') return;
@@ -6174,7 +6490,13 @@
       }
 
       if (key === 'ac') {
-        sheet.cellBuffer = '';
+        resetSpreadsheetData();
+        Object.keys(cellSeq).forEach(ref => { cellSeq[ref] += 1; });
+        if (!FILE_MODE) {
+          fetch('/api/spreadsheet/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+            .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+            .catch(() => { showMathError(); });
+        }
         renderLCD();
         return;
       }
@@ -6207,7 +6529,10 @@
         return;
       }
       if (key === 'equals') {
-        if (sheet.cellBuffer !== '') commitSpreadsheetBuffer();
+        if (sheet.cellBuffer.trim() !== '') {
+          commitSpreadsheetBuffer();
+          sheet.selectedRow = Math.min(sheet.selectedRow + 1, sheet.maxRows);
+        }
         renderLCD();
         return;
       }
@@ -6406,7 +6731,7 @@
     if (rawKey === 'dpad_right') { moveCursorRight(); return; }
     if (rawKey === 'dpad_up') { moveCursorUp(); return; }
     if (rawKey === 'dpad_down') { moveCursorDown(); return; }
-    if (rawKey === 'ac') { resetExpr(); renderLCD(); backendKey('ac'); return; }
+    if (rawKey === 'ac') { closeOptnPanel(); resetExpr(); renderLCD(); backendKey('ac'); return; }
     if (rawKey === 'del') { deleteAtCursor(); return; }
     if (rawKey === 'equals') { evaluate(); return; }
 
@@ -6423,7 +6748,7 @@
     if (rawKey === 'sqrt') { isShift ? insertRadical(true,false) : insertRadical(false,false); return; }
     if (rawKey === 'power') { isShift ? insertRadical(false,true) : insertPower(null); return; }
     if (rawKey === 'square') {
-      if (appState.mode === 'Base-N' && isShift) { appState.base = 16; renderLCD(); backendKey('base_switch', {base: 16}); return; }
+      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 16; renderLCD(); backendKey('base_switch', {base: 16}); return; }
       isShift ? insertPower('3') : insertPower('2'); return;
     }
     if (rawKey === 'inverse') {
@@ -6438,25 +6763,49 @@
     }
     if (rawKey === 'integral') { isShift ? insertToken('\u03a3(') : insertIntegral(); return; }
     if (rawKey === 'log') {
-      if (appState.mode === 'Base-N' && isShift) { appState.base = 2; renderLCD(); backendKey('base_switch', {base: 2}); return; }
+      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 2; renderLCD(); backendKey('base_switch', {base: 2}); return; }
       isShift ? insertToken('10^(') : insertLog(); return;
     }
     if (rawKey === 'ln') {
-      if (appState.mode === 'Base-N' && isShift) { appState.base = 8; renderLCD(); backendKey('base_switch', {base: 8}); return; }
+      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 8; renderLCD(); backendKey('base_switch', {base: 8}); return; }
       insertToken(isShift ? 'e^(' : 'ln('); return;
     }
 
     if (rawKey === 'sin') {
-      if (appState.mode === 'Base-N' && isShift) { appState.base = 10; renderLCD(); backendKey('base_switch', {base: 10}); return; }
-      insertToken(isShift ? 'sin\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'D') : 'sin('); return;
+      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 10; renderLCD(); backendKey('base_switch', {base: 10}); return; }
+      insertToken(isShift ? 'sin\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'A' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'D')) : 'sin('); return;
     }
-    if (rawKey === 'cos') { insertToken(isShift ? 'cos\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'E') : 'cos('); return; }
-    if (rawKey === 'tan') { insertToken(isShift ? 'tan\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? 'F' : 'tan('); return; }
+    if (rawKey === 'cos') { insertToken(isShift ? 'cos\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'E' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'E')) : 'cos('); return; }
+    if (rawKey === 'tan') { insertToken(isShift ? 'tan\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'F' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'F')) : 'tan('); return; }
 
     if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
     if (rawKey === 'ans') { insertToken(isAlpha ? 'e' : 'Ans'); return; }
     if (rawKey === 'variable') { insertToken(isShift ? 'd/dx(' : 'x'); return; }
-    if (rawKey === 'negate') { insertToken((isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.base < 16 ? '' : 'A') : '(-'); return; }
+    if (rawKey === 'negate') {
+      if (isShift) insertToken('log(');
+      else if (isAlpha || useAlphaForHex) insertToken('A');
+      else insertToken('-');
+      return;
+    }
+    if (rawKey === 's_to_d') {
+      if (isAlpha) insertToken('y');
+      else toggleAnswerFormat(isShift);
+      return;
+    }
+    if (rawKey === 'm_plus') {
+      if (isAlpha) insertToken('M');
+      else updateMemory(isShift ? -1 : 1);
+      return;
+    }
+    if (rawKey === 'optn') {
+      if (isShift) {
+        window.open('https://mentisai-delta.vercel.app/', '_blank');
+      } else {
+        const panel = document.getElementById('optn-panel');
+        if (panel?.style.display === 'block') closeOptnPanel(); else openOptnPanel();
+      }
+      return;
+    }
     if (rawKey === 'left_paren') { insertToken(isShift ? 'Abs(' : '('); return; }
     if (rawKey === 'right_paren') { insertToken(isAlpha ? 'x' : ')'); return; }
 
@@ -6466,12 +6815,12 @@
       'decimal': isShift ? 'Ran#' : isAlpha ? 'RanInt(' : '.',
       'plus': isShift ? 'Pol(' : '+',
       'minus': isShift ? 'Rec(' : '\u2212',
-      'multiply': isShift ? 'nPr' : '\u00d7',
-      'divide': isShift ? 'nCr' : '\u00f7',
+      'multiply': isShift ? 'P' : '\u00d7',
+      'divide': isShift ? 'C' : '\u00f7',
     };
     if (tkMap[rawKey] !== undefined) {
       const tok = tkMap[rawKey];
-      if (appState.mode === 'Base-N' && /^[0-9]$/.test(tok) && parseInt(tok) >= appState.base) return;
+      if (appState.mode === 'Base-N' && /^[0-9]$/.test(tok) && parseInt(tok) >= appState.baseNBase) return;
       insertToken(tok);
       return;
     }
@@ -6480,7 +6829,9 @@
   document.querySelectorAll('[data-key]').forEach(btn => {
     btn.addEventListener('click', () => handleKey(btn));
   });
-
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeOptnPanel();
+  });
   renderLCD();
 </script>
 
