@@ -1643,6 +1643,11 @@
             <div class="lcd-expr-content" id="lcdExprContent"></div>
           </div>
           <div class="lcd-result-line" id="lcdResultLine"></div>
+          <div id="qr-panel" class="menu-overlay" style="display:none; text-align:center;">
+            <div style="font-weight:700; font-size:10px; margin-bottom:2px;">Mentis QR</div>
+            <div id="lcdQrBox" style="display:flex; justify-content:center;"></div>
+            <div style="font-size:8px; margin-top:2px; word-break:break-all;">https://mentisai-delta.vercel.app/</div>
+          </div>
           <div id="optn-panel" class="menu-overlay" style="display:none;">
             <div id="optn-main-menu">
               <div class="menu-item" onclick="optnSelectCategory(1)">1&nbsp;&nbsp;Hyperbolic</div>
@@ -1869,7 +1874,7 @@
         <div></div>
         <div class="bw">
           <span class="lbl"><span class="shift-mark">Σ</span><span class="alpha-mark">:</span></span>
-          <button class="b math-template" data-shift="Σ" data-alpha=":" data-key="integral" aria-label="integral">
+          <button class="b math-template" data-shift="d/dx" data-alpha=":" data-key="integral" aria-label="integral">
             <span class="glyph int-glyph">
               <span class="ibox top"></span><span class="int-sign">∫</span>
               <span class="ibox bottom"></span><span class="ibox arg"></span>
@@ -1878,7 +1883,7 @@
         </div>
         <div class="bw">
           <span class="lbl"><span class="shift-mark">d/dx</span></span>
-          <button class="b variable" data-shift="d/dx" data-key="variable">x</button>
+          <button class="b variable" data-shift="Sigma" data-key="variable">x</button>
         </div>
       </div>
 
@@ -1942,9 +1947,9 @@
 
       <div class="row">
         <div class="bw"><span class="lbl"><span class="shift-mark">RECALL</span></span><button class="b" data-shift="RECALL" data-key="sto">STO</button></div>
-        <div class="bw"><span class="lbl"><span class="eng-arrows"><span class="left">←</span><span class="right">→</span></span></span><button class="b" data-shift="ENG_LEFT" data-key="eng">ENG</button></div>
+        <div class="bw"><span class="lbl"><span class="eng-arrows"><span class="left">←</span><span class="right">→</span></span></span><button class="b" data-shift="ENG_LEFT" data-alpha="i" data-key="eng">ENG</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">Abs</span></span><button class="b" data-shift="Abs" data-key="left_paren">(</button></div>
-        <div class="bw"><span class="lbl"><span class="alpha-mark">x</span></span><button class="b" data-alpha="x" data-key="right_paren">)</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">x</span></span><button class="b" data-shift="comma" data-alpha="x" data-key="right_paren">)</button></div>
         <div class="bw"><span class="lbl"><span class="sd-legend"><span class="shift-mark">a b/c↔d/c</span><span class="alpha-mark">y</span></span></span><button class="b" data-shift="fraction_toggle" data-alpha="y" data-key="s_to_d">S⇔D</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">M−</span> <span class="alpha-mark">M</span></span><button class="b" data-shift="M-" data-alpha="M" data-key="m_plus">M+</button></div>
       </div>
@@ -1953,7 +1958,7 @@
         <div class="bw"><span class="lbl"><span class="shift-mark">CONST</span></span><button class="b bn" data-shift="CONST" data-key="7">7</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">CONV</span></span><button class="b bn" data-shift="CONV" data-key="8">8</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">RESET</span></span><button class="b bn" data-shift="RESET" data-key="9">9</button></div>
-        <div class="bw"><span class="lbl"><span class="alpha-mark">INS</span></span><button class="b bdel" data-alpha="INS" data-key="del">DEL</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">INS</span> <span class="alpha-mark">UNDO</span></span><button class="b bdel" data-shift="INS" data-alpha="UNDO" data-key="del">DEL</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">OFF</span></span><button class="b bac" data-shift="OFF" data-key="ac">AC</button></div>
       </div>
 
@@ -1976,8 +1981,8 @@
       <div class="row numeric-row">
         <div class="bw"><span class="lbl"><span class="shift-mark">Rnd</span></span><button class="b bn" data-shift="Rnd" data-key="0">0</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">Ran#</span> <span class="alpha-mark">RanInt</span></span><button class="b bn" data-shift="Ran#" data-alpha="RanInt" data-key="decimal">.</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-key="scientific">×10ˣ</button></div>
-        <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-alpha="e" data-key="ans">Ans</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-alpha="e" data-key="scientific">×10ˣ</button></div>
+        <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-shift="percent" data-key="ans">Ans</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">≈</span></span><button class="b bop" data-shift="approx" data-key="equals">=</button></div>
       </div>
 
@@ -2010,6 +2015,11 @@
       // (base)^(exp) power pattern -> base^{exp}
       s = s.replace(/\(\(\s*(.+?)\s*\)\^\(\s*(.+?)\s*\)\)/g, '{$1}^{$2}');
       s = s.replace(/\^/g, '^');
+      s = s.replace(/sigma\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\sum_{$2}^{$3}($1)');
+      s = s.replace(/\u03a3\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\sum_{$2}^{$3}($1)');
+      s = s.replace(/diff\(([^,()]+),([^,()]+)\)/g, '\\frac{d}{dx}\\left[$1\\right]_{x=$2}');
+      s = s.replace(/d\/dx\(([^,()]+),([^,()]+)\)/g, '\\frac{d}{dx}\\left[$1\\right]_{x=$2}');
+      s = s.replace(/FACT\(([^()]+)\)/g, '\\text{FACT}($1)');
       s = s.replace(/\*/g, '\\cdot ');
       return s;
     } catch (e) { try { return String(expr); } catch (_) { return ''; } }
@@ -2332,6 +2342,8 @@
     menuSelection: 0, shift: false, alpha: false, splash: false,
     result: null, lastAnswer: null, resultDisplayed: false, error: null,
     isFractionMode: false, memoryValue: 0, hasMemory: false,
+    variables: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 },
+    stoPending: false, recallPending: false, qrOpen: false, approxMode: false,
     base: 10, baseNBase: 10,
     insertMode: false,
     undoStack: [],
@@ -2484,6 +2496,13 @@
           .replace(/\u207b\u00b9/g, '^(-1)');
       } else if (item.type === 'fraction') {
         out += '((' + (serializeSlot(item.num)||'0') + ')/(' + (serializeSlot(item.den)||'1') + '))';
+      } else if (item.type === 'mixed') {
+        const w = serializeSlot(item.whole) || '0';
+        const n = serializeSlot(item.num) || '0';
+        const d = serializeSlot(item.den) || '1';
+        out += String(w).trim().startsWith('-')
+          ? '((' + w + ')-((' + n + ')/(' + d + ')))'
+          : '((' + w + ')+((' + n + ')/(' + d + ')))';
       } else if (item.type === 'radical') {
         const rad = serializeSlot(item.radicand) || '0';
         if (item.index && item.index.items.length > 0) {
@@ -2507,6 +2526,14 @@
     let prepared = String(expression || '');
     prepared = prepared.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
     prepared = prepared.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
+    // Parenthesized / symbolic keypad operands: (5)P(3+1), (5)C(2), Ans P 2.
+    // Single-level parens only; deeper nesting is resolved by the backend.
+    prepared = prepared.replace(/\(([^()]*)\)\s*C\s*\(([^()]*)\)/g, 'nCr($1,$2)');
+    prepared = prepared.replace(/\(([^()]*)\)\s*P\s*\(([^()]*)\)/g, 'nPr($1,$2)');
+    prepared = prepared.replace(/\(([^()]*)\)\s*C\s*(\d+)/g, 'nCr($1,$2)');
+    prepared = prepared.replace(/(\d+)\s*C\s*\(([^()]*)\)/g, 'nCr($1,$2)');
+    prepared = prepared.replace(/\(([^()]*)\)\s*P\s*(\d+)/g, 'nPr($1,$2)');
+    prepared = prepared.replace(/(\d+)\s*P\s*\(([^()]*)\)/g, 'nPr($1,$2)');
     prepared = prepared.replace(/\bM\b/g, String(appState.memoryValue || 0));
     return prepared;
   }
@@ -2672,6 +2699,7 @@
     log: Math.log10, log10: Math.log10, ln: Math.log,
     exp: (x) => { const r = Math.exp(x); if (!isFinite(r) && isFinite(x)) throw new Error('Math ERROR'); return r; },
     abs: Math.abs, Abs: Math.abs,
+    Rnd: (x) => { const f = Math.floor(x), d = x - f; if (d === 0.5) return (f % 2 === 0 ? f : f + 1); return d > 0.5 ? f + 1 : d < -0.5 ? f - 1 : f; },
     round: (x) => { const f = Math.floor(x), d = x - f; if (d === 0.5) return (f % 2 === 0 ? f : f + 1); return d > 0.5 ? f + 1 : d < -0.5 ? f - 1 : f; },
   };
   const _LOCAL_CONSTS = { e: Math.E, pi: Math.PI };
@@ -2683,7 +2711,7 @@
     return Math.pow(b, ex);
   }
 
-  const _SPECIAL_FUNCS = ['integral', 'log_base', 'xroot', 'cbrt', 'sqrt', 'nCr', 'nPr'];
+  const _SPECIAL_FUNCS = ['integral', 'sigma', 'diff', 'log_base', 'xroot', 'cbrt', 'sqrt', 'nCr', 'nPr', 'RanInt', 'Pol', 'Rec'];
 
   function _findSpecialCall(s) {
     let best = null;
@@ -2754,6 +2782,48 @@
       } else if (name === 'cbrt') {
         if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
         rep = '(' + _reprNum(Math.pow(_evalStr(args[0]), 1 / 3)) + ')';
+      } else if (name === 'sigma') {
+        if (args.length !== 3 || !args[0] || !args[1] || !args[2]) throw new Error('Math ERROR');
+        const body = args[0];
+        const a = _evalStr(args[1]), b = _evalStr(args[2]);
+        if (!Number.isInteger(a) || !Number.isInteger(b)) throw new Error('Math ERROR');
+        const lo = Math.min(a, b), hi = Math.max(a, b);
+        let total = 0;
+        for (let x = lo; x <= hi; x++) total += _evalStr(String(body).replace(/\bx\b/g, '(' + x + ')'));
+        rep = '(' + _reprNum(total) + ')';
+      } else if (name === 'diff') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const body = args[0];
+        const x0 = _evalStr(args[1]);
+        const h = 1e-6;
+        const fp = _evalStr(String(body).replace(/\bx\b/g, '(' + (x0 + h) + ')'));
+        const fm = _evalStr(String(body).replace(/\bx\b/g, '(' + (x0 - h) + ')'));
+        rep = '(' + _reprNum((fp - fm) / (2 * h)) + ')';
+      } else if (name === 'RanInt') {
+        if (![1, 2].includes(args.length) || args.some(a => !a)) throw new Error('Math ERROR');
+        const vals = args.map(a => _evalStr(a));
+        if (vals.some(v => !Number.isInteger(v))) throw new Error('Math ERROR');
+        let lo, hi;
+        if (vals.length === 1) { lo = 1; hi = vals[0]; } else { lo = vals[0]; hi = vals[1]; }
+        if (lo > hi) { const tmp = lo; lo = hi; hi = tmp; }
+        if (hi < 1 && vals.length === 1) throw new Error('Math ERROR');
+        rep = '(' + _reprNum(lo + Math.floor(Math.random() * (hi - lo + 1))) + ')';
+      } else if (name === 'Pol') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const x = _evalStr(args[0]), y = _evalStr(args[1]);
+        const r = Math.hypot(x, y);
+        const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
+        const th = u === 'Radian' ? Math.atan2(y, x) : u === 'Gradian' ? Math.atan2(y, x) * 200 / Math.PI : Math.atan2(y, x) * 180 / Math.PI;
+        try { if (typeof appState !== 'undefined' && appState.variables) { appState.variables.X = r; appState.variables.Y = th; } } catch (e) {}
+        rep = '(' + _reprNum(r) + ')';
+      } else if (name === 'Rec') {
+        if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
+        const r = _evalStr(args[0]), th = _evalStr(args[1]);
+        const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
+        const rad = u === 'Radian' ? th : u === 'Gradian' ? th * Math.PI / 200 : th * Math.PI / 180;
+        const x = r * Math.cos(rad), y = r * Math.sin(rad);
+        try { if (typeof appState !== 'undefined' && appState.variables) { appState.variables.X = x; appState.variables.Y = y; } } catch (e) {}
+        rep = '(' + _reprNum(x) + ')';
       } else if (name === 'nCr' || name === 'nPr') {
         if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
         const n = _evalStr(args[0]), r = _evalStr(args[1]);
@@ -2852,7 +2922,7 @@
       while (peekOp(['*', '/'])) {
         const op = tokens[p][0]; p++;
         const r = unary();
-        if (r === 0) throw new Error('Math ERROR');
+        if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
         l = op === '*' ? l * r : l / r;
       }
       return l;
@@ -2875,9 +2945,40 @@
     return isFinite(f) ? f : 0;
   }
 
+  function _localPrimeFactors(n) {
+    if (n < 0 || !Number.isInteger(n)) throw new Error('Math ERROR');
+    if (n === 0 || n === 1) return String(n);
+    let m = n; const f = {};
+    let d = 2;
+    while (d * d <= m) { while (m % d === 0) { f[d] = (f[d] || 0) + 1; m = Math.floor(m / d); } d += (d === 2 ? 1 : 2); }
+    if (m > 1) f[m] = (f[m] || 0) + 1;
+    const keys = Object.keys(f).map(Number).sort((a, b) => a - b);
+    if (keys.length === 1 && f[keys[0]] === 1 && keys[0] === n) return String(n);
+    return keys.map(k => f[k] === 1 ? String(k) : k + '^' + f[k]).join('×');
+  }
   function _evalStr(input) {
     let s = input.trim();
     if (!s) return 0;
+    if (s.indexOf(':') >= 0) {
+      const parts = s.split(':').map(x => x.trim()).filter(x => x !== '');
+      let v = 0;
+      for (const part of parts) v = _evalStr(part);
+      return v;
+    }
+    s = s.split('Σ(').join('sigma(').split('d/dx(').join('diff(');
+    s = s.replace(/(?<![A-Za-z0-9_])Rnd\(/g, 'round(');
+    try {
+      const vmap = (typeof appState !== 'undefined' && appState.variables) ? appState.variables : null;
+      if (vmap) {
+        for (const vn of ['A','B','C','D','E','F','M','X','Y']) {
+          if (vmap[vn] !== undefined && vmap[vn] !== null) {
+            const num = Number(vmap[vn]);
+            if (isFinite(num)) s = s.replace(new RegExp('\\b' + vn + '\\b', 'g'), '(' + num + ')');
+          }
+        }
+      }
+    } catch (e) {}
+    s = s.replace(/(\(\s*[^()]*?\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%/g, '(($1)/100)');
     s = s.split('π').join('(' + Math.PI + ')').split('pi').join('(' + Math.PI + ')');
     s = s.split('×').join('*').split('÷').join('/').split('−').join('-');
     s = s.split('Ans').join('(' + _ansValue() + ')').split('ans').join('(' + _ansValue() + ')');
@@ -2899,6 +3000,15 @@
   }
 
   function localEvaluate(expr) {
+    // FACT(n) shows prime factorization (fx-991EX FACT).
+    const factMatch = String(expr).trim().match(/^FACT\((.*)\)$/);
+    if (factMatch) {
+      const n = _evalStr(factMatch[1]);
+      if (!Number.isInteger(n) || n < 0) throw new Error('Math ERROR');
+      const out = _localPrimeFactors(n);
+      localAns = out;
+      return out;
+    }
     // The backend preserves complex inverse-trigonometric results outside the
     // real domain (for example asin(2)); mirror that display in the bridge.
     const inverseMatch = String(expr).trim().match(/^asin\((-?\d+(?:\.\d+)?)\)$/);
@@ -2910,7 +3020,12 @@
       localAns = complex;
       return complex;
     }
-    const r = localFormat(_evalStr(expr));
+    let r;
+    try { r = localFormat(_evalStr(expr)); }
+    catch (e) {
+      if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'To infinity and beyonddd'; }
+      throw e;
+    }
     localAns = r;
     return r;
   }
@@ -2925,7 +3040,7 @@
         newSlot.items.push(item);
       } else {
         const clonedTmpl = { type: item.type, id: item.id };
-        for (const k of ['num','den','base','exp','arg','radicand','index','body','lower','upper']) {
+        for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
           if (item[k]) {
             clonedTmpl[k] = cloneSlot(item[k]);
             clonedTmpl[k].parentSlot = newSlot;
@@ -2945,7 +3060,7 @@
     for (let i = 0; i < currentSlot.items.length; i++) {
       const item = currentSlot.items[i];
       if (typeof item !== 'string') {
-        for (const k of ['num','den','base','exp','arg','radicand','index','body','lower','upper']) {
+        for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
           if (item[k]) {
             const res = getSlotPath(targetSlot, item[k], [...currentPath, i, k]);
             if (res !== null) return res;
@@ -3038,6 +3153,9 @@
   function insertFraction() {
     insertTemplate({ type:'fraction', id:nextId(), num:createSlot(), den:createSlot() }, 'num');
   }
+  function insertMixedFraction() {
+    insertTemplate({ type:'mixed', id:nextId(), whole:createSlot(), num:createSlot(), den:createSlot() }, 'whole');
+  }
   function insertRadical(isCbrt, isNth) {
     if (isCbrt) {
       insertTemplate({ type:'cbrt', id:nextId(), radicand:createSlot() }, 'radicand');
@@ -3082,7 +3200,7 @@
     if (slot === target) return { par, slotName };
     for (const item of slot.items) {
       if (typeof item === 'string') continue;
-      for (const k of ['num','den','base','exp','arg','radicand','index','body','lower','upper']) {
+      for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
         if (item[k]) {
           if (item[k] === target) return { par: item, slotName: k };
           const res = findParent(target, item[k], item, k);
@@ -3102,6 +3220,7 @@
       if (typeof prev !== 'string') {
         // Enter rightmost slot of previous template
         if (prev.type === 'fraction') { cursor.slot = prev.den; cursor.index = prev.den.items.length; }
+        else if (prev.type === 'mixed') { cursor.slot = prev.den; cursor.index = prev.den.items.length; }
         else if (prev.type === 'power') { cursor.slot = prev.exp; cursor.index = prev.exp.items.length; }
         else if (prev.type === 'log') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
         else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
@@ -3113,6 +3232,7 @@
       if (p && p.par) {
         const t = p.par; const ps = t.parentSlot || rootSlot;
         if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = t.num.items.length; }
+        else if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.whole; cursor.index = t.whole.items.length; }
         else if (p.slotName === 'arg') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
@@ -3128,6 +3248,7 @@
       const next = cursor.slot.items[cursor.index];
       if (typeof next !== 'string') {
         if (next.type === 'fraction') { cursor.slot = next.num; cursor.index = 0; }
+        else if (next.type === 'mixed') { cursor.slot = next.whole; cursor.index = 0; }
         else if (next.type === 'power') { cursor.slot = next.exp; cursor.index = 0; }
         else if (next.type === 'log') { cursor.slot = next.base; cursor.index = 0; }
         else if (next.type === 'radical') { cursor.slot = next.index || next.radicand; cursor.index = 0; }
@@ -3138,7 +3259,9 @@
       const p = getParent();
       if (p && p.par) {
         const t = p.par; const ps = t.parentSlot || rootSlot;
-        if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = 0; }
+        if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.den; cursor.index = 0; }
+        else if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = 0; }
+        else if (p.slotName === 'whole') { cursor.slot = t.num; cursor.index = 0; }
         else if (p.slotName === 'base' && t.type === 'log') { cursor.slot = t.arg; cursor.index = 0; }
         else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
         else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
@@ -3156,6 +3279,7 @@
     if (p && p.par) {
       const t = p.par;
       if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = Math.min(cursor.index, t.num.items.length); }
+      else if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.whole; cursor.index = Math.min(cursor.index, t.whole.items.length); }
       else if (t.type === 'integral' && p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = Math.min(cursor.index, t.upper.items.length); }
       else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.upper; cursor.index = 0; }
     }
@@ -3168,7 +3292,9 @@
     const p = getParent();
     if (p && p.par) {
       const t = p.par;
-      if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = Math.min(cursor.index, t.den.items.length); }
+      if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.den; cursor.index = Math.min(cursor.index, t.den.items.length); }
+      else if (p.slotName === 'num') { cursor.slot = t.den; cursor.index = Math.min(cursor.index, t.den.items.length); }
+      else if (p.slotName === 'whole') { cursor.slot = t.num; cursor.index = Math.min(cursor.index, t.num.items.length); }
       else if (t.type === 'integral' && p.slotName === 'upper') { cursor.slot = t.lower; cursor.index = Math.min(cursor.index, t.lower.items.length); }
       else if (t.type === 'integral' && p.slotName === 'body') { cursor.slot = t.lower; cursor.index = 0; }
     }
@@ -3218,6 +3344,16 @@
           const b = el('span','math-fraction-bar');
           const d = el('span','math-denominator'); d.appendChild(renderSlotDOM(item.den));
           f.append(n, b, d); wrap.appendChild(f);
+        } else if (item.type === 'mixed') {
+          const m = el('span','math-fraction');
+          const w = el('span','math-numerator'); w.appendChild(renderSlotDOM(item.whole));
+          const f = el('span','math-fraction');
+          const n = el('span','math-numerator'); n.appendChild(renderSlotDOM(item.num));
+          const b = el('span','math-fraction-bar');
+          const d = el('span','math-denominator'); d.appendChild(renderSlotDOM(item.den));
+          f.append(n, b, d);
+          const row = el('span','math-mixed-row'); row.append(w, f);
+          wrap.appendChild(row);
         } else if (item.type === 'radical' || item.type === 'cbrt') {
           const r = el('span','math-radical');
           if (item.type === 'cbrt' || (item.index)) {
@@ -3263,8 +3399,8 @@
   }
   const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
   function makeCursor() { const c = el('span','lcd-cursor'); return c; }
-  function showMathError() {
-    appState.error = 'Math ERROR';
+  function showMathError(msg) {
+    appState.error = msg || 'Math ERROR';
     appState.result = null;
     appState.resultDisplayed = false;
     renderLCD();
@@ -4891,6 +5027,7 @@
     const canLeft = viewport.scrollLeft > 5;
     const canRight = exprContent.scrollWidth - viewport.scrollLeft - viewport.clientWidth > 5;
     updateScrollIndicators(canUp, canDown, canLeft, canRight, 'calc');
+    syncQrOverlay();
   }
 
   // ── BACKEND COMMUNICATION ──
@@ -4903,9 +5040,16 @@
     if (FILE_MODE) {
       try {
         const r = localEvaluate(evalExpr);
-        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+        if (r === 'To infinity and beyonddd') {
+          appState.result = r; appState.lastAnswer = null; appState.resultDisplayed = true; appState.error = null;
+        } else {
+          appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+        }
       } catch (e) {
-        appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
+        appState.error = (e && e.message === 'DIV_ZERO') ? 'To infinity and beyonddd' : 'Math ERROR';
+        if (appState.error === 'To infinity and beyonddd') {
+          appState.result = appState.error; appState.resultDisplayed = true; appState.error = null;
+        } else { appState.result = null; appState.resultDisplayed = false; }
       }
       renderLCD();
       return;
@@ -4915,8 +5059,16 @@
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ key:'equals', expression: evalExpr, shift: appState.shift, alpha: appState.alpha })
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const s = await r.json();
+      let s = null;
+      try { s = await r.json(); } catch (e) { s = null; }
+      if (!r.ok) {
+        const msg = (s && s.error) ? s.error : (s && s.display) ? s.display : `HTTP ${r.status}`;
+        if (msg === 'To infinity and beyonddd') {
+          appState.result = msg; appState.lastAnswer = null; appState.resultDisplayed = true; appState.error = null;
+          renderLCD(); return;
+        }
+        throw new Error(msg);
+      }
       if (s.result !== undefined && s.result !== null) {
         appState.result = s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
       } else if (s.error) {
@@ -4929,6 +5081,21 @@
     } catch(e) { showMathError(); }
   }
 
+  function syncQrOverlay() {
+    try {
+      const qr = document.getElementById('qr-panel');
+      const optn = document.getElementById('optn-panel');
+      if (!qr) return;
+      if (appState.qrOpen) {
+        if (optn) optn.style.display = 'none';
+        qr.style.display = 'block';
+        const host = document.getElementById('lcdQrBox');
+        if (host && host.childElementCount === 0) showQRinLCD();
+      } else {
+        qr.style.display = 'none';
+      }
+    } catch (e) {}
+  }
   async function backendKey(key, extra) {
     if (FILE_MODE) { renderLCD(); return; }
     const requestSequence = ++backendKeySequence;
@@ -5137,10 +5304,169 @@
     }
   }
 
+  const DIV_ZERO_MSG = 'To infinity and beyonddd';
+  const QR_DEST_URL = 'https://mentisai-delta.vercel.app/';
+  function flashStoRecall(label) {
+    const elx = document.getElementById('indMode');
+    if (!elx) return;
+    elx.textContent = label;
+    elx.classList.add('active');
+    clearTimeout(flashStoRecall.timer);
+    flashStoRecall.timer = setTimeout(() => { elx.textContent = ''; elx.classList.remove('active'); renderLCD(); }, 900);
+  }
+  function syncVariableToBackend(name, value) {
+    if (window.location.protocol === 'file:') return;
+    try {
+      fetch('/api/variables/set', { method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, value }) }).catch(() => {});
+    } catch (e) {}
+  }
+  function currentNumericAnswer() {
+    const v = answerAsNumber(appState.lastAnswer ?? appState.result);
+    return Number.isFinite(v) ? v : 0;
+  }
+  function storeVariable(name) {
+    pushUndoState();
+    const v = currentNumericAnswer();
+    appState.variables[name] = v;
+    if (name === 'M') { appState.memoryValue = v; appState.hasMemory = v !== 0; updateMemoryIndicator(); }
+    syncVariableToBackend(name, v);
+    appState.stoPending = false; appState.recallPending = false;
+    renderLCD();
+  }
+  function recallVariable(name) {
+    pushUndoState();
+    if (appState.resultDisplayed) resetExpr();
+    const v = (appState.variables && appState.variables[name] !== undefined) ? appState.variables[name] : 0;
+    insertToken(String(v));
+    appState.stoPending = false; appState.recallPending = false;
+  }
+  function handlePendingVar(name) {
+    if (appState.stoPending) { storeVariable(name); return true; }
+    if (appState.recallPending) { recallVariable(name); return true; }
+    return false;
+  }
+  async function doCalc() {
+    const expr = getExpr();
+    if (!expr) return;
+    const prepared = prepareExpressionForEvaluation(expr);
+    if (FILE_MODE) {
+      try {
+        const r = localEvaluate(prepared);
+        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+      } catch (e) {
+        showMathError(e && e.message === 'DIV_ZERO' ? DIV_ZERO_MSG : 'Math ERROR');
+      }
+      renderLCD(); return;
+    }
+    try {
+      const r = await fetch('/api/calc', { method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ expression: prepared }) });
+      const s = await r.json();
+      if (s.result !== undefined && (s.ok || s.success)) {
+        appState.result = s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        if (s.variables) Object.assign(appState.variables, s.variables);
+      } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
+      renderLCD();
+    } catch (e) { showMathError(); }
+  }
+  async function doSolve() {
+    const expr = getExpr();
+    if (!expr) { showMathError(); return; }
+    const prepared = prepareExpressionForEvaluation(expr);
+    const guess = (appState.variables && Number.isFinite(Number(appState.variables.X))) ? Number(appState.variables.X) : 0;
+    if (FILE_MODE) {
+      try {
+        const v = _localNewtonSolve(prepared, 'X', guess);
+        const r = localFormat(v);
+        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+        appState.variables.X = v;
+      } catch (e) { showMathError('Math ERROR'); }
+      renderLCD(); return;
+    }
+    try {
+      const r = await fetch('/api/solve', { method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ expression: prepared, variable: 'X', guess }) });
+      const s = await r.json();
+      if (s.result !== undefined && (s.ok || s.success)) {
+        appState.result = 'X=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        if (s.variable) appState.variables[s.variable] = s.value;
+      } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
+      renderLCD();
+    } catch (e) { showMathError(); }
+  }
+  function _localNewtonSolve(expr, varName, x0) {
+    const f = (x) => {
+      const saved = appState.variables[varName];
+      appState.variables[varName] = x;
+      let v;
+      try { v = _evalStr(expr); } finally { appState.variables[varName] = saved; }
+      if (typeof v !== 'number' || !isFinite(v)) throw new Error('Math ERROR');
+      return v;
+    };
+    const h = 1e-6;
+    let x = x0;
+    for (let i = 0; i < 100; i++) {
+      const fx = f(x);
+      if (Math.abs(fx) < 1e-10) return x;
+      const dfx = (f(x + h) - f(x - h)) / (2 * h);
+      if (Math.abs(dfx) < 1e-12) { x = x + (x >= 0 ? 0.5 : -0.5); continue; }
+      const nx = x - fx / dfx;
+      if (Math.abs(nx - x) < 1e-9) return nx;
+      x = nx;
+      if (Math.abs(x) > 1e12) throw new Error('Math ERROR');
+    }
+    throw new Error('Math ERROR');
+  }
+  async function evaluateApprox() {
+    appState.approxMode = true;
+    await evaluate();
+    appState.approxMode = false;
+    if (appState.result !== null && appState.result !== undefined) {
+      const s = String(appState.result);
+      if (s.indexOf('/') >= 0 || s.indexOf('×10') >= 0) {
+        const n = answerAsNumber(s);
+        if (Number.isFinite(n)) { appState.result = localFormat(n); appState.lastAnswer = appState.result; }
+      }
+      if (typeof appState.result === 'string' && appState.result.indexOf('≈') !== 0) {
+        appState.result = '≈' + appState.result;
+      }
+      renderLCD();
+    }
+  }
+  function showQRinLCD() {
+    appState.qrOpen = true;
+    renderLCD();
+    try {
+      const host = document.getElementById('lcdQrBox');
+      if (host) {
+        host.textContent = '';
+        if (typeof QRCode !== 'undefined') {
+          new QRCode(host, { text: QR_DEST_URL, width: 72, height: 72, correctLevel: QRCode.CorrectLevel.M });
+        } else {
+          host.textContent = QR_DEST_URL;
+        }
+      }
+    } catch (e) {}
+  }
+  function cycleEngNotation() {
+    if (!appState.resultDisplayed || appState.result === null) {
+      // No result yet: insert ×10^3 scale marker is not physical; just flash.
+      renderLCD(); return;
+    }
+    const n = answerAsNumber(appState.result);
+    if (!Number.isFinite(n) || n === 0) return;
+    const exp = Math.floor(Math.log10(Math.abs(n)) / 3) * 3;
+    const mant = n / Math.pow(10, exp);
+    appState.result = _fmtG(mant) + (exp !== 0 ? '×10^' + exp : '');
+    appState.lastAnswer = appState.result;
+    renderLCD();
+  }
   function updateMemory(delta) {
     const currentAnswer = answerAsNumber(appState.lastAnswer ?? appState.result);
     if (!appState.resultDisplayed || !Number.isFinite(currentAnswer)) return;
     appState.memoryValue = (appState.memoryValue || 0) + delta * currentAnswer;
+    try { appState.variables.M = appState.memoryValue; syncVariableToBackend('M', appState.memoryValue); } catch (e) {}
     appState.hasMemory = delta > 0 ? true : appState.memoryValue !== 0;
     flashStatusIndicator(delta > 0 ? 'M+' : 'M-');
     updateMemoryIndicator();
@@ -5279,6 +5605,7 @@
             appState.distribution = { type: 0, params: {}, result: null };
             appState.memoryValue = 0;
             appState.hasMemory = false;
+            appState.variables = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 };
             resetExpr();
             backendKey('ac', { reset: 'memory' });
             performResetRemote('memory');
@@ -5294,6 +5621,7 @@
             appState.distribution = { type: 0, params: {}, result: null };
             appState.memoryValue = 0;
             appState.hasMemory = false;
+            appState.variables = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 };
             resetSpreadsheetData();
             appState.ratio = { phase: 'menu', type: 1, a: '', b: '', c_or_d: '', activeField: 0, cellBuffer: '', result: null, error: null };
             resetExpr();
@@ -5884,7 +6212,9 @@
             if (appState.mode === 'Table') enterTableMode();
             if (appState.mode === 'Inequality') appState.inequality = { phase:'degree', degree:2, operatorIndex:0, operators:['> 0','< 0','≥ 0','≤ 0'], coefficients:[], coefficientIndex:0, cellBuffer:'', result:null };
             if (appState.mode === 'Equation/Func') resetEquationState();
-            appState.menuOpen = false; resetExpr(); backendKey(rawKey);
+            // Canonical menu digits: page 2 physical keys 1-4 map to backend
+            // numbers 9-12 so they cannot collide with page-1 modes.
+            appState.menuOpen = false; resetExpr(); backendKey(String(n + 8));
           }
         }
       }
@@ -6788,75 +7118,130 @@
     if (rawKey === 'dpad_right') { moveCursorRight(); return; }
     if (rawKey === 'dpad_up') { moveCursorUp(); return; }
     if (rawKey === 'dpad_down') { moveCursorDown(); return; }
-    if (rawKey === 'ac') { closeOptnPanel(); resetExpr(); renderLCD(); backendKey('ac'); return; }
+    if (appState.qrOpen && (rawKey === 'ac' || rawKey === 'optn')) { appState.qrOpen = false; renderLCD(); return; }
+    if (rawKey === 'sto') {
+      if (isShift || action === 'RECALL') { appState.recallPending = true; appState.stoPending = false; flashStoRecall('RECALL'); }
+      else { appState.stoPending = true; appState.recallPending = false; flashStoRecall('STO'); }
+      renderLCD(); return;
+    }
+    if (rawKey === 'calc') {
+      if (isAlpha || action === '=') { insertToken('='); return; }
+      if (isShift || action === 'SOLVE') { doSolve(); return; }
+      doCalc(); return;
+    }
+    if (rawKey === 'eng') {
+      if (isAlpha || action === 'i') { appState.stoPending = false; appState.recallPending = false; insertToken('i'); return; }
+      if (isShift || action === 'ENG_LEFT') { insertToken('<'); return; }
+      cycleEngNotation(); return;
+    }
+    if (rawKey === 'ac') { closeOptnPanel(); appState.qrOpen = false; appState.stoPending = false; appState.recallPending = false; resetExpr(); renderLCD(); backendKey('ac'); return; }
     if (rawKey === 'del') { deleteAtCursor(); return; }
-    if (rawKey === 'equals') { evaluate(); return; }
+    if (rawKey === 'equals') { (isShift || action === 'approx') ? evaluateApprox() : evaluate(); return; }
 
-    // STEP 2: Base-N mode — intercept base-switch keys before local expression append
-    if (appState.mode === 'Base-N') {
-      const baseNSwitchKeys = ['square', 'power', 'log', 'ln'];
-      if (baseNSwitchKeys.includes(rawKey)) {
-        backendKey(rawKey, { shift: isShift, alpha: isAlpha });
+    // STEP 2: Base-N mode — SHIFT on these keys switches base (buttons.md); keep local LCD in sync.
+    if (appState.mode === 'Base-N' && isShift) {
+      const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };
+      if (baseNSwitchKeys[rawKey]) {
+        const nb = baseNSwitchKeys[rawKey];
+        appState.base = nb; appState.baseNBase = nb; renderLCD();
+        backendKey('base_switch', { base: nb });
         return;
       }
     }
 
-    if (rawKey === 'fraction') { insertFraction(); return; }
+    if (rawKey === 'fraction') { (isShift || action === 'mixed_fraction') ? insertMixedFraction() : insertFraction(); return; }
     if (rawKey === 'sqrt') { isShift ? insertRadical(true,false) : insertRadical(false,false); return; }
     if (rawKey === 'power') { isShift ? insertRadical(false,true) : insertPower(null); return; }
     if (rawKey === 'square') {
-      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 16; renderLCD(); backendKey('base_switch', {base: 16}); return; }
       isShift ? insertPower('3') : insertPower('2'); return;
     }
     if (rawKey === 'inverse') {
       if (isShift) { insertToken('!'); return; }
-      if (isAlpha || useAlphaForHex) { insertToken('C'); return; }
+      if (isAlpha || useAlphaForHex) {
+        if (appState.mode === 'Base-N' && appState.baseNBase === 16) { insertToken('C'); return; }
+        if (appState.mode === 'Base-N' && appState.baseNBase < 16) return;
+        if (handlePendingVar('C')) return;
+        insertToken('C'); return;
+      }
       insertPower('-1'); return;
     }
     if (rawKey === 'ellipsis') {
-      if (isShift) { insertToken('\u00b0\u2032\u2033'); return; }
-      if (isAlpha || useAlphaForHex) { insertToken('B'); return; }
+      if (isShift) { insertToken('FACT('); return; }
+      if (isAlpha || useAlphaForHex) { if (handlePendingVar('B')) return; insertToken('B'); return; }
       insertToken('\u00b0\u2032\u2033'); return;
     }
-    if (rawKey === 'integral') { isShift ? insertToken('\u03a3(') : insertIntegral(); return; }
+    if (rawKey === 'integral') {
+      if (isAlpha) { insertToken(':'); return; }
+      if (isShift) { insertToken('d/dx('); return; }
+      insertIntegral(); return;
+    }
     if (rawKey === 'log') {
-      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 2; renderLCD(); backendKey('base_switch', {base: 2}); return; }
       isShift ? insertToken('10^(') : insertLog(); return;
     }
     if (rawKey === 'ln') {
-      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 8; renderLCD(); backendKey('base_switch', {base: 8}); return; }
       insertToken(isShift ? 'e^(' : 'ln('); return;
     }
 
     if (rawKey === 'sin') {
-      if (appState.mode === 'Base-N' && isShift) { appState.baseNBase = 10; renderLCD(); backendKey('base_switch', {base: 10}); return; }
-      insertToken(isShift ? 'sin\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'A' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'D')) : 'sin('); return;
+      if (isAlpha || useAlphaForHex) {
+        if (appState.mode === 'Base-N' && appState.baseNBase === 16) { insertToken('A'); return; }
+        if (appState.mode === 'Base-N' && appState.baseNBase < 16) return;
+        if (handlePendingVar('D')) return;
+        insertToken('D'); return;
+      }
+      insertToken(isShift ? 'sin\u207b\u00b9(' : 'sin('); return;
     }
-    if (rawKey === 'cos') { insertToken(isShift ? 'cos\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'E' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'E')) : 'cos('); return; }
-    if (rawKey === 'tan') { insertToken(isShift ? 'tan\u207b\u00b9(' : (isAlpha || useAlphaForHex) ? (appState.mode === 'Base-N' && appState.baseNBase === 16 ? 'F' : (appState.mode === 'Base-N' && appState.baseNBase < 16 ? '' : 'F')) : 'tan('); return; }
+    if (rawKey === 'cos') {
+      if (isAlpha || useAlphaForHex) {
+        if (appState.mode === 'Base-N' && appState.baseNBase === 16) { insertToken('E'); return; }
+        if (appState.mode === 'Base-N' && appState.baseNBase < 16) return;
+        if (handlePendingVar('E')) return;
+        insertToken('E'); return;
+      }
+      insertToken(isShift ? 'cos\u207b\u00b9(' : 'cos('); return;
+    }
+    if (rawKey === 'tan') {
+      if (isAlpha || useAlphaForHex) {
+        if (appState.mode === 'Base-N' && appState.baseNBase === 16) { insertToken('F'); return; }
+        if (appState.mode === 'Base-N' && appState.baseNBase < 16) return;
+        if (handlePendingVar('F')) return;
+        insertToken('F'); return;
+      }
+      insertToken(isShift ? 'tan\u207b\u00b9(' : 'tan('); return;
+    }
 
     if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
-    if (rawKey === 'ans') { insertToken(isAlpha ? 'e' : 'Ans'); return; }
-    if (rawKey === 'variable') { insertToken(isShift ? 'd/dx(' : 'x'); return; }
+    if (rawKey === 'ans') {
+      if (isShift || action === 'percent') { insertToken('%'); return; }
+      insertToken('Ans'); return;
+    }
+    if (rawKey === 'variable') {
+      if (handlePendingVar('X')) return;
+      insertToken(isShift ? '\u03a3(' : 'x'); return;
+    }
     if (rawKey === 'negate') {
-      if (isShift) insertToken('log(');
-      else if (isAlpha || useAlphaForHex) insertToken('A');
-      else insertToken('-');
-      return;
+      if (isShift) { insertToken('log('); return; }
+      if (isAlpha || useAlphaForHex) {
+        if (appState.mode === 'Base-N' && appState.baseNBase === 16) { insertToken('A'); return; }
+        if (appState.mode === 'Base-N' && appState.baseNBase < 16) return;
+        if (handlePendingVar('A')) return;
+        insertToken('A'); return;
+      }
+      insertToken('-'); return;
     }
     if (rawKey === 's_to_d') {
-      if (isAlpha) insertToken('y');
-      else toggleAnswerFormat(isShift);
+      if (isAlpha) { if (handlePendingVar('Y')) return; insertToken('y'); return; }
+      toggleAnswerFormat(isShift);
       return;
     }
     if (rawKey === 'm_plus') {
-      if (isAlpha) insertToken('M');
-      else updateMemory(isShift ? -1 : 1);
+      if (isAlpha) { if (handlePendingVar('M')) return; insertToken('M'); return; }
+      updateMemory(isShift ? -1 : 1);
       return;
     }
     if (rawKey === 'optn') {
-      if (isShift) {
-        window.open('https://mentisai-delta.vercel.app/', '_blank');
+      if (isShift || action === 'QR') {
+        showQRinLCD();
       } else {
         const panel = document.getElementById('optn-panel');
         if (panel?.style.display === 'block') closeOptnPanel(); else openOptnPanel();
@@ -6864,7 +7249,11 @@
       return;
     }
     if (rawKey === 'left_paren') { insertToken(isShift ? 'Abs(' : '('); return; }
-    if (rawKey === 'right_paren') { insertToken(isAlpha ? 'x' : ')'); return; }
+    if (rawKey === 'right_paren') {
+      if (isShift) { insertToken(','); return; }
+      if (isAlpha) { if (handlePendingVar('X')) return; insertToken('x'); return; }
+      insertToken(')'); return;
+    }
 
     const tkMap = {
       '0': isShift ? 'round(' : '0', '1':'1','2':'2','3':'3','4':'4',
