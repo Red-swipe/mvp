@@ -8,6 +8,7 @@ import cmath
 import math
 import mimetypes
 import os
+import random
 import re
 import sys
 import threading
@@ -51,7 +52,66 @@ MENU_PAGES = [
 
 CALC_ENGINE = CalculusEngine()
 
-_SPECIAL_FUNCS = ('integral', 'log_base', 'xroot', 'cbrt', 'sqrt', 'sin', 'cos', 'tan', 'asinh', 'acosh', 'atanh', 'nCr', 'nPr')
+_SPECIAL_FUNCS = ('integral', 'sigma', 'diff', 'log_base', 'xroot', 'cbrt', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'ln', 'log', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'Abs', 'abs', 'round', 'Rnd', 'FACT', 'RanInt', 'Pol', 'Rec', 'nCr', 'nPr')
+
+DIV_ZERO_MSG = "To infinity and beyonddd"
+
+def _lit(v) -> str:
+    """Format a float so the engine tokenizer can always parse it (no 1e-06)."""
+    try:
+        f = float(v)
+    except Exception:
+        return _lit(v)
+    r = repr(f)
+    if 'e' not in r and 'E' not in r and 'inf' not in r and 'nan' not in r:
+        return f'({r})'
+    s = format(f, '.15f')
+    s = s.rstrip('0').rstrip('.')
+    if s in ('', '-0', '-'):
+        s = '0'
+    if s.startswith('-.'):
+        s = '-0.' + s[2:]
+    if s.startswith('.'):
+        s = '0' + s
+    return f'({s})'
+
+
+
+def _prime_factorization_str(n: int) -> str:
+    """Prime factorization display for FACT (fx-991EX FACT shows prime factors)."""
+    if n < 0:
+        raise ValueError("Math ERROR")
+    if n in (0, 1):
+        return str(n)
+    orig = n
+    factors: dict[int, int] = {}
+    d = 2
+    while d * d <= n:
+        while n % d == 0:
+            factors[d] = factors.get(d, 0) + 1
+            n //= d
+        d += 1 if d == 2 else 2
+    if n > 1:
+        factors[n] = factors.get(n, 0) + 1
+    if len(factors) == 1 and list(factors.values())[0] == 1 and orig in factors:
+        return str(orig)  # prime stays as-is
+    parts = []
+    for p in sorted(factors):
+        e = factors[p]
+        parts.append(str(p) if e == 1 else f"{p}^{e}")
+    return "×".join(parts)
+
+
+def _transform_percent(s: str) -> str:
+    """Casio % = postfix percent (/100). 50% -> (50/100). Handles )% and digit% and Ans%)."""
+    # Apply repeatedly for cases like 50%%.
+    for _ in range(20):
+        m = re.search(r'(\(\s*[^()]*\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%', s)
+        if not m:
+            return s
+        operand = m.group(1)
+        s = s[:m.start()] + f'(({operand})/100)' + s[m.end():]
+    return s
 
 
 DEFAULT_SETTINGS = {
@@ -139,7 +199,7 @@ def _find_special_call(s: str):
     return best
 
 
-def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree") -> str:
+def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False) -> str:
     """Replace supported special-function calls with plain Python expressions.
 
     Uses a balanced-parentheses scan so nested parentheses inside arguments and
@@ -161,35 +221,35 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             if len(args) != 3 or not all(args):
                 raise ValueError("Math ERROR: integral expects 3 arguments")
             integrand_str = args[0]
-            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit)
-            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit)
+            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode)
 
             def integrand_func(x):
-                sub_expr = re.sub(r'\bx\b', f'({x})', integrand_str)
-                return safe_evaluate_expression(sub_expr, ans_val, angle_unit)
+                sub_expr = re.sub(r'\bx\b', _lit(x), integrand_str)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
 
             res = CALC_ENGINE.integrate(integrand_func, a_val, b_val)
-            replacement = f'({float(res)!r})'
+            replacement = _lit(float(res))
         elif name == 'log_base':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: log_base expects 2 arguments")
-            base = safe_evaluate_expression(args[0], ans_val, angle_unit)
-            value = safe_evaluate_expression(args[1], ans_val, angle_unit)
-            replacement = f'({math.log(value) / math.log(base)!r})'
+            base = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            value = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            replacement = _lit(math.log(value) / math.log(base))
         elif name == 'xroot':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: xroot expects 2 arguments")
-            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit)
-            radicand = safe_evaluate_expression(args[1], ans_val, angle_unit)
-            replacement = f'({radicand ** (1 / n_val)!r})'
+            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            radicand = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            replacement = _lit(radicand ** (1 / n_val))
         elif name == 'cbrt':
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: cbrt expects 1 argument")
-            replacement = f'({safe_evaluate_expression(args[0], ans_val, angle_unit) ** (1 / 3)!r})'
+            replacement = _lit(safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode) ** (1 / 3))
         elif name in {'sin', 'cos', 'tan'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
             if angle_unit == "Radian":
                 radians = value
             elif angle_unit == "Gradian":
@@ -205,58 +265,632 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
                 if abs(cosine) < 1e-12:
                     raise ValueError("Math ERROR")
                 result = math.tan(radians)
-            replacement = f'({result!r})'
+            replacement = _lit(result)
+        elif name in {'asin', 'acos', 'atan'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError(f"Math ERROR: {name} expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex):
+                if abs(value.imag) > 1e-14:
+                    raise ValueError("Math ERROR")
+                value = value.real
+            if name == 'asin':
+                if not abs(value) <= 1:
+                    raise ValueError("Math ERROR")
+                radians = math.asin(value)
+            elif name == 'acos':
+                if not abs(value) <= 1:
+                    raise ValueError("Math ERROR")
+                radians = math.acos(value)
+            else:
+                radians = math.atan(value)
+            if angle_unit == "Radian":
+                result = radians
+            elif angle_unit == "Gradian":
+                result = radians * (200.0 / math.pi)
+            else:
+                result = radians * (180.0 / math.pi)
+            replacement = _lit(result)
+        elif name == 'ln':
+            if len(args) != 1 or not args[0]:
+                raise ValueError("Math ERROR: ln expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex) or not value > 0:
+                raise ValueError("Math ERROR")
+            replacement = _lit(math.log(value))
+        elif name == 'log':
+            if len(args) != 1 or not args[0]:
+                raise ValueError("Math ERROR: log expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex) or not value > 0:
+                raise ValueError("Math ERROR")
+            replacement = _lit(math.log10(value))
+        elif name in {'sinh', 'cosh', 'tanh'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError(f"Math ERROR: {name} expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex):
+                raise ValueError("Math ERROR")
+            if name == 'sinh':
+                result = math.sinh(value)
+            elif name == 'cosh':
+                result = math.cosh(value)
+            else:
+                result = math.tanh(value)
+            replacement = _lit(result)
+        elif name in {'Abs', 'abs'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError(f"Math ERROR: {name} expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            replacement = _lit(abs(value))
+        elif name in {'round', 'Rnd'}:
+            if len(args) != 1 or not args[0]:
+                raise ValueError("Math ERROR: round expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex):
+                raise ValueError("Math ERROR")
+            # Calculator rounding (matches the FILE_MODE bridge): halves go
+            # to the nearest even integer, mirroring JS `%` sign semantics
+            # via abs() so negative halves behave identically.
+            f = math.floor(value)
+            d = value - f
+            if d == 0.5:
+                result = f if abs(f) % 2 == 0 else f + 1
+            elif d > 0.5:
+                result = f + 1
+            else:
+                result = f
+            replacement = _lit(result)
+        elif name == 'RanInt':
+            if len(args) not in (1, 2) or not all(args):
+                raise ValueError("Math ERROR: RanInt expects 1 or 2 arguments")
+            vals = [safe_evaluate_expression(a, ans_val, angle_unit, variables, complex_mode) for a in args]
+            for v in vals:
+                if isinstance(v, complex) or not float(v).is_integer():
+                    raise ValueError("Math ERROR")
+            ints = [int(v) for v in vals]
+            if len(ints) == 1:
+                lo, hi = 1, ints[0]
+            else:
+                lo, hi = ints
+            if lo > hi:
+                lo, hi = hi, lo
+            if hi < 1 and len(ints) == 1:
+                raise ValueError("Math ERROR")
+            replacement = _lit(random.randint(lo, hi))
+        elif name == 'Pol':
+            if len(args) != 2 or not all(args):
+                raise ValueError("Math ERROR: Pol expects 2 arguments")
+            x = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            y = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(x, complex) or isinstance(y, complex):
+                raise ValueError("Math ERROR")
+            r_val = math.hypot(x, y)
+            if angle_unit == "Radian":
+                theta_val = math.atan2(y, x)
+            elif angle_unit == "Gradian":
+                theta_val = math.atan2(y, x) * (200.0 / math.pi)
+            else:
+                theta_val = math.atan2(y, x) * (180.0 / math.pi)
+            if isinstance(variables, dict):
+                variables['X'] = float(r_val)
+                variables['Y'] = float(theta_val)
+            replacement = _lit(r_val)
+        elif name == 'Rec':
+            if len(args) != 2 or not all(args):
+                raise ValueError("Math ERROR: Rec expects 2 arguments")
+            r = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            theta = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(r, complex) or isinstance(theta, complex):
+                raise ValueError("Math ERROR")
+            if angle_unit == "Radian":
+                radians = theta
+            elif angle_unit == "Gradian":
+                radians = theta * (math.pi / 200.0)
+            else:
+                radians = theta * (math.pi / 180.0)
+            x_val = r * math.cos(radians)
+            y_val = r * math.sin(radians)
+            if isinstance(variables, dict):
+                variables['X'] = float(x_val)
+                variables['Y'] = float(y_val)
+            replacement = _lit(x_val)
+        elif name == 'sigma':
+            if len(args) != 3 or not all(args):
+                raise ValueError("Math ERROR: sigma expects 3 arguments")
+            body_str = args[0]
+            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode)
+            for v in (a_val, b_val):
+                if isinstance(v, complex) or not float(v).is_integer():
+                    raise ValueError("Math ERROR")
+            a_int, b_int = int(a_val), int(b_val)
+
+            def sigma_func(x):
+                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
+
+            res = CALC_ENGINE.sigma(sigma_func, a_int, b_int)
+            replacement = _lit(float(res))
+        elif name == 'diff':
+            if len(args) != 2 or not all(args):
+                raise ValueError("Math ERROR: diff expects 2 arguments")
+            body_str = args[0]
+            x0 = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(x0, complex):
+                raise ValueError("Math ERROR")
+
+            def diff_func(x):
+                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
+
+            res = CALC_ENGINE.differentiate(diff_func, float(x0))
+            replacement = _lit(float(res))
         elif name in {'nCr', 'nPr'}:
             if len(args) != 2 or not all(args):
                 raise ValueError(f"Math ERROR: {name} expects 2 arguments")
-            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit)
-            r_val = safe_evaluate_expression(args[1], ans_val, angle_unit)
+            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            r_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
             if not float(n_val).is_integer() or not float(r_val).is_integer():
                 raise ValueError("Math ERROR")
             n_int, r_int = int(n_val), int(r_val)
             if n_int < 0 or r_int < 0 or r_int > n_int:
                 raise ValueError("Math ERROR")
             result = math.comb(n_int, r_int) if name == 'nCr' else math.factorial(n_int) // math.factorial(n_int - r_int)
-            replacement = f'({result!r})'
+            replacement = _lit(result)
         elif name in {'asinh', 'acosh', 'atanh'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
             if name == 'asinh':
                 result = math.asinh(value)
             elif name == 'acosh':
                 result = math.acosh(value)
             else:
                 result = math.atanh(value)
-            replacement = f'({result!r})'
+            replacement = _lit(result)
+        elif name == 'FACT':
+            if len(args) != 1 or not args[0]:
+                raise ValueError("Math ERROR: FACT expects 1 argument")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(value, complex):
+                if abs(value.imag) > 1e-14:
+                    raise ValueError("Math ERROR")
+                value = value.real
+            if not float(value).is_integer() or value < 0:
+                raise ValueError("Math ERROR")
+            n = int(value)
+            if n > 999999:
+                raise ValueError("Math ERROR")
+            # Signal factorization display via sentinel string the caller detects.
+            replacement = f'__FACT__{n}__'
         else:  # sqrt
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: sqrt expects 1 argument")
-            replacement = f'({math.sqrt(safe_evaluate_expression(args[0], ans_val, angle_unit))!r})'
+            _sq = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            if isinstance(_sq, complex):
+                if abs(_sq.imag) > 1e-14:
+                    raise ValueError("Math ERROR")
+                _sq = _sq.real
+            try:
+                replacement = _lit(math.sqrt(_sq))
+            except ValueError:
+                if complex_mode and _sq < 0:
+                    _cv = cmath.sqrt(_sq)
+                    replacement = f'({_cv.real!r}{_cv.imag:+!r}j)'
+                else:
+                    raise ValueError("Math ERROR")
 
         s = s[:start] + replacement + s[close_idx + 1:]
 
 
-def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree") -> float:
+def _transform_factorials(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False) -> str:
+    """Resolve postfix '!' for arbitrary operands (not just bare digits).
+
+    Supports 5!, (5)!, (3+2)!, (Ans)!, (pi)! and other valid calculator
+    operands by evaluating the operand through the existing
+    safe_evaluate_expression pipeline and splicing the integer result.
+    Uses no eval(); invalid cases raise Math ERROR. Caps at 170 to match
+    the FILE_MODE bridge overflow behavior.
+    """
+    while True:
+        idx = s.find('!')
+        if idx < 0:
+            return s
+        # '!=' is not part of the calculator grammar.
+        if idx + 1 < len(s) and s[idx + 1] == '=':
+            raise ValueError("Math ERROR")
+        j = idx - 1
+        while j >= 0 and s[j] == ' ':
+            j -= 1
+        if j < 0:
+            raise ValueError("Math ERROR")
+        if s[j] == ')':
+            depth = 1
+            k = j - 1
+            while k >= 0:
+                if s[k] == ')':
+                    depth += 1
+                elif s[k] == '(':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k -= 1
+            if k < 0:
+                raise ValueError("Math ERROR: unbalanced parentheses")
+            operand = s[k:j + 1]
+            start = k
+        else:
+            k = j
+            while k >= 0 and (s[k].isalnum() or s[k] in '._'):
+                k -= 1
+            k += 1
+            operand = s[k:j + 1]
+            if not operand:
+                raise ValueError("Math ERROR")
+            start = k
+        value = safe_evaluate_expression(operand, ans_val, angle_unit, variables, complex_mode)
+        if isinstance(value, complex):
+            if abs(value.imag) > 1e-14:
+                raise ValueError("Math ERROR")
+            value = value.real
+        if not float(value).is_integer() or value < 0:
+            raise ValueError("Math ERROR")
+        n = int(value)
+        if n > 170:
+            raise ValueError("Math ERROR")
+        replacement = _lit(math.factorial(n))
+        s = s[:start] + replacement + s[idx + 1:]
+
+
+def _transform_random(s: str) -> str:
+    """Splice keypad random tokens to concrete values (no eval()).
+
+    'Ran#' / 'rand()' -> uniform [0, 1). 'RanInt(' is a real function call
+    handled by _transform_special_functions.
+    """
+    s = re.sub(r'Ran#', lambda _m: _lit(random.random()), s)
+    s = re.sub(r'(?<![A-Za-z0-9_])rand\(\)', lambda _m: _lit(random.random()), s)
+    return s
+
+
+def _transform_dms(s: str, angle_unit: str = "Degree") -> str:
+    """Convert DMS / angle-unit suffixes to plain numbers in the current unit.
+
+    30°15′20″ -> decimal degrees; 30°15′ -> degrees; 30° -> 30.
+    Digit+r/g suffixes (OPTN angle menu) convert radian/gradian values
+    into the active angle unit. A lone 'x' variable is left untouched.
+    """
+    def _dms3(m):
+        d = float(m.group(1))
+        mag = abs(d) + float(m.group(2)) / 60.0 + float(m.group(3)) / 3600.0
+        return _lit(-mag if d < 0 else mag)
+
+    s = re.sub(
+        r'(-?\d+(?:\.\d+)?)\s*°\s*(\d+(?:\.\d+)?)\s*′\s*(\d+(?:\.\d+)?)\s*″',
+        _dms3, s)
+
+    def _dms2(m):
+        d = float(m.group(1))
+        mag = abs(d) + float(m.group(2)) / 60.0
+        return _lit(-mag if d < 0 else mag)
+
+    s = re.sub(r'(-?\d+(?:\.\d+)?)\s*°\s*(\d+(?:\.\d+)?)\s*′', _dms2, s)
+    s = re.sub(r'(-?\d+(?:\.\d+)?)\s*°', lambda m: _lit(float(m.group(1))), s)
+
+    def _r_suffix(m):
+        v = float(m.group(1))
+        if angle_unit == "Degree":
+            return _lit(v * 180.0 / math.pi)
+        if angle_unit == "Gradian":
+            return _lit(v * 200.0 / math.pi)
+        return _lit(v)
+
+    def _g_suffix(m):
+        v = float(m.group(1))
+        if angle_unit == "Degree":
+            return _lit(v * 0.9)
+        if angle_unit == "Radian":
+            return _lit(v * math.pi / 200.0)
+        return _lit(v)
+
+    s = re.sub(r'(-?\d+(?:\.\d+)?)\s*r(?![A-Za-z0-9_])', _r_suffix, s)
+    s = re.sub(r'(-?\d+(?:\.\d+)?)\s*g(?![A-Za-z0-9_])', _g_suffix, s)
+    return s
+
+
+def _find_infix_pc(s: str, start: int = 0):
+    """Locate the next keypad infix P/C operator with parseable operands.
+
+    Returns (op, l_start, l_end, r_start, r_end, op_index) or None.
+    Skips letters that belong to identifiers (Pol, Rec, nPr, ...).
+    """
+    def match_paren_fwd(text: str, open_idx: int) -> int:
+        depth = 0
+        for k in range(open_idx, len(text)):
+            if text[k] == '(':
+                depth += 1
+            elif text[k] == ')':
+                depth -= 1
+                if depth == 0:
+                    return k
+        return -1
+
+    i = start
+    while i < len(s):
+        ch = s[i]
+        if ch in ('P', 'C'):
+            j = i - 1
+            while j >= 0 and s[j] == ' ':
+                j -= 1
+            if j >= 0 and (s[j].isdigit() or s[j] in ').'):
+                # Parse left operand (extend over a function-call name).
+                if s[j] == ')':
+                    depth = 1
+                    k = j - 1
+                    while k >= 0:
+                        if s[k] == ')':
+                            depth += 1
+                        elif s[k] == '(':
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        k -= 1
+                    if k >= 0:
+                        kk = k - 1
+                        if kk >= 0 and (s[kk].isalnum() or s[kk] == '_'):
+                            while kk >= 0 and (s[kk].isalnum() or s[kk] == '_'):
+                                kk -= 1
+                            k = kk + 1
+                        l_start, l_end = k, j + 1
+                        # Parse right operand.
+                        m = i + 1
+                        while m < len(s) and s[m] == ' ':
+                            m += 1
+                        if m < len(s) and (s[m].isdigit() or s[m] in '.(' or s[m].isalpha()):
+                            if s[m] == '(':
+                                close = match_paren_fwd(s, m)
+                                if close >= 0:
+                                    return (ch, l_start, l_end, m, close + 1, i)
+                            else:
+                                n = m
+                                while n < len(s) and (s[n].isalnum() or s[n] in '._'):
+                                    n += 1
+                                if n < len(s) and s[n] == '(':
+                                    close = match_paren_fwd(s, n)
+                                    if close >= 0:
+                                        return (ch, l_start, l_end, m, close + 1, i)
+                                elif n > m:
+                                    return (ch, l_start, l_end, m, n, i)
+                else:
+                    k = j
+                    while k >= 0 and (s[k].isalnum() or s[k] in '._'):
+                        k -= 1
+                    k += 1
+                    l_start, l_end = k, j + 1
+                    m = i + 1
+                    while m < len(s) and s[m] == ' ':
+                        m += 1
+                    if m < len(s) and (s[m].isdigit() or s[m] in '.(' or s[m].isalpha()):
+                        if s[m] == '(':
+                            close = match_paren_fwd(s, m)
+                            if close >= 0:
+                                return (ch, l_start, l_end, m, close + 1, i)
+                        else:
+                            n = m
+                            while n < len(s) and (s[n].isalnum() or s[n] in '._'):
+                                n += 1
+                            if n < len(s) and s[n] == '(':
+                                close = match_paren_fwd(s, n)
+                                if close >= 0:
+                                    return (ch, l_start, l_end, m, close + 1, i)
+                            elif n > m:
+                                return (ch, l_start, l_end, m, n, i)
+        i += 1
+    return None
+
+
+def _transform_combinatorics_infix(s: str, ans_val: float, angle_unit: str = "Degree") -> str:
+    """Rewrite keypad infix `n P r` / `n C r` to nPr()/nCr() calls.
+
+    Handles bare digits as well as parenthesized / symbolic operands
+    ((5)P(3+1), Ans P 2). Operands are validated through the existing
+    safe pipeline; unparseable candidates are left for the tokenizer to
+    reject as Math ERROR. Uses no eval().
+    """
+    pos = 0
+    for _ in range(100):
+        found = _find_infix_pc(s, pos)
+        if found is None:
+            return s
+        op, l_start, l_end, r_start, r_end, op_idx = found
+        left, right = s[l_start:l_end], s[r_start:r_end]
+        try:
+            safe_evaluate_expression(left, ans_val, angle_unit)
+            safe_evaluate_expression(right, ans_val, angle_unit)
+        except Exception:
+            pos = op_idx + 1
+            continue
+        fn = 'nPr' if op == 'P' else 'nCr'
+        s = s[:l_start] + f'{fn}({left},{right})' + s[r_end:]
+        pos = 0
+    return s
+
+
+def _tokenize_complex(s: str):
+    """Tokenize numbers (incl. Nj imaginary literals and bare j), ops, parens."""
+    toks = []
+    i, n = 0, len(s)
+    while i < n:
+        c = s[i]
+        if c.isspace():
+            i += 1
+            continue
+        if c == '*' and i + 1 < n and s[i + 1] == '*':
+            toks.append('**')
+            i += 2
+            continue
+        if c in '+-*/(),':
+            toks.append(c)
+            i += 1
+            continue
+        if c.isdigit() or c == '.':
+            j = i
+            while j < n and (s[j].isdigit() or s[j] == '.'):
+                j += 1
+            num = float(s[i:j])
+            if j < n and s[j] == 'j':
+                toks.append(complex(0, num))
+                j += 1
+            else:
+                toks.append(num)
+            i = j
+            continue
+        if c == 'j':
+            toks.append(complex(0, 1))
+            i += 1
+            continue
+        raise ValueError("Math ERROR")
+    return toks
+
+
+def _parse_complex(toks):
+    """Recursive descent over +,-,*,/,**,parens,unary (complex-safe)."""
+    pos = [0]
+
+    def peek():
+        return toks[pos[0]] if pos[0] < len(toks) else None
+
+    def atom():
+        tk = peek()
+        if tk is None:
+            raise ValueError("Math ERROR")
+        if isinstance(tk, (int, float, complex)):
+            pos[0] += 1
+            return tk
+        if tk == '(':
+            pos[0] += 1
+            v = addsub()
+            if peek() != ')':
+                raise ValueError("Math ERROR")
+            pos[0] += 1
+            return v
+        raise ValueError("Math ERROR")
+
+    def power():
+        b = atom()
+        if peek() == '**':
+            pos[0] += 1
+            ex = unary()
+            try:
+                return b ** ex
+            except ZeroDivisionError:
+                raise
+            except Exception:
+                raise ValueError("Math ERROR")
+        return b
+
+    def unary():
+        if peek() == '-':
+            pos[0] += 1
+            return -unary()
+        if peek() == '+':
+            pos[0] += 1
+            return unary()
+        return power()
+
+    def muldiv():
+        l = unary()
+        while peek() in ('*', '/'):
+            op = peek()
+            pos[0] += 1
+            r = unary()
+            if r == 0:
+                raise ZeroDivisionError("division by zero")
+            l = l * r if op == '*' else l / r
+        return l
+
+    def addsub():
+        l = muldiv()
+        while peek() in ('+', '-'):
+            op = peek()
+            pos[0] += 1
+            r = muldiv()
+            l = l + r if op == '+' else l - r
+        return l
+
+    v = addsub()
+    if pos[0] != len(toks):
+        raise ValueError("Math ERROR")
+    return v
+
+
+def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree", variables=None, complex_mode: bool = False):
     """Evaluate mathematical expressions with scientific functions, roots, powers, and integrals."""
     s = expr_str.strip()
     if not s:
         return 0.0
 
+    # Multi-statement separator (ALPHA+integral ':'): evaluate each part, return last.
+    if ':' in s and '__BASE_SWITCH__' not in s:
+        parts = [p for p in s.split(':') if p.strip() != '']
+        if len(parts) > 1:
+            result = 0.0
+            for p in parts:
+                result = safe_evaluate_expression(p, ans_val, angle_unit, variables)
+                try:
+                    ans_val = float(result) if not isinstance(result, complex) else ans_val
+                except Exception:
+                    pass
+            return result
+
     # Replace display / shorthand symbols
     s = s.replace('π', f'({math.pi})').replace('pi', f'({math.pi})')
     s = s.replace('×', '*').replace('÷', '/').replace('−', '-')
     s = s.replace('Ans', f'({ans_val})').replace('ans', f'({ans_val})')
+    # Standalone constant e (Euler). Word boundaries guard scientific
+    # notation (1e10), function names and identifiers.
+    s = re.sub(r'(?<![A-Za-z0-9_.])e(?![A-Za-z0-9_(])', f'({math.e})', s)
+    # Standalone imaginary unit i (Complex mode ALPHA+ENG). Map to 1j for engine.
+    s = re.sub(r'(?<![A-Za-z0-9_.])i(?![A-Za-z0-9_(])', '(1j)', s)
+
+    # Calculator variables A-F, M, X, Y (STO/RECALL/ALPHA). Substitute values.
+    if variables:
+        for _vname in ('A', 'B', 'C', 'D', 'E', 'F', 'M', 'X', 'Y'):
+            if _vname in variables:
+                try:
+                    _vval = float(variables[_vname])
+                except Exception:
+                    continue
+                s = re.sub(rf'\b{_vname}\b', _lit(_vval), s)
+
+    # Keypad aliases: frontend display tokens -> backend function names.
+    s = s.replace('Σ(', 'sigma(').replace('d/dx(', 'diff(')
+    s = re.sub(r'(?<![A-Za-z0-9_])Rnd\(', 'round(', s)
+    # Random tokens with no argument list.
+    s = _transform_random(s)
+    # DMS / angle-unit suffixes -> plain numbers in the active unit.
+    s = _transform_dms(s, angle_unit)
+    # Casio postfix % -> /100.
+    s = _transform_percent(s)
+    # Keypad infix combinatorics: 5P2, (5)P(3+1), Ans P 2, ...
+    s = _transform_combinatorics_infix(s, ans_val, angle_unit)
 
     # Powers ^ -> ** (must run BEFORE special functions so recursive
     # calls inside _transform_special_functions see '**', not '^')
     s = s.replace('^', '**')
 
     # Handle supported special functions (integral, log_base, xroot, cbrt, sqrt)
-    s = _transform_special_functions(s, ans_val, angle_unit)
+    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode)
+    if '__FACT__' in s:
+        m = re.search(r'__FACT__(\d+)__', s)
+        if m:
+            return _prime_factorization_str(int(m.group(1)))  # type: ignore[return-value]
+        raise ValueError("Math ERROR")
 
-    # Factorials n! -> math.factorial(n)
-    s = re.sub(r'(\d+)!', r'math.factorial(\1)', s)
+    # Factorials: postfix '!' over arbitrary operands (5!, (5)!, (3+2)!,
+    # (Ans)!, (pi)!). Precomputed via the safe pipeline; no eval().
+    s = _transform_factorials(s, ans_val, angle_unit, variables, complex_mode)
 
     # Angle conversion functions
     if angle_unit == "Radian":
@@ -333,8 +967,18 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
     # Second pass: catch any trig calls revealed by earlier substitutions
     # (e.g. after Ans/pi substitution exposes a new sin(...) call) so trig
     # always routes through the angle-aware path.
-    s = _transform_special_functions(s, ans_val, angle_unit)
+    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode)
 
+    if 'j' in s:
+        try:
+            cval = _parse_complex(_tokenize_complex(s))
+            if isinstance(cval, complex) and abs(cval.imag) < 1e-14:
+                return float(cval.real)
+            return cval
+        except ZeroDivisionError:
+            raise
+        except Exception as exc:
+            raise ValueError(f"Math ERROR: {exc}") from exc
     try:
         val = evaluate(parse(tokenize(s)))
         if isinstance(val, complex):
@@ -370,12 +1014,18 @@ def evaluate_base_n(expr_str: str, base: int) -> str:
 
     int_result = int(result)
 
+    # Preserve the sign: bin()/oct()/hex() render negatives as '-0b101',
+    # so slicing [2:] would strip '-0' and corrupt the output. Format the
+    # magnitude and re-attach the sign instead.
+    sign = "-" if int_result < 0 else ""
+    magnitude = abs(int_result)
+
     if base == 2:
-        return bin(int_result)[2:]       # strip '0b' prefix
+        return f"{sign}{bin(magnitude)[2:]}"
     elif base == 8:
-        return oct(int_result)[2:]       # strip '0o' prefix
+        return f"{sign}{oct(magnitude)[2:]}"
     elif base == 16:
-        return hex(int_result)[2:].upper()  # strip '0x' prefix
+        return f"{sign}{hex(magnitude)[2:].upper()}"
     else:
         return str(int_result)
 
@@ -723,7 +1373,9 @@ class CalculatorController:
                 if key in new_settings:
                     updated[target] = self._validate_setting(key, new_settings[key])
         except (ValueError, TypeError):
-            return {"ok": False, "error": "Invalid setting value"}
+            bad = [k for k in new_settings if k in pairs]
+            bad_name = bad[0] if bad else "setting"
+            return {"ok": False, "error": f"Invalid {bad_name}"}
         self.settings = updated
         self.setup_settings["angle_unit"] = self.settings["angleUnit"]
         return {"ok": True, "success": True, "settings": dict(self.settings)}
@@ -906,7 +1558,8 @@ class CalculatorController:
         try:
             self.engine.set_mode("INEQUALITY")
             vals = [float(v) for v in coefficients]
-            op = operator.replace(" 0", "").strip()
+            op = str(operator).replace(" 0", "").strip()
+            op = op.replace("\u2265", ">=").replace("\u2264", "<=")
             if int(degree) == 2: self.engine.inequality_set_quadratic(*vals, operator=op)
             elif int(degree) == 3: self.engine.inequality_set_cubic(*vals, operator=op)
             elif int(degree) == 4: self.engine.inequality_set_quartic(*vals, operator=op)
@@ -1086,12 +1739,14 @@ class CalculatorController:
             decimal_val = int(str(value_str).strip(), from_base)
             if to_base == 10:
                 return str(decimal_val)
-            elif to_base == 2:
-                return bin(decimal_val)[2:]
+            sign = "-" if decimal_val < 0 else ""
+            magnitude = abs(decimal_val)
+            if to_base == 2:
+                return f"{sign}{bin(magnitude)[2:]}"
             elif to_base == 8:
-                return oct(decimal_val)[2:]
+                return f"{sign}{oct(magnitude)[2:]}"
             elif to_base == 16:
-                return hex(decimal_val)[2:].upper()
+                return f"{sign}{hex(magnitude)[2:].upper()}"
             return str(decimal_val)
         except Exception:
             return str(value_str)
@@ -1165,6 +1820,129 @@ class CalculatorController:
             return self._format_single_number(result)
         return str(result)
 
+    def set_variable(self, name: str, value) -> dict:
+        key = str(name).strip().upper()
+        if key not in {"A", "B", "C", "D", "E", "F", "M", "X", "Y"}:
+            return {"ok": False, "error": f"Invalid variable '{name}'"}
+        try:
+            fval = float(value)
+        except (ValueError, TypeError):
+            return {"ok": False, "error": "Variable value must be numeric"}
+        self.variables[key] = fval
+        return {"ok": True, "success": True, "variable": key, "value": fval, "variables": dict(self.variables)}
+
+    def get_variables(self) -> dict:
+        return {"ok": True, "success": True, "variables": dict(self.variables)}
+
+    def calc_evaluate(self, expression: str, values: dict | None = None):
+        """CALC: substitute provided variable values, evaluate, keep stored vars."""
+        try:
+            merged = dict(self.variables)
+            if isinstance(values, dict):
+                for k, v in values.items():
+                    ku = str(k).strip().upper()
+                    if ku in merged:
+                        merged[ku] = float(v)
+            try:
+                ans_float = float(self.ans)
+            except (ValueError, TypeError):
+                ans_float = 0.0
+            angle_u = self.setup_settings["angle_unit"]
+            res = safe_evaluate_expression(str(expression), ans_float, angle_u, merged, self.mode_name == "Complex")
+            # Persist any caller-supplied values like the real CALC prompt does.
+            if isinstance(values, dict):
+                for k, v in values.items():
+                    ku = str(k).strip().upper()
+                    if ku in self.variables:
+                        try:
+                            self.variables[ku] = float(v)
+                        except Exception:
+                            pass
+            formatted = self._format_result(res)
+            self.last_result = formatted
+            self.ans = formatted
+            self.result_displayed = True
+            self.state = "RESULT"
+            return {"ok": True, "success": True, "result": formatted, "variables": dict(self.variables)}
+        except ZeroDivisionError:
+            return {"ok": False, "error": DIV_ZERO_MSG}
+        except Exception as exc:
+            msg = str(exc) if str(exc).startswith("Math ERROR") else f"Math ERROR: {exc}"
+            return {"ok": False, "error": msg}
+
+    def solve_equation_newton(self, expression: str, variable: str = "X", guess: float = 0.0):
+        """SOLVE (Newton's method, fx-991EX style): solve expr==0 or lhs==rhs for variable."""
+        try:
+            var = str(variable).strip().upper() or "X"
+            if var not in {"A", "B", "C", "D", "E", "F", "M", "X", "Y"}:
+                var = "X"
+            try:
+                x0 = float(guess)
+            except (ValueError, TypeError):
+                x0 = 0.0
+            try:
+                ans_float = float(self.ans)
+            except (ValueError, TypeError):
+                ans_float = 0.0
+            angle_u = self.setup_settings["angle_unit"]
+            expr = str(expression)
+            if "=" in expr and "__BASE_SWITCH__" not in expr:
+                lhs, rhs = expr.split("=", 1)
+                def f(x):
+                    merged = dict(self.variables)
+                    merged[var] = float(x)
+                    l = safe_evaluate_expression(lhs, ans_float, angle_u, merged)
+                    r = safe_evaluate_expression(rhs, ans_val=ans_float, angle_unit=angle_u, variables=merged)
+                    return float(l) - float(r)
+            else:
+                def f(x):
+                    merged = dict(self.variables)
+                    merged[var] = float(x)
+                    return float(safe_evaluate_expression(expr, ans_float, angle_u, merged))
+            h = 1e-6
+            x = x0
+            for _ in range(100):
+                try:
+                    fx = f(x)
+                except Exception:
+                    return {"ok": False, "error": "Math ERROR"}
+                if abs(fx) < 1e-10:
+                    break
+                try:
+                    dfx = (f(x + h) - f(x - h)) / (2 * h)
+                except Exception:
+                    return {"ok": False, "error": "Math ERROR"}
+                if abs(dfx) < 1e-12:
+                    # nudge and retry (Newton needs nonzero derivative)
+                    x = x + 0.5 if x >= 0 else x - 0.5
+                    continue
+                x_new = x - fx / dfx
+                if abs(x_new - x) < 1e-9:
+                    x = x_new
+                    break
+                x = x_new
+                if abs(x) > 1e12:
+                    return {"ok": False, "error": "Math ERROR"}
+            else:
+                return {"ok": False, "error": "Math ERROR"}
+            try:
+                if abs(f(x)) > 1e-6:
+                    return {"ok": False, "error": "Math ERROR"}
+            except Exception:
+                return {"ok": False, "error": "Math ERROR"}
+            self.variables[var] = float(x)
+            formatted = self._format_result(float(x))
+            self.last_result = formatted
+            self.ans = formatted
+            self.result_displayed = True
+            self.state = "RESULT"
+            return {"ok": True, "success": True, "result": formatted, "variable": var, "value": float(x)}
+        except ZeroDivisionError:
+            return {"ok": False, "error": DIV_ZERO_MSG}
+        except Exception as exc:
+            msg = str(exc) if str(exc).startswith("Math ERROR") else f"Math ERROR: {exc}"
+            return {"ok": False, "error": msg}
+
     def _state(self, ok=True, error=None, display=None):
         if not self.powered_on:
             display = ""
@@ -1213,6 +1991,31 @@ class CalculatorController:
         item_idx = max(0, min(self.menu_index, len(MENU_PAGES[page_idx]) - 1))
         return MENU_PAGES[page_idx][item_idx]
 
+    def _sync_menu_from_payload(self, payload) -> bool:
+        """Adopt the frontend's canonical menu cursor (single source of truth).
+
+        The frontend sends menuPage (1/2) + menuIndex (0-based within page)
+        with every /api/key request. When present and valid, the backend
+        adopts it so digit selection, D-pad navigation and equals-confirm
+        all resolve against the same cursor instead of competing cursors.
+        """
+        try:
+            mp = payload.get("menuPage")
+            mi = payload.get("menuIndex")
+            if mp is None or mi is None:
+                return False
+            page = int(mp)
+            idx = int(mi)
+            if page not in (1, 2):
+                return False
+            if not (0 <= idx < len(MENU_PAGES[page - 1])):
+                return False
+            self.menu_page = page
+            self.menu_index = idx
+            return True
+        except (ValueError, TypeError):
+            return False
+
     def _move_menu(self, key):
         page_items = MENU_PAGES[self.menu_page - 1]
         if key == "dpad_right":
@@ -1247,7 +2050,7 @@ class CalculatorController:
     def _token_for(self, key):
         if self.mode_name == "Complex" and key == "eng":
             return "i"
-        if self.mode_name == "Base-N":
+        if self.mode_name == "Base-N" and self.shift:
             base_switch = {
                 "square": "DEC",
                 "power": "HEX",
@@ -1262,14 +2065,18 @@ class CalculatorController:
                 "log": "10^(", "ln": "e^(", "sqrt": "cbrt(",
                 "square": "^3", "power": "xroot(", "scientific": "π",
                 "0": "round(", "decimal": "rand()", "fraction": "mixed_frac(",
-                "integral": "sigma(", "variable": "diff(",
+                "integral": "diff(", "variable": "sigma(",
+                "ellipsis": "FACT(", "right_paren": ",",
+                "ans": "%",
+                "eng": "<",
             }.get(key, "")
         if self.alpha:
             return {
                 "negate": "A", "ellipsis": "B", "inverse": "C",
                 "sin": "D", "cos": "E", "tan": "F",
                 "right_paren": "x", "s_to_d": "y", "m_plus": "M",
-                "scientific": "e", "ans": "e", "decimal": "RanInt(",
+                "scientific": "e", "decimal": "RanInt(",
+                "integral": ":", "calc": "=", "eng": "i",
             }.get(key, "")
         return {
             **{str(number): str(number) for number in range(10)},
@@ -1426,6 +2233,9 @@ class CalculatorController:
 
             if key == "equals":
                 if self.state == "MENU":
+                    # Canonical cursor comes from the frontend payload; adopt it
+                    # so MENU + D-pad + equals confirms the visible selection.
+                    self._sync_menu_from_payload(payload)
                     return self._enter_selected_mode()
 
                 eval_expr = str(expr_override if expr_override is not None else self.expression)
@@ -1447,7 +2257,7 @@ class CalculatorController:
                         self.shift = False
                         self.alpha = False
                         self.state = "ERROR"
-                        return self._state(False, "Math ERROR", "Math ERROR")
+                        return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
                     except Exception:
                         self.shift = False
                         self.alpha = False
@@ -1463,7 +2273,7 @@ class CalculatorController:
                 try:
                     # Evaluate with safe mathematical evaluator
                     angle_u = self.setup_settings["angle_unit"]
-                    res_val = safe_evaluate_expression(eval_expr, ans_float, angle_u)
+                    res_val = safe_evaluate_expression(eval_expr, ans_float, angle_u, self.variables, self.mode_name == "Complex")
                     self.last_result = self._format_result(res_val)
                     self.ans = self.last_result
                     self.result_displayed = True
@@ -1475,7 +2285,7 @@ class CalculatorController:
                     self.shift = False
                     self.alpha = False
                     self.state = "ERROR"
-                    return self._state(False, "Math ERROR", "Math ERROR")
+                    return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
                 except Exception:
                     # Fallback to engine.evaluate
                     try:
@@ -1491,7 +2301,7 @@ class CalculatorController:
                         self.shift = False
                         self.alpha = False
                         self.state = "ERROR"
-                        return self._state(False, "Math ERROR", "Math ERROR")
+                        return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
                     except Exception:
                         self.shift = False
                         self.alpha = False
@@ -1505,6 +2315,17 @@ class CalculatorController:
                 return self._state()
 
             if self.state == "MENU" and key.isdigit():
+                # Canonical resolution: the frontend sends its menuPage with
+                # every request. Physical keys "1"-"4" on page 2 collide with
+                # page-1 digits, so disambiguate via the payload first.
+                try:
+                    frontend_page = int(payload.get("menuPage", 0))
+                except (ValueError, TypeError):
+                    frontend_page = 0
+                if frontend_page == 2 and key in {"1", "2", "3", "4"}:
+                    self.menu_page = 2
+                    self.menu_index = int(key) - 1
+                    return self._enter_selected_mode()
                 for page_number, page_items in enumerate(MENU_PAGES, start=1):
                     for item_index, (number, _) in enumerate(page_items):
                         if number == key:
@@ -1513,6 +2334,13 @@ class CalculatorController:
                             return self._enter_selected_mode()
 
             if key in {"dpad_up", "dpad_down", "dpad_left", "dpad_right"} and self.state == "MENU":
+                # Single canonical cursor: the frontend already moved its
+                # cursor locally and sends the new position in the payload.
+                # Adopt it directly instead of moving a second competing
+                # cursor (which caused off-by-one/stale confirms).
+                if self._sync_menu_from_payload(payload):
+                    self.state = "MENU"
+                    return self._state()
                 self._move_menu(key)
                 self.state = "MENU"
                 return self._state()
@@ -1731,6 +2559,10 @@ class MvpHandler(BaseHTTPRequestHandler):
             self._send_json(CONTROLLER.get_spreadsheet())
             return
 
+        if path in {"/api/variables", "/api/variables/get"}:
+            self._send_json(CONTROLLER.get_variables())
+            return
+
         self._send_json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self):
@@ -1821,6 +2653,15 @@ class MvpHandler(BaseHTTPRequestHandler):
                 elif path == "/api/reset":
                     target = payload.get("target", payload.get("reset", "all"))
                     response = CONTROLLER.reset_calculator(target)
+                elif path == "/api/calc":
+                    response = CONTROLLER.calc_evaluate(payload.get("expression", ""), payload.get("values", payload.get("variables")))
+                elif path == "/api/solve":
+                    response = CONTROLLER.solve_equation_newton(payload.get("expression", ""), payload.get("variable", "X"), payload.get("guess", payload.get("x0", 0.0)))
+                elif path in {"/api/variables", "/api/variables/set"}:
+                    if "name" in payload or "variable" in payload:
+                        response = CONTROLLER.set_variable(payload.get("name", payload.get("variable")), payload.get("value", 0))
+                    else:
+                        response = CONTROLLER.get_variables()
                 else:
                     self._send_json({"ok": False, "error": "not found"}, 404)
                     return

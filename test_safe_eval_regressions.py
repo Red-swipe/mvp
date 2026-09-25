@@ -77,11 +77,11 @@ check("2^3 = 8", abs(r - 8.0) < 1e-12, repr(r))
 r = safe_evaluate_expression("sin(0)")
 check("sin(0) = 0", abs(r) < 1e-12, repr(r))
 
-# --- Issue 3: controller equals path shows Math ERROR, not the joke message ---
+# --- Issue 3: controller equals path shows the custom div-zero message ---
 reset_controller()
 resp = CONTROLLER.press_key({"key": "equals", "expression": "5/0"})
-check("controller 5/0 -> Math ERROR",
-      resp.get("error") == "Math ERROR" and resp.get("display") == "Math ERROR",
+check("controller 5/0 -> To infinity and beyonddd",
+      resp.get("error") == "To infinity and beyonddd" and resp.get("display") == "To infinity and beyonddd",
       repr((resp.get("error"), resp.get("display"))))
 
 reset_controller()
