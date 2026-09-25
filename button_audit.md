@@ -235,3 +235,84 @@ cleanly only if node is absent).
 * NOT REPRODUCED: any cross-contamination between `MatAns` ↔ `VctAns` ↔
   `Ans` outside the fixed CALC/`backendKey` paths — all manual + regression
   probes hold separation.
+
+---
+
+## 6. Phase 3A — SHIFT/ALPHA Routing Audit (2026-09-26 UTC)
+
+> Physical reference: `raw/buttons.md`. Scope is Layer 1 (key routing +
+> input state + the file:// evaluation bridge in `frontend.html`) only.
+> `mvp_server.py` and `engine/` NOT modified. Every claim below was proven
+> by execution (served backend + node-executed bridge), not by reading.
+
+### Routing table (physical key → token → engine)
+
+| Physical key | Normal | SHIFT | ALPHA | Frontend token | Engine support | Status |
+|---|---|---|---|---|---|---|
+| `+` | `+` | Pol | — | `Pol(` (`tkMap.plus`) | `Pol` both paths | PASS |
+| `−` | `−` | Rec | — | `Rec(` (`tkMap.minus`) | `Rec` both paths | PASS |
+| `x⁻¹` | `^(-1)` | `x!` | `C` | `!` (`rawKey==='inverse'`) | postfix `!` both paths | FIXED |
+| `×` | `×` | nPr | — | `P` (`tkMap.multiply`) | infix `P` both paths | FIXED |
+| `÷` | `÷` | nCr | — | `C` (`tkMap.divide`) | infix `C` both paths | FIXED |
+| `∫` | ∫ template | d/dx | `:` | `integral(b,l,u)` / `d/dx(` | `integral`/`diff` both paths | PASS |
+| `x` | `x` | Σ | — | `Σ(` (`rawKey==='variable'`) | `sigma` both paths | PASS |
+| `°′″` | DMS | FACT | `B` | `FACT(` | prime-factor display | PASS (unchanged) |
+
+DOM `data-shift`/`data-alpha` attributes verified for all nine buttons
+(`calc`→`SOLVE`/`=`, `integral`→`d/dx`/`:` included).
+
+### Results
+
+* factorial → FIXED (TOKEN BUG). Representative `5!`/`10!` passed everywhere,
+  but the file:// bridge resolved `!` with a bare-digits regex, so the
+  physical flow `(3+2)` SHIFT+`x⁻¹` `=` failed locally while served returned
+  120. The bridge now resolves arbitrary operands (balanced parens + bare
+  operands via `_evalStr` recursion, `!=` rejected, cap 170), mirroring
+  backend `_transform_factorials`. Edges pinned: `0!`=1, `171!`/`5.5!`/`!=`
+  → Math ERROR, `-5!`=-120, `3!!`=720.
+* nPr → FIXED (TOKEN BUG). `5P2`/`5C2`-class flows passed, but Ans-chained
+  and nested-paren forms (`AnsP2`, `AnsC2`, `(Ans)P(2)`, spaced `Ans P 2` /
+  `Ans C 2`) failed in the bridge while the backend accepted them. Root
+  causes: (1) the bridge P/C rewrite ran before Ans substitution with
+  digit/paren-only patterns; (2) `C` is both operator and C-variable.
+  The bridge P/C stage now runs after Ans/pi substitution (like the
+  backend's early substitution) with a generic digit/paren/nested-paren
+  rewrite plus guarded bare `M`/`e` (mirroring `prepare`); paren operands
+  allow one nesting level for `(Ans)`-style input. Bare single-letter
+  variables stay unsupported exactly like the backend (verified `XP2`/`XC2`
+  error on both paths — real key flows never produce spaced forms anyway).
+* nCr → FIXED (same TOKEN BUG as nPr; C-collision covered above).
+* Pol → PASS. `Pol(3,4)`=5 both paths; stores X/Y; angle-unit aware.
+* Rec → PASS. `Rec(5,60)`=2.5 (Degree) both paths.
+* d/dx → PASS. `d/dx(x^2,3)`≈6 both paths (existing `diff(` alias).
+* integration → PASS. `integral(x,0,1)`≈0.5 both paths (existing template →
+  `integral(body,lower,upper)` serialization).
+* Σ → PASS. `sigma(x,1,5)`=`Σ(x,1,5)`=15 both paths.
+
+### Tests added (`test_state_machine.py::TestShiftAlphaRouting3A`, 11 tests)
+
+* DOM wiring (9 buttons), SHIFT token branches (8), prepare infix rewrites,
+  integral template serialization.
+* Backend: all six features incl. Ans-chained `AnsP2`→20 / `AnsC2`→10.
+* Bridge (node, real `_evalStr`): representative values, `(3+2)!`
+  regression, factorial rejections, Ans-chained combinatorics regression,
+  Pol/Rec values.
+
+### Regression results
+
+* `pytest --ignore=test_safe_eval_regressions.py`: **142 passed, 12 subtests
+  passed** (131 pre-existing + 11 new). Legacy script standalone 13/13.
+* `python verify.py`: clean. Live smoke: `5P2`→20, `Pol(3,4)`→5.
+  `node --check` over the 14 state/register functions: exit 0.
+* State-machine/register tests (33) remain green; Ans/MatAns/VctAns and
+  CALC/SOLVE behavior untouched (no register paths modified).
+
+### Remaining issues
+
+* DEFERRED: triple-nested paren P/C operands (`((Ans))P2`) fail in the
+  bridge while the backend accepts them — single-level limit inherited from
+  `prepareExpression`; no physical flow produces it (Ans adds one layer).
+* DEFERRED (pre-existing, out of scope): spaced `5 C 2` / `Ans C 2` fail on
+  the served backend (C-variable substitution destroys the spaced operator);
+  real key flows are unspaced and work. Not touched per constraints.
+* NOT IMPLEMENTED: nothing — all six features work end to end.

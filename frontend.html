@@ -3582,11 +3582,22 @@
     }
     s = s.split('Σ(').join('sigma(').split('d/dx(').join('diff(');
     s = s.replace(/(?<![A-Za-z0-9_])Rnd\(/g, 'round(');
-    // Keypad infix combinatorics (mirror the backend + prepareExpression).
-    s = s.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
-    s = s.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
-    s = s.replace(/\(([^()]*)\)\s*C\s*\(([^()]*)\)/g, 'nCr($1,$2)');
-    s = s.replace(/\(([^()]*)\)\s*P\s*\(([^()]*)\)/g, 'nPr($1,$2)');
+    s = s.split('π').join('(' + Math.PI + ')').split('pi').join('(' + Math.PI + ')');
+    s = s.split('Ans').join('(' + _ansValue() + ')').split('ans').join('(' + _ansValue() + ')');
+    // Keypad infix combinatorics (mirror the backend infix pass). Stays BEFORE
+    // the variable substitution below (`C` is both the nCr operator and the C
+    // variable: substituting variables first would destroy the operator in
+    // `5 C 2`). Ans/pi already arrived as parenthesized numbers above (like
+    // the backend's early Ans/pi substitution), so `AnsP2` uses the paren
+    // forms. Paren operands allow one nesting level so `(Ans)P(2)` (which
+    // becomes `((5))P(2)`) still routes. Bare single-letter variables stay
+    // unsupported exactly like the backend (only M and Euler e are accepted
+    // bare, mirroring prepare).
+    const _pcId = '(?<![A-Za-z])(?:M|e)(?![A-Za-z0-9_])';
+    const _pcParen = '(?:\\([^()]*\\)|\\((?:[^()]|\\([^()]*\\))*\\))';
+    const _pcOp = '(?:\\d+(?:\\.\\d+)?|' + _pcParen + '|' + _pcId + ')';
+    s = s.replace(new RegExp('(' + _pcOp + ')\\s*C\\s*(' + _pcOp + ')', 'g'), 'nCr($1,$2)');
+    s = s.replace(new RegExp('(' + _pcOp + ')\\s*P\\s*(' + _pcOp + ')', 'g'), 'nPr($1,$2)');
     try {
       const vmap = (typeof appState !== 'undefined' && appState.variables) ? appState.variables : null;
       if (vmap) {
@@ -3599,18 +3610,44 @@
       }
     } catch (e) {}
     s = s.replace(/(\(\s*[^()]*?\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%/g, '(($1)/100)');
-    s = s.split('π').join('(' + Math.PI + ')').split('pi').join('(' + Math.PI + ')');
     s = s.split('×').join('*').split('÷').join('/').split('−').join('-');
-    s = s.split('Ans').join('(' + _ansValue() + ')').split('ans').join('(' + _ansValue() + ')');
     s = _transformSpecial(s);
     s = s.split('^').join('**');
-    s = s.replace(/(\d+)!/g, (m, d) => {
-      const n = parseInt(d, 10);
-      if (n > 170) throw new Error('Math ERROR');
+    // Postfix '!' over arbitrary operands (mirror the backend
+    // _transform_factorials): 5!, (3+2)!, (Ans)!, (pi)!. '!=' is not
+    // calculator grammar. Cap 170 like the backend.
+    for (let guard = 0; guard < 100; guard++) {
+      const idx = s.indexOf('!');
+      if (idx < 0) break;
+      if (s[idx + 1] === '=') throw new Error('Math ERROR');
+      let j = idx - 1;
+      while (j >= 0 && s[j] === ' ') j--;
+      if (j < 0) throw new Error('Math ERROR');
+      let start, operand;
+      if (s[j] === ')') {
+        let depth = 1, k = j - 1;
+        while (k >= 0) {
+          if (s[k] === ')') depth++;
+          else if (s[k] === '(') { depth--; if (depth === 0) break; }
+          k--;
+        }
+        if (k < 0) throw new Error('Math ERROR');
+        start = k; operand = s.slice(k, j + 1);
+      } else {
+        let k = j;
+        while (k >= 0 && /[A-Za-z0-9_.]/.test(s[k])) k--;
+        k++;
+        operand = s.slice(k, j + 1);
+        if (!operand) throw new Error('Math ERROR');
+        start = k;
+      }
+      const value = _evalStr(operand);
+      if (_cIsC(value) || !Number.isInteger(value) || value < 0) throw new Error('Math ERROR');
+      if (value > 170) throw new Error('Math ERROR');
       let r = 1n;
-      for (let k = 2; k <= n; k++) r *= BigInt(k);
-      return '(' + Number(r) + ')';
-    });
+      for (let k = 2; k <= value; k++) r *= BigInt(k);
+      s = s.slice(0, start) + '(' + Number(r) + ')' + s.slice(idx + 1);
+    }
     s = s.split('**').join('^');
     let v;
     try { v = _parseEval(_tokenize(s)); }

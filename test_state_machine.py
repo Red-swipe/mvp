@@ -12,6 +12,9 @@ Two layers:
 3. Frontend wiring guards: AC/DEL/modifier/editing keys must not reach
    prepareExpressionForEvaluation() or /api/key; '=' only evaluates with a
    valid calculation context.
+4. Phase 3A SHIFT/ALPHA routing: physical key → modifier routing → token →
+   expression → existing evaluator → result (Pol/Rec, factorial, nPr/nCr,
+   d/dx, integral, summation).
 """
 import json
 import re
@@ -514,6 +517,197 @@ class TestBackendRegisterLifetime(unittest.TestCase):
         self.assertEqual(r.get("result"), "14")
         r2 = c.press_key({"key": "equals", "expression": "Ans+1"})
         self.assertEqual(r2.get("result"), "15")
+
+
+def _run_bridge_eval(cases, variables=None, ans=None):
+    """Execute the real FILE_MODE bridge (_evalStr) from frontend.html in node.
+
+    Extracts the bridge plus its helpers (mirrors the repo's run_bridge
+    approach in test_file_mode.py) with a stub appState. Returns a dict of
+    expression -> ("OK", value) or ("ERR", message).
+    """
+    const_start = FRONTEND.index("const _LOCAL_FNS")
+    const_end = FRONTEND.index("function _tokenize")
+    consts = FRONTEND[const_start:const_end]
+    names = ["_findSpecialCall", "_matchParen", "_splitArgs", "_simpson",
+             "_reprNum", "_ansValue", "_tokenize", "_parseEval",
+             "_transformSpecial", "_evalStr"]
+    fns = "\n".join(extract_function(FRONTEND, n) for n in names)
+    runner = (
+        "const fs=require('fs');\n"
+        "let localAns=null;\n"
+        "const appState={variables:%s};\n" % json.dumps(variables or {})
+        + consts + "\n" + fns + "\n"
+        + "if(%s!==null){localAns=%s;}\n" % (json.dumps(ans), json.dumps(ans))
+        + "const cases=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));\n"
+        + "const out={};\n"
+        + "for(const c of cases){try{out[c]=['OK',_evalStr(c)];}"
+        + "catch(e){out[c]=['ERR',String((e&&e.message)||e)];}}\n"
+        + "process.stdout.write(JSON.stringify(out));\n"
+    )
+    cases_file = PROJECT / ".routing_cases_tmp.json"
+    cases_file.write_text(json.dumps(cases), encoding="utf-8")
+    tmp = PROJECT / ".routing_test_tmp.js"
+    tmp.write_text(runner, encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            ["node", str(tmp), str(cases_file)],
+            capture_output=True, text=True, encoding="utf-8", timeout=120,
+        )
+    finally:
+        tmp.unlink(missing_ok=True)
+        cases_file.unlink(missing_ok=True)
+    assert proc.returncode == 0, proc.stderr[:500]
+    return json.loads(proc.stdout)
+
+
+@unittest.skipUnless(shutil.which("node"), "node is not installed")
+class TestShiftAlphaRouting3A(unittest.TestCase):
+    """Phase 3A: physical SHIFT/ALPHA key → token → existing evaluator.
+
+    Physical reference is raw/buttons.md. Each feature is proven end to end;
+    the two fixed bridge gaps (parenthesized factorial, Ans/nested-paren
+    nPr/nCr forms) carry regression cases reproducing the original failure.
+    """
+
+    def test_dom_shift_alpha_attributes(self):
+        import re as _re
+        buttons = dict()
+        for m in _re.finditer(r'<button[^>]*>', FRONTEND):
+            tag = m.group(0)
+            km = _re.search(r'data-key="([^"]+)"', tag)
+            if km:
+                buttons[km.group(1)] = tag
+        expected = {
+            "calc": ('data-shift="SOLVE"', 'data-alpha="="'),
+            "integral": ('data-shift="d/dx"', 'data-alpha=":"'),
+            "variable": ('data-shift="Sigma"', None),
+            "ellipsis": ('data-shift="FACT"', 'data-alpha="B"'),
+            "inverse": ('data-shift="factorial"', 'data-alpha="C"'),
+            "multiply": ('data-shift="nPr"', None),
+            "divide": ('data-shift="nCr"', None),
+            "plus": ('data-shift="Pol"', None),
+            "minus": ('data-shift="Rec"', None),
+        }
+        for key, (shift, alpha) in expected.items():
+            self.assertIn(key, buttons, f"button {key} missing")
+            self.assertIn(shift, buttons[key], f"{key}: {shift} missing")
+            if alpha:
+                self.assertIn(alpha, buttons[key], f"{key}: {alpha} missing")
+
+    def test_shift_token_branches(self):
+        # SHIFT + key must insert the documented token (routing layer).
+        # NOTE: non-ASCII tokens live in the file as JS \uXXXX escapes, so
+        # the assertions below match raw bytes, not rendered glyphs.
+        branches = [
+            "'plus': isShift ? 'Pol(' : '+'",
+            "'minus': isShift ? 'Rec('",
+            "'multiply': isShift ? 'P'",
+            "'divide': isShift ? 'C'",
+            "if (isShift) { insertToken('!'); return; }",
+            "if (isShift) { insertToken('d/dx('); return; }",
+            "insertToken(isShift ? '\\u03a3(' : 'x')",
+            "if (isShift) { insertToken('FACT('); return; }",
+        ]
+        for branch in branches:
+            self.assertIn(branch, FRONTEND, f"routing branch missing: {branch}")
+
+    def test_prepare_infix_rewrites(self):
+        idx = FRONTEND.find("function prepareExpressionForEvaluation(")
+        self.assertGreaterEqual(idx, 0)
+        body = FRONTEND[idx:idx + 2000]
+        self.assertIn("nCr($1,$2)", body)
+        self.assertIn("nPr($1,$2)", body)
+
+    def test_integral_template_serializes(self):
+        self.assertIn("out += 'integral('", FRONTEND,
+                      "integral template must serialize to integral(body,lower,upper)")
+
+    def test_backend_priority_features(self):
+        from mvp_server import safe_evaluate_expression as ev
+        self.assertAlmostEqual(float(ev("Pol(3,4)")), 5.0)
+        self.assertAlmostEqual(float(ev("Rec(5,60)")), 2.5)
+        self.assertEqual(ev("5!"), 120.0)
+        self.assertEqual(ev("(3+2)!"), 120.0)
+        self.assertEqual(ev("5P2"), 20.0)
+        self.assertEqual(ev("5C2"), 10.0)
+        self.assertAlmostEqual(float(ev("d/dx(x^2,3)")), 6.0, places=3)
+        self.assertAlmostEqual(float(ev("integral(x,0,1)")), 0.5)
+        self.assertAlmostEqual(float(ev("sigma(x,1,5)")), 15.0)
+        self.assertAlmostEqual(float(ev("Σ(x,1,5)")), 15.0)
+
+    def test_backend_ans_chained_combinatorics(self):
+        from mvp_server import CONTROLLER, CONTROLLER_LOCK
+        with CONTROLLER_LOCK:
+            CONTROLLER.expression = ""
+            CONTROLLER.cursor_position = 0
+            CONTROLLER.last_result = None
+            CONTROLLER.result_displayed = False
+            CONTROLLER.state = "INPUT"
+            CONTROLLER.ans = "0"
+            CONTROLLER.ans_matrix = None
+            CONTROLLER.ans_vector = None
+        c = CONTROLLER
+        c.press_key({"key": "equals", "expression": "2+3"})
+        r = c.press_key({"key": "equals", "expression": "AnsP2"})
+        self.assertEqual(r.get("result"), "20")
+        with CONTROLLER_LOCK:
+            CONTROLLER.ans = "5"
+        r = c.press_key({"key": "equals", "expression": "AnsC2"})
+        self.assertEqual(r.get("result"), "10")
+
+    def test_bridge_priority_features(self):
+        out = _run_bridge_eval(
+            ["Pol(3,4)", "Rec(5,60)", "5!", "10!", "5P2", "5C2",
+             "(5)P(3+1)", "d/dx(x^2,3)", "integral(x,0,1)",
+             "sigma(x,1,5)", "Σ(x,1,5)"])
+        self.assertEqual(out["Pol(3,4)"], ["OK", 5])
+        self.assertAlmostEqual(out["Rec(5,60)"][1], 2.5)
+        self.assertEqual(out["5!"], ["OK", 120])
+        self.assertEqual(out["10!"], ["OK", 3628800])
+        self.assertEqual(out["5P2"], ["OK", 20])
+        self.assertEqual(out["5C2"], ["OK", 10])
+        self.assertEqual(out["(5)P(3+1)"], ["OK", 120])
+        self.assertAlmostEqual(out["d/dx(x^2,3)"][1], 6.0, places=3)
+        self.assertAlmostEqual(out["integral(x,0,1)"][1], 0.5)
+        self.assertEqual(out["sigma(x,1,5)"], ["OK", 15])
+        self.assertEqual(out["Σ(x,1,5)"], ["OK", 15])
+
+    def test_bridge_parenthesized_factorial_regression(self):
+        # Reproduces the original FILE_MODE failure: `(3+2)!` errored while
+        # the served backend returned 120.
+        out = _run_bridge_eval(["(3+2)!", "(2)!", "5 !", "3!!", "0!"])
+        self.assertEqual(out["(3+2)!"], ["OK", 120])
+        self.assertEqual(out["(2)!"], ["OK", 2])
+        self.assertEqual(out["5 !"], ["OK", 120])
+        self.assertEqual(out["3!!"], ["OK", 720])
+        self.assertEqual(out["0!"], ["OK", 1])
+
+    def test_bridge_factorial_rejections(self):
+        out = _run_bridge_eval(["171!", "5.5!", "2!=3"])
+        for expr in ("171!", "5.5!", "2!=3"):
+            self.assertEqual(out[expr][0], "ERR", expr)
+
+    def test_bridge_ans_chained_combinatorics_regression(self):
+        # `(Ans)P(2)` / `AnsC2` errored in the bridge while the backend
+        # accepted them; the C-variable collision also broke `Ans C 2`.
+        out = _run_bridge_eval(
+            ["AnsP2", "AnsC2", "(Ans)P(2)", "Ans P 2", "Ans C 2",
+             "Ans!", "(Ans)!"],
+            ans="5")
+        self.assertEqual(out["AnsP2"], ["OK", 20])
+        self.assertEqual(out["AnsC2"], ["OK", 10])
+        self.assertEqual(out["(Ans)P(2)"], ["OK", 20])
+        self.assertEqual(out["Ans P 2"], ["OK", 20])
+        self.assertEqual(out["Ans C 2"], ["OK", 10])
+        self.assertEqual(out["Ans!"], ["OK", 120])
+        self.assertEqual(out["(Ans)!"], ["OK", 120])
+
+    def test_bridge_rec_pol_angle_units(self):
+        # Degree default: Rec(5,60) x-component is 2.5; Pol stores r.
+        out = _run_bridge_eval(["Rec(5,60)", "Pol(3,4)"])
+        self.assertAlmostEqual(out["Rec(5,60)"][1], 2.5)
+        self.assertEqual(out["Pol(3,4)"], ["OK", 5])
 
 
 if __name__ == "__main__":
