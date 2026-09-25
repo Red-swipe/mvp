@@ -2359,6 +2359,7 @@
     poweredOn: true, mode: 'Calculate', menuOpen: false, menuPage: 1,
     menuSelection: 0, shift: false, alpha: false, splash: false,
     result: null, lastAnswer: null, resultDisplayed: false, error: null,
+    matAns: null, vctAns: null,
     isFractionMode: false, memoryValue: 0, hasMemory: false,
     variables: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 },
     stoPending: false, recallPending: false, qrOpen: false, approxMode: false,
@@ -2554,6 +2555,82 @@
     prepared = prepared.replace(/(\d+)\s*P\s*\(([^()]*)\)/g, 'nPr($1,$2)');
     prepared = prepared.replace(/\bM\b/g, String(appState.memoryValue || 0));
     return prepared;
+  }
+
+  // ── CENTRALIZED INTERACTION STATE (single frontend source of truth) ──
+  // Screen states: EMPTY (nothing entered) | EDITING (building expression) |
+  // RESULT (a successful evaluation is displayed) | ERROR (an error is shown).
+  // Derived from appState + the serialized expression; no second store.
+  // Modifiers (SHIFT/ALPHA), mode, insertMode and pending STO/RECALL actions
+  // live in appState and only change how the NEXT key is interpreted — they
+  // never trigger evaluation. The backend stays a stateless math engine:
+  // AC/DEL/modifier/editing keys are pure UI actions and never reach
+  // prepareExpressionForEvaluation() or /api/key.
+  function getScreenState(s) {
+    const st = (s && typeof s === 'object' && !Array.isArray(s)) ? s : {};
+    if (st.error) return 'ERROR';
+    if (st.resultDisplayed) return 'RESULT';
+    if (String(st.expr == null ? '' : st.expr).trim() !== '') return 'EDITING';
+    return 'EMPTY';
+  }
+  function currentScreenState() {
+    return getScreenState({
+      error: appState.error,
+      resultDisplayed: appState.resultDisplayed,
+      expr: getExpr(),
+    });
+  }
+  // '=' (and CALC/SOLVE) may only evaluate while EDITING a non-blank
+  // expression. EMPTY/RESULT/ERROR never evaluate implicitly.
+  function shouldEvaluateScreen(s) {
+    return getScreenState(s) === 'EDITING'
+      && String(s && s.expr != null ? s.expr : '').trim() !== '';
+  }
+  function shouldEvaluateNow() {
+    return shouldEvaluateScreen({
+      error: appState.error,
+      resultDisplayed: appState.resultDisplayed,
+      expr: getExpr(),
+    });
+  }
+  // Token kinds for state routing (inserted display tokens + control keys).
+  function calcTokenKind(tok) {
+    const t = String(tok == null ? '' : tok);
+    if (t === 'shift' || t === 'alpha' || t === 'SHIFT+7' || t.indexOf('SHIFT+') === 0 || t.indexOf('ALPHA+') === 0) return 'modifier';
+    if (t === 'ac' || t === 'AC') return 'ac';
+    if (t === 'del' || t === 'DEL') return 'del';
+    if (t === 'equals' || t === '=') return 'equals';
+    if (t === 'Ans' || t === 'ans') return 'ans';
+    // Operators continue a displayed result; digits/functions start fresh.
+    if (t === '+' || t === '\u2212' || t === '-' || t === '\u00d7' || t === '*' ||
+        t === '\u00f7' || t === '/' || t === '^' || t === '%' || t === 'P' || t === 'C' ||
+        t === '!' || t === '<') return 'operator';
+    if (/^[0-9.]$/.test(t) || t === '\u03c0' || t === 'pi' || t === 'e' || t === 'i') return 'number';
+    if (/^[A-FMXY]$/.test(t) || t === 'x' || t === 'y' || t === 'M') return 'number';
+    if (t.charAt(t.length - 1) === '(') return 'number';
+    if (t === '(' || t === ')') return 'number';
+    return 'other';
+  }
+  // RESULT + input routing. 'fresh' starts a new expression (Ans preserved),
+  // 'continue' seeds Ans as the left-hand side, 'clear' goes EMPTY,
+  // 'edit' opens the previous result for editing, 'ignore' is a no-op that
+  // must never re-evaluate the old result.
+  function routeResultInput(kind, hasAns) {
+    if (kind === 'ac') return 'clear';
+    if (kind === 'del') return 'edit';
+    if (kind === 'operator') return (hasAns === false) ? 'fresh' : 'continue';
+    if (kind === 'number' || kind === 'ans' || kind === 'other') return 'fresh';
+    return 'ignore';
+  }
+  // ERROR terminates the previous calculation context: it must never become
+  // the input of another calculation. AC/DEL clear; fresh input starts over;
+  // an operator may continue from the last GOOD Ans but never re-evaluates
+  // the erroneous expression; bare equals/modifier are ignored.
+  function routeErrorInput(kind) {
+    if (kind === 'ac' || kind === 'del') return 'clear';
+    if (kind === 'equals' || kind === 'modifier') return 'ignore';
+    if (kind === 'operator') return 'continue';
+    return 'fresh';
   }
 
   // ── LOCAL EVALUATION BRIDGE (file:// mode) ──
@@ -3664,7 +3741,9 @@
   // ── TREE MANIPULATION ──
   function insertToken(tok) {
     pushUndoState();
-    if (appState.resultDisplayed) resetExpr();
+    // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
+    // preserved), operator input continues from Ans, ignored keys return.
+    if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
     if (appState.insertMode) {
       cursor.slot.items.splice(cursor.index, 0, tok);
       cursor.index++;
@@ -3683,7 +3762,9 @@
 
   function insertTemplate(tmpl, enterSlotName) {
     pushUndoState();
-    if (appState.resultDisplayed) resetExpr();
+    // Templates always begin fresh input (a displayed result or error is
+    // discarded, Ans preserved); they never continue an operator chain.
+    if (normalizeResultErrorEntry('number') === 'ignore') return;
     tmpl.parentSlot = cursor.slot;
     cursor.slot.items.splice(cursor.index, 0, tmpl);
     cursor.slot = tmpl[enterSlotName];
@@ -3709,7 +3790,9 @@
   }
   function insertPower(fixedExp) {
     pushUndoState();
-    if (appState.resultDisplayed) resetExpr();
+    // Postfix powers (x²/x³/x⁻¹) apply to the displayed result like an
+    // operator; an open power template starts fresh input.
+    if (normalizeResultErrorEntry(fixedExp ? 'operator' : 'number') === 'ignore') return;
     const baseItems = cursor.index > 0 ? [cursor.slot.items[cursor.index-1]] : [];
     const pow = { type:'power', id:nextId(), base:createSlot(baseItems), exp:createSlot(fixedExp ? [fixedExp] : []), parentSlot:cursor.slot };
     if (baseItems.length) cursor.slot.items.splice(cursor.index-1, 1, pow);
@@ -3723,17 +3806,93 @@
   function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
 
   function resetExpr() {
+    // Clear the current entry only. Scalar Ans (lastAnswer) and the separate
+    // MatAns/VctAns registers survive: AC/RESULT/ERROR transitions must never
+    // destroy the answer memory. Use hardResetExpr() for power-on and
+    // Initialize-All, the only flows that clear answer registers.
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
-    appState.result = null; appState.lastAnswer = null; appState.resultDisplayed = false; appState.error = null;
+    appState.result = null; appState.resultDisplayed = false; appState.error = null;
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
   }
 
+  function hardResetExpr() {
+    resetExpr();
+    appState.lastAnswer = null; appState.matAns = null; appState.vctAns = null;
+  }
+
+  // Classify an inserted display token for RESULT-state routing.
+  function classifyInsertToken(tok) {
+    const t = String(tok == null ? '' : tok);
+    if (t === 'Ans' || t === 'ans') return 'ans';
+    if (t === '+' || t === '\u2212' || t === '-' || t === '\u00d7' || t === '*' ||
+        t === '\u00f7' || t === '/' || t === '^' || t === '%' || t === 'P' || t === 'C' ||
+        t === '!' || t === '<') return 'operator';
+    return 'number';
+  }
+
+  // Normalize RESULT/ERROR entry before any insertion: an error terminates
+  // its calculation context, and a displayed result is either discarded
+  // (fresh input) or seeded as Ans (operator input). Returns the routing
+  // decision; callers insert normally afterwards.
+  function normalizeResultErrorEntry(kind) {
+    if (appState.error) {
+      const route = routeErrorInput(kind);
+      if (route === 'ignore') return route;
+      const keepAns = appState.lastAnswer;
+      resetExpr();
+      appState.lastAnswer = keepAns;
+      if (route === 'continue' && keepAns !== null && keepAns !== undefined) {
+        rootSlot.items.push('Ans');
+        cursor.slot = rootSlot;
+        cursor.index = rootSlot.items.length;
+      }
+      return route;
+    }
+    if (appState.resultDisplayed) {
+      const route = routeResultInput(kind, appState.lastAnswer !== null && appState.lastAnswer !== undefined);
+      if (route === 'ignore') return route;
+      if (route === 'continue') {
+        const keepAns = appState.lastAnswer;
+        resetExpr();
+        appState.lastAnswer = keepAns;
+        if (keepAns !== null && keepAns !== undefined) {
+          rootSlot.items.push('Ans');
+          cursor.slot = rootSlot;
+          cursor.index = rootSlot.items.length;
+        }
+        return route;
+      }
+      if (route === 'edit') {
+        // DEL on a displayed result: open the result for editing by seeding
+        // the entry with the result value (no evaluation involved).
+        const shown = appState.result;
+        const keepAns = appState.lastAnswer;
+        resetExpr();
+        appState.lastAnswer = keepAns;
+        if (shown !== null && shown !== undefined) {
+          rootSlot.items.push(String(shown));
+          cursor.slot = rootSlot;
+          cursor.index = rootSlot.items.length;
+        }
+        renderLCD();
+        return route;
+      }
+      const keepAns = appState.lastAnswer;
+      resetExpr();
+      appState.lastAnswer = keepAns;
+      return route;
+    }
+    return 'edit';
+  }
+
   function syncBackendExpression() {
-    // Keep the controller's normalized expression synchronized without moving
-    // template rendering or cursor ownership into the backend.
-    backendKey('input_sync', { expression: getExpr(), cursorPosition: getExpr().length });
+    // Intentionally local-only. The backend is a stateless mathematical
+    // engine; the frontend owns keypress interpretation, cursor, modifiers,
+    // editing, screen/mode state and pending actions. Per-keystroke backend
+    // sync kept a second competing state system alive and is removed:
+    // evaluation paths always send an explicit expression.
   }
 
   // ── PARENT LOOKUP ──
@@ -3846,6 +4005,10 @@
 
   function deleteAtCursor() {
     pushUndoState();
+    // UI-only editing action: never evaluates. ERROR terminates its context
+    // (clear to EMPTY); RESULT opens for editing without evaluation; Ans is
+    // preserved in all cases.
+    if (appState.error) { resetExpr(); renderLCD(); return; }
     if (appState.resultDisplayed) { resetExpr(); renderLCD(); return; }
     if (cursor.index < cursor.slot.items.length) {
       cursor.slot.items.splice(cursor.index, 1);
@@ -5619,17 +5782,40 @@
   // ── BACKEND COMMUNICATION ──
   let backendKeySequence = 0;
 
+  // Answer registers: scalar Ans (lastAnswer) stays separate from the
+  // matrix/vector registers (matAns/vctAns), mirroring the physical unit and
+  // the backend. Matrix/vector results must never clobber scalar Ans.
+  function isMatVecResultString(r) {
+    const s = String(r == null ? '' : r).trim();
+    return s.charAt(0) === '[';
+  }
+  function storeCalcAnswer(r, rawExpr) {
+    appState.result = r;
+    appState.resultDisplayed = true;
+    appState.error = null;
+    if (isMatVecResultString(r)) {
+      const e = String(rawExpr || '');
+      if (/Vct[ABCD]/.test(e) && !/Mat[ABCD]/.test(e)) appState.vctAns = r;
+      else appState.matAns = r;
+    } else {
+      appState.lastAnswer = r;
+    }
+  }
   async function evaluate() {
+    // State-gated evaluation: only EDITING with a non-blank expression may
+    // evaluate. EMPTY/RESULT/ERROR are no-ops and never reach
+    // prepareExpressionForEvaluation() or /api/key.
+    if (!shouldEvaluateNow()) return;
     const expr = getExpr();
-    if (!expr) { appState.result = '0'; appState.lastAnswer = '0'; appState.resultDisplayed = true; renderLCD(); return; }
     const evalExpr = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
       try {
         const r = localEvaluate(evalExpr);
         if (r === 'To infinity and beyonddd') {
-          appState.result = r; appState.lastAnswer = null; appState.resultDisplayed = true; appState.error = null;
+          // Division-by-zero display keeps the previous Ans intact.
+          appState.result = r; appState.resultDisplayed = true; appState.error = null;
         } else {
-          appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+          storeCalcAnswer(r, evalExpr);
         }
       } catch (e) {
         appState.error = (e && e.message === 'DIV_ZERO') ? 'To infinity and beyonddd' : 'Math ERROR';
@@ -5650,13 +5836,13 @@
       if (!r.ok) {
         const msg = (s && s.error) ? s.error : (s && s.display) ? s.display : `HTTP ${r.status}`;
         if (msg === 'To infinity and beyonddd') {
-          appState.result = msg; appState.lastAnswer = null; appState.resultDisplayed = true; appState.error = null;
+          appState.result = msg; appState.resultDisplayed = true; appState.error = null;
           renderLCD(); return;
         }
         throw new Error(msg);
       }
       if (s.result !== undefined && s.result !== null) {
-        appState.result = s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        storeCalcAnswer(s.result, evalExpr);
       } else if (s.error) {
         appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
       }
@@ -5755,12 +5941,24 @@
       if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
       if (s.menuPage) appState.menuPage = s.menuPage;
       if (s.menuIndex !== undefined) appState.menuSelection = s.menuIndex;
-      // FIX 3: if backend returned a reconverted result (e.g. after base switch), display it
+      // FIX 3: if backend returned a reconverted result (e.g. after base switch), display it.
+      // Register-aware: a matrix/vector payload must land in MatAns/VctAns
+      // and never clobber scalar Ans. The backend _state() carries the
+      // scalar register separately as s.ans, so prefer it for lastAnswer.
       if (s.result !== undefined && s.result !== null && s.resultDisplayed) {
-        appState.result = s.result;
-        appState.lastAnswer = s.result;
-        appState.resultDisplayed = true;
-        appState.error = null;
+        if (isMatVecResultString(s.result)) {
+          if (s.ans !== undefined && s.ans !== null) appState.lastAnswer = s.ans;
+          if (appState.mode === 'Vector') appState.vctAns = s.result;
+          else appState.matAns = s.result;
+          appState.result = s.result;
+          appState.resultDisplayed = true;
+          appState.error = null;
+        } else {
+          appState.result = s.result;
+          appState.lastAnswer = s.result;
+          appState.resultDisplayed = true;
+          appState.error = null;
+        }
       }
       renderLCD();
     } catch(e) { showMathError(); }
@@ -6002,13 +6200,16 @@
     return false;
   }
   async function doCalc() {
+    if (!shouldEvaluateNow()) return;
     const expr = getExpr();
-    if (!expr) return;
     const prepared = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
       try {
         const r = localEvaluate(prepared);
-        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+        // Route through the shared register store so a matrix/vector result
+        // reached via CALC still lands in MatAns/VctAns and never clobbers
+        // scalar Ans (CALC/SOLVE are scalar flows, but the guard is explicit).
+        storeCalcAnswer(r, prepared);
       } catch (e) {
         showMathError(e && e.message === 'DIV_ZERO' ? DIV_ZERO_MSG : 'Math ERROR');
       }
@@ -6019,22 +6220,26 @@
         body: JSON.stringify({ expression: prepared }) });
       const s = await r.json();
       if (s.result !== undefined && (s.ok || s.success)) {
-        appState.result = s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        storeCalcAnswer(s.result, prepared);
         if (s.variables) Object.assign(appState.variables, s.variables);
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
     } catch (e) { showMathError(); }
   }
   async function doSolve() {
+    // No valid calculation context (EMPTY/RESULT/ERROR) → no-op, never an
+    // error cascade from an empty or erroneous expression.
+    if (!shouldEvaluateNow()) return;
     const expr = getExpr();
-    if (!expr) { showMathError(); return; }
     const prepared = prepareExpressionForEvaluation(expr);
     const guess = (appState.variables && Number.isFinite(Number(appState.variables.X))) ? Number(appState.variables.X) : 0;
     if (FILE_MODE) {
       try {
         const v = _localNewtonSolve(prepared, 'X', guess);
         const r = localFormat(v);
-        appState.result = r; appState.lastAnswer = r; appState.resultDisplayed = true; appState.error = null;
+        // SOLVE always yields a scalar; storeCalcAnswer keeps the
+        // MatAns/VctAns registers provably untouched.
+        storeCalcAnswer(r, prepared);
         appState.variables.X = v;
       } catch (e) { showMathError('Math ERROR'); }
       renderLCD(); return;
@@ -6044,7 +6249,14 @@
         body: JSON.stringify({ expression: prepared, variable: 'X', guess }) });
       const s = await r.json();
       if (s.result !== undefined && (s.ok || s.success)) {
-        appState.result = 'X=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        // Display keeps the physical 'X=value' form; the scalar register
+        // takes the bare value. A matrix/vector payload here would indicate
+        // a solver anomaly, so route it defensively instead of clobbering Ans.
+        if (isMatVecResultString(s.result)) {
+          storeCalcAnswer(s.result, prepared);
+        } else {
+          appState.result = 'X=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+        }
         if (s.variable) appState.variables[s.variable] = s.value;
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
@@ -6074,6 +6286,7 @@
     throw new Error('Math ERROR');
   }
   async function evaluateApprox() {
+    if (!shouldEvaluateNow()) return;
     appState.approxMode = true;
     await evaluate();
     appState.approxMode = false;
@@ -6158,7 +6371,7 @@
       appState.vectorInput = { active: null, phase: 'menu', col: 0, dimBuffer: '', cellBuffer: '' };
       appState.statInput = { phase: 'typeMenu', type: null, menuPage: 0, rows: [], activeRow: 0, activeCol: 0, cellBuffer: '' };
       appState.distInput = { phase: 'typeMenu', type: null, menuPage: 0, subType: null, fieldValues: [], activeField: 0, cellBuffer: '', result: null };
-      resetExpr(); renderLCD();
+      hardResetExpr(); renderLCD();
       backendKey('on');
       setTimeout(() => { appState.splash = false; renderLCD(); }, 1400);
       return;
@@ -6169,8 +6382,8 @@
       appState.poweredOn = false; resetExpr(); renderLCD(); backendKey('ac', { action:'OFF' }); return;
     }
     if (appState.menuOpen && rawKey === 'ac') return;
-    if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); backendKey('shift'); return; }
-    if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); backendKey('alpha'); return; }
+    if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); return; }
+    if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); return; }
     if (!isShift && !isAlpha && handleOptnKey(rawKey)) return;
 
     // SHIFT + 7 -> CONSTANTS
@@ -6261,7 +6474,7 @@
             appState.memoryValue = 0;
             appState.hasMemory = false;
             appState.variables = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 };
-            resetExpr();
+            hardResetExpr();
             backendKey('ac', { reset: 'memory' });
             performResetRemote('memory');
           } else if (rs.selection === 2) {
@@ -6279,7 +6492,7 @@
             appState.variables = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, M: 0, X: 0, Y: 0 };
             resetSpreadsheetData();
             appState.ratio = { phase: 'menu', type: 1, a: '', b: '', c_or_d: '', activeField: 0, cellBuffer: '', result: null, error: null };
-            resetExpr();
+            hardResetExpr();
             backendKey('ac', { reset: 'all' });
             performResetRemote('all');
           }
@@ -7815,7 +8028,7 @@
       if (isShift || action === 'ENG_LEFT') { insertToken('<'); return; }
       cycleEngNotation(); return;
     }
-    if (rawKey === 'ac') { closeOptnPanel(); appState.qrOpen = false; appState.stoPending = false; appState.recallPending = false; resetExpr(); renderLCD(); backendKey('ac'); return; }
+    if (rawKey === 'ac') { closeOptnPanel(); appState.qrOpen = false; appState.stoPending = false; appState.recallPending = false; resetExpr(); renderLCD(); return; }
     if (rawKey === 'del') { deleteAtCursor(); return; }
     if (rawKey === 'equals') { (isShift || action === 'approx') ? evaluateApprox() : evaluate(); return; }
 

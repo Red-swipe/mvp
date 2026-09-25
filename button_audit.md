@@ -137,3 +137,101 @@ cleanly only if node is absent).
 | Calculate | full pipeline | full pipeline | 97 passed + live | PASS |
 | Complex | i arithmetic, a±bi display, complex transcendental, Calculate rejects complex | safe complex sub-parser + cmath branches (sin/cos/tan/asin/acos/atan/ln/log/sinh-family, explicit-formula asin for determinism); Calculate-mode complex results → Math ERROR; brid
 ...[truncated 9113 chars]
+
+---
+
+## 5. Phase 3 — State/Register Integration Audit (2026-09-25 UTC)
+
+> NOTE (pre-existing, not introduced here): lines 138–139 above end in a
+> committed truncation artifact (`...[truncated 9113 chars]` pasted into the
+> file in an earlier parity pass). Left untouched; the full per-mode table
+> survives in `audit.md` / `final_audit.md`. This section is appended, not
+> repaired, to keep the diff minimal.
+
+### Register isolation — FIXED (1 real bug found and fixed)
+
+* Manual runtime audit (backend `CONTROLLER.press_key` + node execution of the
+  real `storeCalcAnswer`/`isMatVecResultString` from `frontend.html`):
+  * `2+3=` → `Ans=5`; `MatA+MatB=` → `MatAns=[[6,8],[10,12]]`, `Ans` stays `5`;
+    `Ans+1=` → `6` (scalar chain, never the matrix). `VctA+VctB=` →
+    `VctAns=[4,6]`, `Ans` stays `5`; scalar `10+1=` → `11`, both Mat/Vct kept.
+* Backend (`mvp_server.py`, NOT modified): `_store_matvec_answer` routes
+  `s→ans`, `m→ans_matrix`, `v→ans_vector`; `ac` clears entry only, all three
+  registers survive. Verified live.
+* Frontend `evaluate()` → `storeCalcAnswer` routing verified, including mixed
+  `MatA+VctA` (scalar `Ans` untouched) and scalar typed in Matrix calc phase
+  (no markers → `MatAns` untouched).
+* BUG FOUND + FIXED (`frontend.html` only): `doCalc()`/`doSolve()` bypassed
+  the shared register store and assigned `lastAnswer` directly, so CALC on a
+  matrix expression would have clobbered scalar `Ans`; the generic
+  `backendKey()` result sync did the same for stale matrix payloads. Both now
+  route through `storeCalcAnswer` / a matvec-aware sync (scalar `s.ans`
+  preferred for `lastAnswer`).
+* Mode switching calls `resetExpr()` (entry only — all registers preserved);
+  only power-on / Memory / Initialize-All call `hardResetExpr()`.
+
+### CALC / SOLVE flow — FIXED (gated + registered, prompt documented)
+
+* No intermediate variable-prompt state exists: CALC substitutes stored
+  variables, SOLVE Newton-solves with the stored-X guess (documented
+  substitute-and-evaluate simplification, `button_audit.md` row 119). No
+  `PROMPT` screen state was added — there is no pending-input step to host,
+  and `stoPending`/`recallPending` remain the only pending-action mechanism.
+* What the audit pins instead: `doCalc`/`doSolve`/`evaluateApprox` are now all
+  `shouldEvaluateNow()`-gated (EMPTY/RESULT/ERROR → no-op, never an error
+  cascade), run on distinct backend routes (`/api/calc`, `/api/solve`, never
+  masquerading as `=`), share the register store, and exit cleanly to
+  RESULT (`Ans` updated, Mat/Vct untouched) or ERROR (`showMathError`, no
+  stale prompt possible — none exists). AC clears entry + pending flags, so
+  AC cancels a CALC/SOLVE context by construction. Failed SOLVE
+  (`X*0=1`) leaves `Ans`/Mat/Vct intact (verified).
+* Full physical per-variable prompting remains DEFERRED (out of scope for a
+  state-architecture audit; would be new UI, not a state fix).
+
+### RESULT → AC → Ans — PASS (regression-pinned)
+
+* `2+3=` → RESULT `5` / `Ans=5`; AC → EMPTY screen, `Ans=5`; `Ans+4=` → `9`.
+  RESULT → AC → fresh number (`7*2=` → `14`) and subsequent `Ans+1=` → `15`.
+  Matrix/VECTOR RESULT → AC → `MatAns`/`VctAns` intact. Covered backend +
+  frontend (`normalizeResultErrorEntry` keep-`Ans` paths).
+
+### Tests added (`test_state_machine.py`: 14 → 33)
+
+* `TestRegisterIsolationFrontend` (node, real functions): scalar survives
+  matrix/vector; scalar-after-matvec preserves registers; mixed expr never
+  touches scalar `Ans`; marker-less scalar never touches Mat/Vct.
+* `TestCalcSolveWiring` (static): EDITING gates on doCalc/doSolve/approx;
+  shared-store routing in doCalc/doSolve; matvec-aware backend sync.
+* `TestBackendRegisterLifetime`: vector isolation, Mat/Vct independence,
+  CALC/SOLVE preserve Mat/Vct, failed SOLVE intact, AC preserves all three,
+  RESULT→AC→Ans chain + fresh-number/operator follow-ups.
+
+### Regression results
+
+* `pytest --ignore=test_safe_eval_regressions.py`: **131 passed, 12 subtests
+  passed**. (`test_safe_eval_regressions.py` is a pre-existing legacy script
+  that calls `sys.exit()` at import, so bare `pytest -q` collection aborts —
+  pre-existing, untouched; run standalone it prints 13/13 passed, exit 0.)
+* `python verify.py`: clean (scroll-indicator legacy checks pass).
+* Live smoke (`mvp_server.py` on ephemeral ports): `/api/key` equals `2+3`
+  → `5`; `/api/variables/set X=5` + `/api/calc X+1` → `6`; `/api/solve
+  X+2=6` → `4`.
+* `node --check` over the 14 extracted state/register functions
+  (`getScreenState`, `shouldEvaluate*`, `calcTokenKind`, routers,
+  `storeCalcAnswer`, `evaluate`, `doCalc`, `doSolve`, `evaluateApprox`,
+  resets): exit 0.
+* `mvp_server.py` and `engine/` NOT modified. No visual changes.
+
+### Remaining issues
+
+* DEFERRED: physical per-variable CALC/SOLVE prompting (each variable
+  prompted on-device). Current substitute-stored-values behavior retained and
+  pinned; needs product decision + new UI before implementation.
+* DEFERRED (pre-existing, out of scope): `/api/calc` `values` payload with
+  `{"X": 5}` on a fresh server is dropped (server defaults carry lowercase
+  `x`/`y`, lookup is uppercase) → Math ERROR. The frontend never sends
+  `values` (expression-only + `/api/variables/set`), so no user path is
+  affected. Left untouched per the no-engine-change constraint.
+* NOT REPRODUCED: any cross-contamination between `MatAns` ↔ `VctAns` ↔
+  `Ans` outside the fixed CALC/`backendKey` paths — all manual + regression
+  probes hold separation.
