@@ -45,6 +45,13 @@ function serializeSlot(slot) {
           .replace(/\u207b\u00b9/g, '^(-1)');
       } else if (item.type === 'fraction') {
         out += '((' + (serializeSlot(item.num)||'0') + ')/(' + (serializeSlot(item.den)||'1') + '))';
+      } else if (item.type === 'mixed') {
+        const w = serializeSlot(item.whole) || '0';
+        const n = serializeSlot(item.num) || '0';
+        const d = serializeSlot(item.den) || '1';
+        out += String(w).trim().startsWith('-')
+          ? '((' + w + ')-((' + n + ')/(' + d + ')))'
+          : '((' + w + ')+((' + n + ')/(' + d + ')))';
       } else if (item.type === 'radical') {
         const rad = serializeSlot(item.radicand) || '0';
         if (item.index && item.index.items.length > 0) {

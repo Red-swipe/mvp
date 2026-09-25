@@ -1666,6 +1666,24 @@
               <div class="menu-item" onclick="insertOptn('r')">2&nbsp;&nbsp;r&nbsp;&nbsp;Radian</div>
               <div class="menu-item" onclick="insertOptn('g')">3&nbsp;&nbsp;g&nbsp;&nbsp;Gradian</div>
             </div>
+            <div id="optn-mat-menu" style="display:none;">
+              <div class="menu-item" onclick="insertOptn('MatA')">1&nbsp;&nbsp;MatA</div>
+              <div class="menu-item" onclick="insertOptn('MatB')">2&nbsp;&nbsp;MatB</div>
+              <div class="menu-item" onclick="insertOptn('MatC')">3&nbsp;&nbsp;MatC</div>
+              <div class="menu-item" onclick="insertOptn('MatD')">4&nbsp;&nbsp;MatD</div>
+              <div class="menu-item" onclick="insertOptn('Det(')">5&nbsp;&nbsp;Determinant</div>
+              <div class="menu-item" onclick="insertOptn('Trn(')">6&nbsp;&nbsp;Transpose</div>
+              <div class="menu-item" onclick="insertOptn('Identity(')">7&nbsp;&nbsp;Identity</div>
+            </div>
+            <div id="optn-vct-menu" style="display:none;">
+              <div class="menu-item" onclick="insertOptn('VctA')">1&nbsp;&nbsp;VctA</div>
+              <div class="menu-item" onclick="insertOptn('VctB')">2&nbsp;&nbsp;VctB</div>
+              <div class="menu-item" onclick="insertOptn('VctC')">3&nbsp;&nbsp;VctC</div>
+              <div class="menu-item" onclick="insertOptn('VctD')">4&nbsp;&nbsp;VctD</div>
+              <div class="menu-item" onclick="insertOptn('Dot(')">5&nbsp;&nbsp;Dot Product</div>
+              <div class="menu-item" onclick="insertOptn('Angle(')">6&nbsp;&nbsp;Angle</div>
+              <div class="menu-item" onclick="insertOptn('UnitV(')">7&nbsp;&nbsp;Unit Vector</div>
+            </div>
           </div>
         </div>
 
@@ -2578,6 +2596,14 @@
   }
 
   function localFormat(v) {
+    if (_cIsC(v)) {
+      const r = v.re, im = v.im;
+      if (!isFinite(r) || !isFinite(im)) throw new Error('Math ERROR');
+      if (im === 0) return localFormat(r);
+      if (r === 0) return localFormat(im) + 'i';
+      const sign = im < 0 ? '-' : '+';
+      return localFormat(r) + sign + localFormat(Math.abs(im)) + 'i';
+    }
     if (!isFinite(v)) throw new Error('Math ERROR');
     // The bridge is also extracted and executed by the file-mode parity test,
     // where the main app state has not been loaded yet.
@@ -2633,6 +2659,7 @@
   }
 
   function _reprNum(v) {
+    if (_cIsC(v)) return _cFmt(v);
     if (!isFinite(v)) throw new Error('Math ERROR');
     return String(v);
   }
@@ -2642,9 +2669,23 @@
     let negate = false;
     if (a > b) { const t = a; a = b; b = t; negate = true; }
     const n = 1000, h = (b - a) / n;
-    let total = f(a);
-    for (let i = 1; i < n; i++) total += (i % 2 ? 4 : 2) * f(a + i * h);
-    total += f(b);
+    const sample = (x) => {
+      let v;
+      try {
+        v = f(x);
+      } catch (e) {
+        // A pole inside the interval is Math ERROR (never the div-zero
+        // message, which is reserved for top-level division by zero).
+        throw new Error('Math ERROR');
+      }
+      // Singularities inside the interval (e.g. 1/x across 0) are Math ERROR,
+      // matching the backend adaptive integrator which refuses to converge.
+      if (!isFinite(v) || Math.abs(v) > 1e9) throw new Error('Math ERROR');
+      return v;
+    };
+    let total = sample(a);
+    for (let i = 1; i < n; i++) total += (i % 2 ? 4 : 2) * sample(a + i * h);
+    total += sample(b);
     let res = (h / 3) * total;
     if (negate) res = -res;
     if (!isFinite(res)) throw new Error('Math ERROR');
@@ -2653,6 +2694,7 @@
 
   const _LOCAL_FNS = {
     sin: (x) => {
+      if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cSin(_cToRad(x)); }
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       const rad = u === 'Degree' ? x * Math.PI / 180 : u === 'Gradian' ? x * Math.PI / 200 : x;
       if (u === 'Degree' && x % 180 === 0) return 0;
@@ -2660,6 +2702,7 @@
       return Math.sin(rad);
     },
     cos: (x) => {
+      if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cCos(_cToRad(x)); }
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       const rad = u === 'Degree' ? x * Math.PI / 180 : u === 'Gradian' ? x * Math.PI / 200 : x;
       if (u === 'Degree' && (x - 90) % 180 === 0) return 0;
@@ -2667,6 +2710,7 @@
       return Math.cos(rad);
     },
     tan: (x) => {
+      if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cTan(_cToRad(x)); }
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       const rad = u === 'Degree' ? x * Math.PI / 180 : u === 'Gradian' ? x * Math.PI / 200 : x;
       const c = Math.cos(rad);
@@ -2676,35 +2720,44 @@
       return Math.tan(rad);
     },
     asin: (x) => {
+      if (_cIsC(x) || !(Math.abs(x) <= 1)) { if (!_complexMode) throw new Error('Math ERROR'); return _cFromRad(_cAsin(x)); }
       if (!(Math.abs(x) <= 1)) throw new Error('Math ERROR');
       const rad = Math.asin(x);
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       return u === 'Degree' ? rad * 180 / Math.PI : u === 'Gradian' ? rad * 200 / Math.PI : rad;
     },
     acos: (x) => {
+      if (_cIsC(x) || !(Math.abs(x) <= 1)) { if (!_complexMode) throw new Error('Math ERROR'); return _cFromRad(_cAcos(x)); }
       if (!(Math.abs(x) <= 1)) throw new Error('Math ERROR');
       const rad = Math.acos(x);
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       return u === 'Degree' ? rad * 180 / Math.PI : u === 'Gradian' ? rad * 200 / Math.PI : rad;
     },
     atan: (x) => {
+      if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cFromRad(_cAtan(x)); }
       const rad = Math.atan(x);
       const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
       return u === 'Degree' ? rad * 180 / Math.PI : u === 'Gradian' ? rad * 200 / Math.PI : rad;
     },
-    sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
-    asinh: Math.asinh, acosh: (x) => { if (x < 1) throw new Error('Math ERROR'); return Math.acosh(x); },
-    atanh: (x) => { if (Math.abs(x) >= 1) throw new Error('Math ERROR'); return Math.atanh(x); },
-    sqrt: (x) => { if (x < 0) throw new Error('Math ERROR'); return Math.sqrt(x); },
-    log: Math.log10, log10: Math.log10, ln: Math.log,
-    exp: (x) => { const r = Math.exp(x); if (!isFinite(r) && isFinite(x)) throw new Error('Math ERROR'); return r; },
-    abs: Math.abs, Abs: Math.abs,
-    Rnd: (x) => { const f = Math.floor(x), d = x - f; if (d === 0.5) return (f % 2 === 0 ? f : f + 1); return d > 0.5 ? f + 1 : d < -0.5 ? f - 1 : f; },
-    round: (x) => { const f = Math.floor(x), d = x - f; if (d === 0.5) return (f % 2 === 0 ? f : f + 1); return d > 0.5 ? f + 1 : d < -0.5 ? f - 1 : f; },
+    sinh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cSinh(x); } return Math.sinh(x); },
+    cosh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cCosh(x); } return Math.cosh(x); },
+    tanh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cTanh(x); } return Math.tanh(x); },
+    asinh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cAsinh(x); } return Math.asinh(x); },
+    acosh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cAcosh(x); } if (x < 1) throw new Error('Math ERROR'); return Math.acosh(x); },
+    atanh: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cAtanh(x); } if (Math.abs(x) >= 1) throw new Error('Math ERROR'); return Math.atanh(x); },
+    sqrt: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cSqrt(x); } if (x < 0) { if (!_complexMode) throw new Error('Math ERROR'); return _cSqrt(x); } return Math.sqrt(x); },
+    log: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cLog10(x); } if (!(x > 0)) { if (_complexMode && x < 0) return _cLog10(x); throw new Error('Math ERROR'); } return Math.log10(x); },
+    log10: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cLog10(x); } if (!(x > 0)) { if (_complexMode && x < 0) return _cLog10(x); throw new Error('Math ERROR'); } return Math.log10(x); },
+    ln: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cLog(x); } if (!(x > 0)) { if (_complexMode && x < 0) return _cLog(x); throw new Error('Math ERROR'); } return Math.log(x); },
+    exp: (x) => { if (_cIsC(x)) { if (!_complexMode) throw new Error('Math ERROR'); return _cExp(x); } const r = Math.exp(x); if (!isFinite(r) && isFinite(x)) throw new Error('Math ERROR'); return r; },
+    abs: (x) => _cAbs(x), Abs: (x) => _cAbs(x),
+    Rnd: (x) => _rndLocal(x),
+    round: (x) => _rndLocal(x),
   };
   const _LOCAL_CONSTS = { e: Math.E, pi: Math.PI };
 
   function _pyPow(b, ex) {
+    if (_cIsC(b) || _cIsC(ex)) return _cPow(b, ex);
     if (ex === 0) return 1;
     if (b === 0 && ex < 0) throw new Error('Math ERROR');
     if (b < 0 && !Number.isInteger(ex)) throw new Error('Math ERROR');
@@ -2778,10 +2831,15 @@
         if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
         const n = _evalStr(args[0]), rad = _evalStr(args[1]);
         if (n === 0) throw new Error('Math ERROR');
-        rep = '(' + _reprNum(Math.pow(rad, 1 / n)) + ')';
+        if (_cIsC(n) || _cIsC(rad)) throw new Error('Math ERROR');
+        // Real odd root of a negative (fx-991EX gives a real result).
+        rep = '(' + _reprNum((Number.isInteger(n) && n % 2 !== 0 && rad < 0) ? -Math.pow(-rad, 1 / n) : Math.pow(rad, 1 / n)) + ')';
       } else if (name === 'cbrt') {
         if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
-        rep = '(' + _reprNum(Math.pow(_evalStr(args[0]), 1 / 3)) + ')';
+        const _cbrtArg = _evalStr(args[0]);
+        if (_cIsC(_cbrtArg)) throw new Error('Math ERROR');
+        // Real odd root of a negative (fx-991EX gives a real result).
+        rep = '(' + _reprNum(_cbrtArg < 0 ? -Math.pow(-_cbrtArg, 1 / 3) : Math.pow(_cbrtArg, 1 / 3)) + ')';
       } else if (name === 'sigma') {
         if (args.length !== 3 || !args[0] || !args[1] || !args[2]) throw new Error('Math ERROR');
         const body = args[0];
@@ -2838,10 +2896,478 @@
         rep = '(' + _reprNum(value) + ')';
       } else {
         if (args.length !== 1 || !args[0]) throw new Error('Math ERROR');
-        rep = '(' + _reprNum(Math.sqrt(_evalStr(args[0]))) + ')';
+        const _sqrtArg = _evalStr(args[0]);
+        if (_cIsC(_sqrtArg)) throw new Error('Math ERROR');
+        if (_sqrtArg < 0) {
+          // Negative radicand is complex-only (Complex mode), like the backend.
+          if (!_complexMode) throw new Error('Math ERROR');
+          rep = '(' + _cFmt(_cSqrt(_sqrtArg)) + ')';
+        } else {
+          rep = '(' + _reprNum(Math.sqrt(_sqrtArg)) + ')';
+        }
       }
       s = s.slice(0, start) + rep + s.slice(close + 1);
     }
+  }
+
+  // ── Complex + Matrix/Vector + Rnd bridge helpers (pure, testable) ──
+  let _complexMode = false;
+  const _cIsC = (v) => v !== null && typeof v === 'object' && v.__c === true;
+  const _C = (re, im) => ({ __c: true, re, im });
+  const _cNeg = (a) => _C(-a.re, -a.im);
+  const _cAdd = (a, b) => { a = _cNum(a); b = _cNum(b); return _C(a.re + b.re, a.im + b.im); };
+  const _cSub = (a, b) => { a = _cNum(a); b = _cNum(b); return _C(a.re - b.re, a.im - b.im); };
+  const _cMul = (a, b) => { a = _cNum(a); b = _cNum(b); return _C(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); };
+  const _cDiv = (a, b) => {
+    a = _cNum(a); b = _cNum(b);
+    const d = b.re * b.re + b.im * b.im;
+    if (d === 0) throw new Error('Math ERROR');
+    return _C((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d);
+  };
+  const _cNum = (v) => (_cIsC(v) ? v : _C(Number(v), 0));
+  const _cIsZero = (v) => _cIsC(v) ? (v.re === 0 && v.im === 0) : v === 0;
+  const _cAbs = (v) => (_cIsC(v) ? Math.sqrt(v.re * v.re + v.im * v.im) : Math.abs(v));
+  const _cExp = (z) => { z = _cNum(z); const e = Math.exp(z.re); return _C(e * Math.cos(z.im), e * Math.sin(z.im)); };
+  const _cLog = (z) => {
+    z = _cNum(z);
+    const m = Math.sqrt(z.re * z.re + z.im * z.im);
+    if (m === 0) throw new Error('Math ERROR');
+    return _C(Math.log(m), Math.atan2(z.im, z.re));
+  };
+  const _cLog10 = (z) => _cDiv(_cLog(z), _cLog(_C(10, 0)));
+  const _cSqrt = (z) => {
+    z = _cNum(z);
+    const m = Math.sqrt(z.re * z.re + z.im * z.im);
+    const t = Math.sqrt((m + z.re) / 2), u = Math.sqrt(Math.max(0, (m - z.re) / 2));
+    return _C(t, z.im < 0 ? -u : u);
+  };
+  const _cPow = (b, ex) => {
+    b = _cNum(b); ex = _cNum(ex);
+    if (ex.im === 0 && Number.isInteger(ex.re)) {
+      if (ex.re === 0) return 1;
+      if (b.re === 0 && b.im === 0) { if (ex.re < 0) throw new Error('Math ERROR'); return 0; }
+      let r = _C(1, 0); const n = Math.abs(ex.re);
+      for (let k = 0; k < n; k++) r = _cMul(r, b);
+      return ex.re < 0 ? _cDiv(_C(1, 0), r) : r;
+    }
+    if (b.re === 0 && b.im === 0) throw new Error('Math ERROR');
+    return _cExp(_cMul(ex, _cLog(b)));
+  };
+  const _cSin = (z) => { z = _cNum(z); return _C(Math.sin(z.re) * Math.cosh(z.im), Math.cos(z.re) * Math.sinh(z.im)); };
+  const _cCos = (z) => { z = _cNum(z); return _C(Math.cos(z.re) * Math.cosh(z.im), -Math.sin(z.re) * Math.sinh(z.im)); };
+  const _cTan = (z) => _cDiv(_cSin(z), _cCos(z));
+  const _cAsin = (z) => { z = _cNum(z); const iz = _C(-z.im, z.re); return _cMul(_C(0, -1), _cLog(_cAdd(iz, _cSqrt(_cSub(_C(1, 0), _cMul(z, z)))))); };
+  const _cAcos = (z) => _cSub(_C(Math.PI / 2, 0), _cAsin(z));
+  const _cAtan = (z) => { z = _cNum(z); const d = _cSqrt(_cAdd(_C(1, 0), _cMul(z, z))); return _cAsin(_cDiv(z, d)); };
+  const _cSinh = (z) => { z = _cNum(z); return _C(Math.sinh(z.re) * Math.cos(z.im), Math.cosh(z.re) * Math.sin(z.im)); };
+  const _cCosh = (z) => { z = _cNum(z); return _C(Math.cosh(z.re) * Math.cos(z.im), Math.sinh(z.re) * Math.sin(z.im)); };
+  const _cTanh = (z) => _cDiv(_cSinh(z), _cCosh(z));
+  const _cAsinh = (z) => _cMul(_C(0, -1), _cAsin(_C(-_cNum(z).im, _cNum(z).re)));
+  const _cAcosh = (z) => _cLog(_cAdd(_cNum(z), _cSqrt(_cSub(_cMul(_cNum(z), _cNum(z)), _C(1, 0)))));
+  const _cAtanh = (z) => { z = _cNum(z); return _cMul(_C(0.5, 0), _cSub(_cLog(_cAdd(_C(1, 0), z)), _cLog(_cSub(_C(1, 0), z)))); };
+  const _cAngleUnit = () => (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
+  const _cToRad = (z) => { const u = _cAngleUnit(); const f = u === 'Degree' ? Math.PI / 180 : u === 'Gradian' ? Math.PI / 200 : 1; return _cMul(z, f); };
+  const _cFromRad = (z) => { const u = _cAngleUnit(); const f = u === 'Degree' ? 180 / Math.PI : u === 'Gradian' ? 200 / Math.PI : 1; return _cMul(z, f); };
+  const _cFmt = (v) => {
+    // Canonical complex literal for re-splicing into expressions.
+    if (!_cIsC(v)) return _reprNum(v);
+    const r = v.re, im = v.im;
+    if (im === 0) return _reprNum(r);
+    if (r === 0) return `(0+${_reprNum(im)}*i)`;
+    const op = im < 0 ? '-' : '+';
+    return `(${_reprNum(r)}${op}${_reprNum(Math.abs(im))}*i)`;
+  };
+  function _rndLocal(x) {
+    // fx-991EX Rnd: Fix decimals / Sci significant digits / Norm 10-digit mantissa. Half-up.
+    if (_cIsC(x)) { if (x.im !== 0) throw new Error('Math ERROR'); x = x.re; }
+    if (!isFinite(x)) throw new Error('Math ERROR');
+    const st = (typeof appState !== 'undefined' && appState.settings) ? appState.settings : {};
+    const fmt = st.numberFormat || 'Norm';
+    let prec = parseInt(st.numberFormatPrecision, 10);
+    if (isNaN(prec)) prec = 1;
+    const halfUp = (v, p) => { const f = Math.pow(10, p); return Math.sign(v) * Math.floor(Math.abs(v) * f + 0.5) / f; };
+    if (fmt === 'Fix') return halfUp(x, Math.max(0, Math.min(9, prec)));
+    const sigRound = (v, p) => {
+      if (v === 0) return 0;
+      const e = Math.floor(Math.log10(Math.abs(v)));
+      return halfUp(v, p - 1 - e);
+    };
+    if (fmt === 'Sci') {
+      let p = prec;
+      if (!(p >= 1)) p = 10;
+      p = Math.max(1, Math.min(10, p));
+      return sigRound(x, p);
+    }
+    return sigRound(x, 10);
+  }
+
+  // ── Matrix/Vector typed evaluator (mirrors the backend; pure, testable) ──
+  function _hasMatVec(s) { return /\b(Mat[ABCD]|Vct[ABCD]|Det|Trn|Identity|Dot|Angle|UnitV)\b/.test(String(s)); }
+  function _mvStores() {
+    const a = (typeof appState !== 'undefined') ? appState : {};
+    const mats = {}, vcts = {};
+    for (const L of ['A', 'B', 'C', 'D']) {
+      const m = a.matrices && a.matrices[L];
+      mats[L] = (m && m.rows > 0) ? { rows: m.rows, cols: m.cols, data: m.data.map(r => r.slice()) } : { rows: 0, cols: 0, data: [] };
+      const v = a.vectors && a.vectors[L];
+      vcts[L] = (v && v.dim > 0) ? { dim: v.dim, data: v.data.slice() } : { dim: 0, data: [] };
+    }
+    return { mats, vcts };
+  }
+  function _mvErrDim() { throw new Error('Dimension ERROR'); }
+  function _mvMat(name, mats) {
+    const m = mats[name];
+    if (!m || m.rows <= 0 || !m.data || !m.data.length) throw new Error('Math ERROR');
+    return m.data.map(r => r.map(Number));
+  }
+  function _mvVct(name, vcts) {
+    const v = vcts[name];
+    if (!v || v.dim <= 0 || !v.data || !v.data.length) throw new Error('Math ERROR');
+    return v.data.map(Number);
+  }
+  function _mvDet(m) {
+    const n = m.length;
+    if (!n || m.some(r => r.length !== n)) _mvErrDim();
+    if (n === 1) return m[0][0];
+    if (n === 2) return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+    const w = m.map(r => r.slice());
+    let det = 1;
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(w[r][c]) > Math.abs(w[piv][c])) piv = r;
+      if (piv !== c) { const t = w[c]; w[c] = w[piv]; w[piv] = t; det = -det; }
+      if (Math.abs(w[c][c]) < 1e-15) return 0;
+      det *= w[c][c];
+      for (let r = c + 1; r < n; r++) { const f = w[r][c] / w[c][c]; for (let j = 0; j < n; j++) w[r][j] -= f * w[c][j]; }
+    }
+    return det;
+  }
+  function _mvInv(m) {
+    const n = m.length;
+    if (!n || m.some(r => r.length !== n)) _mvErrDim();
+    if (Math.abs(_mvDet(m)) < 1e-10) throw new Error('Math ERROR');
+    const w = m.map((r, i) => r.slice().concat(Array.from({ length: n }, (_, j) => i === j ? 1 : 0)));
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(w[r][c]) > Math.abs(w[piv][c])) piv = r;
+      if (piv !== c) { const t = w[c]; w[c] = w[piv]; w[piv] = t; }
+      const pv = w[c][c];
+      if (Math.abs(pv) < 1e-15) throw new Error('Math ERROR');
+      for (let j = 0; j < 2 * n; j++) w[c][j] /= pv;
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const f = w[r][c];
+        for (let j = 0; j < 2 * n; j++) w[r][j] -= f * w[c][j];
+      }
+    }
+    return w.map(r => r.slice(n));
+  }
+  function _mvFindCall(s) {
+    let best = null;
+    for (const name of ['Det', 'Trn', 'Identity', 'Dot', 'Angle', 'UnitV', 'Abs']) {
+      let pos = 0;
+      for (;;) {
+        const idx = s.indexOf(name, pos);
+        if (idx < 0) break;
+        const end = idx + name.length;
+        const ok = idx === 0 || !/[A-Za-z0-9_]/.test(s[idx - 1]);
+        if (ok && end < s.length && s[end] === '(' && (best === null || idx < best[1])) best = [name, idx];
+        pos = end;
+      }
+    }
+    return best;
+  }
+  function _mvMatchParen(s, open) {
+    let d = 0;
+    for (let i = open; i < s.length; i++) {
+      if (s[i] === '(') d++;
+      else if (s[i] === ')') { d--; if (d === 0) return i; }
+    }
+    return -1;
+  }
+  function _mvSplitArgs(inner) {
+    const parts = [];
+    let d = 0, cur = '';
+    for (const ch of inner) {
+      if (ch === '(') d++;
+      else if (ch === ')') d--;
+      if (ch === ',' && d === 0) { parts.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    parts.push(cur.trim());
+    return parts;
+  }
+  function _mvScalarCheck(v) {
+    if (_cIsC(v)) throw new Error('Math ERROR');
+    if (typeof v !== 'number' || !isFinite(v)) throw new Error('Math ERROR');
+    return v;
+  }
+  function _mvAngleToUnit(rad) {
+    const u = (typeof appState !== 'undefined' && appState.settings?.angleUnit) || 'Degree';
+    return u === 'Radian' ? rad : u === 'Gradian' ? rad * 200 / Math.PI : rad * 180 / Math.PI;
+  }
+  function _mvApplyFunc(name, args) {
+    if (name === 'Det') {
+      if (args.length !== 1 || args[0].t !== 'm') throw new Error('Math ERROR');
+      return { t: 's', v: _mvDet(args[0].v) };
+    }
+    if (name === 'Trn') {
+      if (args.length !== 1 || args[0].t !== 'm') throw new Error('Math ERROR');
+      const m = args[0].v;
+      return { t: 'm', v: m[0].map((_, j) => m.map(r => r[j])) };
+    }
+    if (name === 'Identity') {
+      if (args.length !== 1 || args[0].t !== 's') throw new Error('Math ERROR');
+      const n = args[0].v;
+      if (!Number.isInteger(n) || n < 1 || n > 4) throw new Error('Math ERROR');
+      return { t: 'm', v: Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? 1 : 0)) };
+    }
+    if (name === 'Abs') {
+      if (args.length !== 1) throw new Error('Math ERROR');
+      const a = args[0];
+      if (a.t === 's') return { t: 's', v: Math.abs(_mvScalarCheck(a.v)) };
+      if (a.t === 'm') return { t: 'm', v: a.v.map(r => r.map(Math.abs)) };
+      return { t: 's', v: Math.sqrt(a.v.reduce((s, x) => s + x * x, 0)) };
+    }
+    if (name === 'Dot') {
+      if (args.length !== 2 || args[0].t !== 'v' || args[1].t !== 'v') throw new Error('Math ERROR');
+      const a = args[0].v, b = args[1].v;
+      if (a.length !== b.length) _mvErrDim();
+      return { t: 's', v: a.reduce((s, x, i) => s + x * b[i], 0) };
+    }
+    if (name === 'Angle') {
+      if (args.length !== 2 || args[0].t !== 'v' || args[1].t !== 'v') throw new Error('Math ERROR');
+      const a = args[0].v, b = args[1].v;
+      if (a.length !== b.length) _mvErrDim();
+      const ma = Math.sqrt(a.reduce((s, x) => s + x * x, 0));
+      const mb = Math.sqrt(b.reduce((s, x) => s + x * x, 0));
+      if (ma === 0 || mb === 0) throw new Error('Math ERROR');
+      const r = Math.max(-1, Math.min(1, a.reduce((s, x, i) => s + x * b[i], 0) / (ma * mb)));
+      return { t: 's', v: _mvAngleToUnit(Math.acos(r)) };
+    }
+    if (name === 'UnitV') {
+      if (args.length !== 1 || args[0].t !== 'v') throw new Error('Math ERROR');
+      const v = args[0].v;
+      const m = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+      if (m === 0) throw new Error('Math ERROR');
+      return { t: 'v', v: v.map(x => x / m) };
+    }
+    throw new Error('Math ERROR');
+  }
+  function _mvArg(arg, mats, vcts) {
+    arg = String(arg).trim();
+    if (!arg) throw new Error('Math ERROR');
+    if (!_hasMatVec(arg)) return { t: 's', v: _mvScalarCheck(_evalStr(arg)) };
+    return _mvParse(arg, mats, vcts);
+  }
+  function _mvResolveFuncs(s, mats, vcts) {
+    for (let k = 0; k < 50; k++) {
+      const f = _mvFindCall(s);
+      if (!f) return s;
+      const open = f[1] + f[0].length;
+      const close = _mvMatchParen(s, open);
+      if (close < 0) throw new Error('Math ERROR');
+      const inner = s.slice(open + 1, close);
+      if (f[0] === 'Abs' && !_hasMatVec(inner)) break;
+      const args = _mvSplitArgs(inner).map(a => _mvArg(a, mats, vcts));
+      const r = _mvApplyFunc(f[0], args);
+      const rep = r.t === 's' ? `(${r.v})` : r.t === 'm'
+        ? '[' + r.v.map(row => '[' + row.join(',') + ']').join(',') + ']'
+        : '[' + r.v.join(',') + ']';
+      s = s.slice(0, f[1]) + rep + s.slice(close + 1);
+    }
+    return s;
+  }
+  function _mvSplitAtoms(s) {
+    const parts = [];
+    let buf = '';
+    const flush = () => { if (buf) { parts.push([false, buf]); buf = ''; } };
+    let i = 0;
+    while (i < s.length) {
+      const m = s.slice(i).match(/^(Mat[ABCD]\b|Vct[ABCD]\b)/);
+      if (m && (i === 0 || !/[A-Za-z0-9_]/.test(s[i - 1]))) {
+        flush(); parts.push([true, m[1]]); i += m[1].length; continue;
+      }
+      if (s[i] === '[') {
+        let d = 0, j = i;
+        while (j < s.length) {
+          if (s[j] === '[') d++;
+          else if (s[j] === ']') { d--; if (d === 0) break; }
+          j++;
+        }
+        if (d !== 0) throw new Error('Math ERROR');
+        flush(); parts.push([true, s.slice(i, j + 1)]); i = j + 1; continue;
+      }
+      buf += s[i]; i++;
+    }
+    flush();
+    return parts;
+  }
+  function _mvParseLit(text) {
+    // Canonical [[..]] matrix or [..] vector literal.
+    if (text[0] === '[' && text[1] === '[') {
+      const inner = text.slice(2, -2);
+      return { t: 'm', v: inner.split('],[').map(r => r.split(',').map(x => { const n = parseFloat(x); if (!isFinite(n)) throw new Error('Math ERROR'); return n; })) };
+    }
+    return { t: 'v', v: text.slice(1, -1).split(',').map(x => { const n = parseFloat(x); if (!isFinite(n)) throw new Error('Math ERROR'); return n; }) };
+  }
+  function _mvParse(s, mats, vcts) {
+    const toks = [];
+    let i = 0;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === ' ') { i++; continue; }
+      if (c === '*' && s[i + 1] === '*') { toks.push('^'); i += 2; continue; }
+      if ('+-*/^(),'.indexOf(c) >= 0 || c === '×' || c === '÷') { toks.push(c === '×' ? '*' : c === '÷' ? '/' : c); i++; continue; }
+      if ((c >= '0' && c <= '9') || c === '.') {
+        let j = i;
+        while (j < s.length && ((s[j] >= '0' && s[j] <= '9') || s[j] === '.')) j++;
+        toks.push(parseFloat(s.slice(i, j))); i = j; continue;
+      }
+      if (c === '[') {
+        let d = 0, j = i;
+        while (j < s.length) {
+          if (s[j] === '[') d++;
+          else if (s[j] === ']') { d--; if (d === 0) break; }
+          j++;
+        }
+        if (d !== 0) throw new Error('Math ERROR');
+        toks.push(_mvParseLit(s.slice(i, j + 1))); i = j + 1; continue;
+      }
+      if (/[A-Za-z_]/.test(c)) {
+        let j = i;
+        while (j < s.length && /[A-Za-z_0-9]/.test(s[j])) j++;
+        const w = s.slice(i, j);
+        if (/^Mat[ABCD]$/.test(w)) { toks.push({ t: 'm', v: _mvMat(w[3], mats) }); i = j; continue; }
+        if (/^Vct[ABCD]$/.test(w)) { toks.push({ t: 'v', v: _mvVct(w[3], vcts) }); i = j; continue; }
+        if (['Det', 'Trn', 'Identity', 'Dot', 'Angle', 'UnitV', 'Abs'].includes(w) && s[j] === '(') {
+          const close = _mvMatchParen(s, j);
+          if (close < 0) throw new Error('Math ERROR');
+          const args = _mvSplitArgs(s.slice(j + 1, close)).map(a => _mvArg(a, mats, vcts));
+          toks.push(_mvApplyFunc(w, args)); i = close + 1; continue;
+        }
+        throw new Error('Math ERROR');
+      }
+      throw new Error('Math ERROR');
+    }
+    let p = 0;
+    const peek = () => toks[p];
+    function mAtom() {
+      const tk = toks[p];
+      if (tk === undefined) throw new Error('Math ERROR');
+      if (typeof tk === 'number') { p++; return { t: 's', v: tk }; }
+      if (tk && tk.t) { p++; return tk; }
+      if (tk === '(') { p++; const v = mExpr(); if (toks[p] !== ')') throw new Error('Math ERROR'); p++; return v; }
+      throw new Error('Math ERROR');
+    }
+    function mUnary() {
+      if (toks[p] === '-') { p++; const v = mUnary(); return v.t === 's' ? { t: 's', v: -v.v } : v.t === 'm' ? { t: 'm', v: v.v.map(r => r.map(x => -x)) } : { t: 'v', v: v.v.map(x => -x) }; }
+      if (toks[p] === '+') { p++; return mUnary(); }
+      return mPow();
+    }
+    function mPow() {
+      const b = mAtom();
+      if (toks[p] === '^') {
+        p++;
+        const e = mUnary();
+        if (e.t !== 's' || !Number.isInteger(e.v)) throw new Error('Math ERROR');
+        if (b.t === 's') {
+          if (b.v < 0 && e.v !== Math.trunc(e.v)) throw new Error('Math ERROR');
+          const r = Math.pow(b.v, e.v);
+          if (!isFinite(r)) throw new Error('Math ERROR');
+          return { t: 's', v: r };
+        }
+        if (b.t === 'm') {
+          const n = b.v.length;
+          if (b.v.some(r => r.length !== n)) _mvErrDim();
+          if (e.v === -1) return { t: 'm', v: _mvInv(b.v) };
+          if (e.v < 0) throw new Error('Math ERROR');
+          let res = b.v.map((r, i) => r.map((_, j) => i === j ? 1 : 0));
+          let base = b.v, exp = e.v;
+          const mmul = (A, B) => A.map((r, i) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0)));
+          while (exp > 0) { if (exp % 2 === 1) res = mmul(res, base); exp = Math.floor(exp / 2); if (exp) base = mmul(base, base); }
+          return { t: 'm', v: res };
+        }
+        throw new Error('Math ERROR');
+      }
+      return b;
+    }
+    function mAdd(a, op, b) {
+      if (a.t === 's' && b.t === 's') return { t: 's', v: op === '+' ? a.v + b.v : a.v - b.v };
+      if (a.t === 'm' && b.t === 'm') {
+        if (a.v.length !== b.v.length || a.v[0].length !== b.v[0].length) _mvErrDim();
+        return { t: 'm', v: a.v.map((r, i) => r.map((x, j) => op === '+' ? x + b.v[i][j] : x - b.v[i][j])) };
+      }
+      if (a.t === 'v' && b.t === 'v') {
+        if (a.v.length !== b.v.length) _mvErrDim();
+        return { t: 'v', v: a.v.map((x, i) => op === '+' ? x + b.v[i] : x - b.v[i]) };
+      }
+      _mvErrDim();
+    }
+    function mMul(a, op, b) {
+      if (op === '/') {
+        if (a.t === 's' && b.t === 's') {
+          if (b.v === 0) throw new Error(a.v === 0 ? 'Math ERROR' : 'DIV_ZERO');
+          return { t: 's', v: a.v / b.v };
+        }
+        throw new Error('Math ERROR');
+      }
+      if (a.t === 's' && b.t === 's') return { t: 's', v: a.v * b.v };
+      if (a.t === 's' && b.t === 'm') return { t: 'm', v: b.v.map(r => r.map(x => a.v * x)) };
+      if (a.t === 'm' && b.t === 's') return { t: 'm', v: a.v.map(r => r.map(x => x * b.v)) };
+      if (a.t === 's' && b.t === 'v') return { t: 'v', v: b.v.map(x => a.v * x) };
+      if (a.t === 'v' && b.t === 's') return { t: 'v', v: a.v.map(x => x * b.v) };
+      if (a.t === 'm' && b.t === 'm') {
+        if (a.v[0].length !== b.v.length) _mvErrDim();
+        return { t: 'm', v: a.v.map((r, i) => b.v[0].map((_, j) => r.reduce((s, x, k) => s + x * b.v[k][j], 0))) };
+      }
+      if (a.t === 'v' && b.t === 'v') {
+        if (a.v.length !== 3 || b.v.length !== 3) _mvErrDim();
+        const [ax, ay, az] = a.v, [bx, by, bz] = b.v;
+        return { t: 'v', v: [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx] };
+      }
+      _mvErrDim();
+    }
+    function mTerm() {
+      let l = mUnary();
+      while (toks[p] === '*' || toks[p] === '/') { const op = toks[p]; p++; l = mMul(l, op, mUnary()); }
+      return l;
+    }
+    function mExpr() {
+      let l = mTerm();
+      while (toks[p] === '+' || toks[p] === '-') { const op = toks[p]; p++; l = mAdd(l, op, mTerm()); }
+      return l;
+    }
+    const out = mExpr();
+    if (p !== toks.length) throw new Error('Math ERROR');
+    return out;
+  }
+  function _evalMatExpr(expr, mats, vcts) {
+    let s = String(expr).replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+    s = s.replace(/(\d|\))(?=Mat[ABCD]|Vct[ABCD])/g, '$1*');
+    s = _mvResolveFuncs(s, mats, vcts);
+    const parts = _mvSplitAtoms(s);
+    let rebuilt = '';
+    for (const [isAtom, part] of parts) {
+      if (isAtom) { rebuilt += part; continue; }
+      if (part === '' || !/[0-9A-Za-z(.]/.test(part)) { rebuilt += part; continue; }
+      if (/^\s*[*\/^]/.test(part)) { rebuilt += part; continue; }
+      const m = part.match(/^(.*?)([+\-*/^]+)$/);
+      let core = part, trail = '';
+      if (m && /[0-9A-Za-z)]/.test(m[1])) { core = m[1]; trail = m[2]; }
+      if (core.trim() === '') { rebuilt += part; continue; }
+      rebuilt += `(${_evalStr(core)})` + trail;
+    }
+    return _mvParse(rebuilt, mats, vcts);
+  }
+  function _fmtMatJS(m) { return '[' + m.map(r => '[' + r.map(x => localFormat(x)).join(',') + ']').join(',') + ']'; }
+  function _fmtVctJS(v) { return '[' + v.map(x => localFormat(x)).join(',') + ']'; }
+  function _evalMatTop(expr) {
+    const st = _mvStores();
+    const r = _evalMatExpr(expr, st.mats, st.vcts);
+    const out = r.t === 's' ? localFormat(r.v) : r.t === 'm' ? _fmtMatJS(r.v) : _fmtVctJS(r.v);
+    localAns = out;
+    return out;
   }
 
   function _tokenize(s) {
@@ -2871,7 +3397,11 @@
           if (s[k] === '+' || s[k] === '-') k++;
           if (s[k] >= '0' && s[k] <= '9') { j = k; while (j < s.length && s[j] >= '0' && s[j] <= '9') j++; }
         }
+        if (s[j] === 'i') { t.push(['n', { __c: true, re: 0, im: parseFloat(s.slice(i, j)) }]); i = j + 1; continue; }
         t.push(['n', parseFloat(s.slice(i, j))]); i = j; continue;
+      }
+      if (c === 'i' && (i + 1 >= s.length || !/[A-Za-z_0-9]/.test(s[i + 1]))) {
+        t.push(['n', { __c: true, re: 0, im: 1 }]); i++; continue;
       }
       if (/[A-Za-z_]/.test(c)) {
         let j = i;
@@ -2913,7 +3443,7 @@
       return b;
     }
     function unary() {
-      if (peekOp(['-'])) { p++; return -unary(); }
+      if (peekOp(['-'])) { p++; const v = unary(); return _cIsC(v) ? _cNeg(v) : -v; }
       if (peekOp(['+'])) { p++; return unary(); }
       return power();
     }
@@ -2922,8 +3452,14 @@
       while (peekOp(['*', '/'])) {
         const op = tokens[p][0]; p++;
         const r = unary();
+        if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
+        if (_cIsC(l) || _cIsC(r)) {
+          if (_cIsZero(r)) throw new Error('Math ERROR');
+          l = _cDiv(l, r);
+          continue;
+        }
         if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
-        l = op === '*' ? l * r : l / r;
+        l = l / r;
       }
       return l;
     }
@@ -2931,7 +3467,9 @@
       let l = mulDiv();
       while (peekOp(['+', '-'])) {
         const op = tokens[p][0]; p++;
-        l = op === '+' ? l + mulDiv() : l - mulDiv();
+        const r = mulDiv();
+        if (_cIsC(l) || _cIsC(r)) l = op === '+' ? _cAdd(l, r) : _cSub(l, r);
+        else l = op === '+' ? l + r : l - r;
       }
       return l;
     }
@@ -2967,6 +3505,11 @@
     }
     s = s.split('Σ(').join('sigma(').split('d/dx(').join('diff(');
     s = s.replace(/(?<![A-Za-z0-9_])Rnd\(/g, 'round(');
+    // Keypad infix combinatorics (mirror the backend + prepareExpression).
+    s = s.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
+    s = s.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
+    s = s.replace(/\(([^()]*)\)\s*C\s*\(([^()]*)\)/g, 'nCr($1,$2)');
+    s = s.replace(/\(([^()]*)\)\s*P\s*\(([^()]*)\)/g, 'nPr($1,$2)');
     try {
       const vmap = (typeof appState !== 'undefined' && appState.variables) ? appState.variables : null;
       if (vmap) {
@@ -2994,12 +3537,19 @@
     s = s.split('**').join('^');
     let v;
     try { v = _parseEval(_tokenize(s)); }
-    catch (err) { throw new Error('Math ERROR'); }
+    catch (err) {
+      if (err && err.message === 'DIV_ZERO') throw err;
+      throw new Error('Math ERROR');
+    }
+    if (_cIsC(v)) return v;
     if (!isFinite(v)) throw new Error('Math ERROR');
     return v;
   }
 
   function localEvaluate(expr) {
+    _complexMode = (typeof appState !== 'undefined' && appState.mode === 'Complex');
+    // Matrix/Vector-mode expressions use the dedicated typed evaluator.
+    if (_hasMatVec(String(expr))) return _evalMatTop(String(expr));
     // FACT(n) shows prime factorization (fx-991EX FACT).
     const factMatch = String(expr).trim().match(/^FACT\((.*)\)$/);
     if (factMatch) {
@@ -3009,23 +3559,15 @@
       localAns = out;
       return out;
     }
-    // The backend preserves complex inverse-trigonometric results outside the
-    // real domain (for example asin(2)); mirror that display in the bridge.
-    const inverseMatch = String(expr).trim().match(/^asin\((-?\d+(?:\.\d+)?)\)$/);
-    if (inverseMatch && Math.abs(Number(inverseMatch[1])) > 1) {
-      const x = Number(inverseMatch[1]);
-      const real = (x < 0 ? -1 : 1) * 90;
-      const imag = Math.log(Math.abs(x) + Math.sqrt(x * x - 1)) * 180 / Math.PI;
-      const complex = `${real}${imag >= 0 ? '+' : '-'}${_fmtG(Math.abs(imag))}i`;
-      localAns = complex;
-      return complex;
-    }
     let r;
-    try { r = localFormat(_evalStr(expr)); }
+    let v;
+    try { v = _evalStr(expr); }
     catch (e) {
       if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'To infinity and beyonddd'; }
       throw e;
     }
+    if (_cIsC(v) && Math.abs(v.im) > 1e-12 && !_complexMode) throw new Error('Math ERROR');
+    r = localFormat(v);
     localAns = r;
     return r;
   }
@@ -3440,6 +3982,26 @@
     if (matAlpha) matAlpha.classList.toggle('active', appState.alpha);
 
     const minp = appState.matrixInput;
+    if (minp && minp.phase === 'calc') {
+      const wrap = el('div', 'matrix-grid-container');
+      const tag = el('div', 'matrix-bottom-info');
+      tag.textContent = 'Mat CALC';
+      const exprBox = el('div', 'table-input-line');
+      exprBox.appendChild(renderSlotDOM(rootSlot));
+      const resBox = el('div', 'matrix-bottom-info');
+      resBox.id = 'lcdMatrixResult';
+      if (appState.error) resBox.textContent = appState.error;
+      else if (appState.resultDisplayed && appState.result !== null) {
+        const latex = matrixToLatex(String(appState.result));
+        if (latex && typeof katex !== 'undefined') {
+          try { renderMath(latex, 'lcdMatrixResult', false); }
+          catch (e) { resBox.textContent = displayFormat(appState.result); }
+        } else resBox.textContent = displayFormat(appState.result);
+      }
+      wrap.append(tag, exprBox, resBox);
+      bodyEl.appendChild(wrap);
+      return;
+    }
     if (!minp || minp.phase === 'menu' || !minp.phase) {
       const menuGrid = el('div', 'matrix-menu-grid');
       menuGrid.innerHTML = `
@@ -3551,6 +4113,26 @@
     if (vctAlpha) vctAlpha.classList.toggle('active', appState.alpha);
 
     const vi = appState.vectorInput;
+    if (vi && vi.phase === 'calc') {
+      const wrap = el('div', 'vector-grid-container');
+      const tag = el('div', 'vector-bottom-info');
+      tag.textContent = 'Vct CALC';
+      const exprBox = el('div', 'table-input-line');
+      exprBox.appendChild(renderSlotDOM(rootSlot));
+      const resBox = el('div', 'vector-bottom-info');
+      resBox.id = 'lcdVectorResult';
+      if (appState.error) resBox.textContent = appState.error;
+      else if (appState.resultDisplayed && appState.result !== null) {
+        const latex = matrixToLatex(String(appState.result));
+        if (latex && typeof katex !== 'undefined') {
+          try { renderMath(latex, 'lcdVectorResult', false); }
+          catch (e) { resBox.textContent = displayFormat(appState.result); }
+        } else resBox.textContent = displayFormat(appState.result);
+      }
+      wrap.append(tag, exprBox, resBox);
+      bodyEl.appendChild(wrap);
+      return;
+    }
     if (!vi || vi.phase === 'menu' || !vi.phase) {
       const menuList = el('div', 'vector-menu-list');
       menuList.innerHTML = `
@@ -3725,7 +4307,11 @@
 
     if (si.phase === 'result') {
       const wrap = el('div', 'stat-result');
-      wrap.textContent = JSON.stringify(si.result || '');
+      if (si.result && typeof si.result === 'object') {
+        wrap.textContent = Object.keys(si.result).map(k => `${k} = ${displayFormat(si.result[k])}`).join('\n');
+      } else {
+        wrap.textContent = displayFormat(si.result || '');
+      }
       bodyEl.appendChild(wrap);
       return;
     }
@@ -3973,7 +4559,7 @@
     if (st.level===0) {
       if(key==='dpad_up') st.cursor=(st.cursor-1+SETUP_MENU.length)%SETUP_MENU.length;
       else if(key==='dpad_down') st.cursor=(st.cursor+1)%SETUP_MENU.length;
-      else if(key==='dpad_right'||key==='equals') openCategory(SETUP_MENU[st.cursor]);
+      else if(key==='dpad_right'||key==='equals'||key==='dpad_center') openCategory(SETUP_MENU[st.cursor]);
       else if(key==='ac') { closeSetup(); return; }
       else if(digit!==null && digit>0 && digit<=SETUP_MENU.length) { st.cursor=digit-1; openCategory(SETUP_MENU[digit-1]); return; }
       renderSetup(); return;
@@ -3983,7 +4569,7 @@
       if(key==='dpad_up') st.cursor=(st.cursor-1+list.length)%list.length;
       else if(key==='dpad_down') st.cursor=(st.cursor+1)%list.length;
       else if(key==='dpad_left'||key==='ac') { st.level=0; st.cursor=st.parentCursor; }
-      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) { st.currentSubCat=list[digit!==null?digit-1:st.cursor]; st.cursor=0; st.level=2; }
+      else if(key==='dpad_right'||key==='equals'||key==='dpad_center'||(digit!==null&&digit>0&&digit<=list.length)) { st.currentSubCat=list[digit!==null?digit-1:st.cursor]; st.cursor=0; st.level=2; }
       renderSetup(); return;
     }
     if(st.level===1) {
@@ -3991,7 +4577,7 @@
       if(key==='dpad_up') st.cursor=(st.cursor-1+list.length)%list.length;
       else if(key==='dpad_down') st.cursor=(st.cursor+1)%list.length;
       else if(key==='dpad_left'||key==='ac') { st.level=0; st.cursor=st.parentCursor; }
-      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) setupSelect(st.currentCat,list[digit!==null?digit-1:st.cursor]);
+      else if(key==='dpad_right'||key==='equals'||key==='dpad_center'||(digit!==null&&digit>0&&digit<=list.length)) setupSelect(st.currentCat,list[digit!==null?digit-1:st.cursor]);
       renderSetup(); return;
     }
     if(st.level===2 && st.awaitingDigit) {
@@ -4003,14 +4589,14 @@
       const list=st.currentCat._normOpt.subOptions;
       if(key==='dpad_up'||key==='dpad_down') st.cursor=(st.cursor+(key==='dpad_up'?list.length-1:1))%list.length;
       else if(key==='ac'||key==='dpad_left') { st.awaitingNorm=false; st.level=1; st.cursor=0; }
-      else if(key==='dpad_right'||key==='equals'||digit===1||digit===2) { const opt=list[digit===1?0:digit===2?1:st.cursor]; applySetupSetting('number_format','Norm'); applySetupSetting('number_format_digits',opt.value); st.awaitingNorm=false; st.level=0; st.cursor=st.parentCursor; }
+      else if(key==='dpad_right'||key==='equals'||key==='dpad_center'||digit===1||digit===2) { const opt=list[digit===1?0:digit===2?1:st.cursor]; applySetupSetting('number_format','Norm'); applySetupSetting('number_format_digits',opt.value); st.awaitingNorm=false; st.level=0; st.cursor=st.parentCursor; }
       renderSetup(); return;
     }
     if(st.level===2 && st.currentSubCat) {
       const list=st.currentSubCat.options;
       if(key==='dpad_up'||key==='dpad_down') st.cursor=(st.cursor+(key==='dpad_up'?list.length-1:1))%list.length;
       else if(key==='ac'||key==='dpad_left') { st.currentSubCat=null; st.level=1; st.cursor=0; }
-      else if(key==='dpad_right'||key==='equals'||(digit!==null&&digit>0&&digit<=list.length)) { applySetupSetting(st.currentSubCat.id,list[digit!==null?digit-1:st.cursor].value); st.currentSubCat=null; st.level=0; st.cursor=st.parentCursor; }
+      else if(key==='dpad_right'||key==='equals'||key==='dpad_center'||(digit!==null&&digit>0&&digit<=list.length)) { applySetupSetting(st.currentSubCat.id,list[digit!==null?digit-1:st.cursor].value); st.currentSubCat=null; st.level=0; st.cursor=st.parentCursor; }
       renderSetup();
     }
   }
@@ -4100,7 +4686,7 @@
       title.textContent = cfg.name || '';
       const resLine = el('div');
       const prefix = di.type === 3 ? 'x=' : 'p=';
-      resLine.textContent = `${prefix}${di.result !== null ? di.result : ''}`;
+      resLine.textContent = `${prefix}${di.result !== null ? displayFormat(di.result) : ''}`;
       const hint = el('div', 'dist-scroll-hint');
       hint.textContent = '[AC: re-enter]';
       hint.style.marginTop = '4px';
@@ -4342,7 +4928,7 @@
           if (appState.settings?.showCell === 'Formula' && cellObj.formula) {
             cellContent = cellObj.formula;
           } else {
-            cellContent = cellObj.value !== undefined ? String(cellObj.value) : (cellObj.raw || '');
+            cellContent = cellObj.value !== undefined ? displayFormat(cellObj.value) : (cellObj.raw || '');
           }
         }
         td.textContent = cellContent;
@@ -4438,7 +5024,7 @@
       if (r.error) {
         resLine.textContent = r.error;
       } else {
-        resLine.textContent = `X = ${r.result}`;
+        resLine.textContent = `X = ${displayFormat(r.result)}`;
       }
       view.appendChild(resLine);
     }
@@ -4671,9 +5257,9 @@
   }
 
   function formatEquationResult(eq) {
-    if (typeof eq.resultState === 'string') return eq.resultState;
-    if (eq.selectedType !== 'polynomial' || !Array.isArray(eq.resultState)) return JSON.stringify(eq.resultState ?? '');
-    return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${formatEquationRoot(root)}`).join('\n');
+    if (typeof eq.resultState === 'string') return displayFormat(eq.resultState);
+    if (eq.selectedType !== 'polynomial' || !Array.isArray(eq.resultState)) return displayFormat(JSON.stringify(eq.resultState ?? ''));
+    return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${displayFormat(formatEquationRoot(root))}`).join('\n');
   }
 
   function solveInequalityRemote() {
@@ -4708,7 +5294,7 @@
     ['x', 'f(x)'].forEach(h => { const d = el('div', 'table-head'); d.textContent = h; grid.appendChild(d); });
     t.rows.slice(t.startRow, t.startRow + 4).forEach((row, i) => {
       const cls = t.startRow + i === t.selectedRow ? 'table-selected' : '';
-      const x = el('div', cls), v = el('div', cls); x.textContent = row.x; v.textContent = row.value; grid.append(x, v);
+      const x = el('div', cls), v = el('div', cls); x.textContent = displayFormat(row.x); v.textContent = displayFormat(row.value); grid.append(x, v);
     });
     body.appendChild(grid);
     const footer = el('div', 'table-footer'); footer.textContent = `row ${t.selectedRow + 1}/${t.rows.length}`; body.appendChild(footer);
@@ -4743,7 +5329,7 @@
       const names = iq.degree === 2 ? ['a','b','c'] : iq.degree === 3 ? ['a','b','c','d'] : ['a','b','c','d','e'];
       names.forEach((name,i) => { const row = el('div', 'ineq-coeff' + (i === iq.coefficientIndex ? ' selected' : '')); row.innerHTML = `<span>${name} =</span><span>${i === iq.coefficientIndex && iq.cellBuffer ? iq.cellBuffer : (iq.coefficients[i] ?? '')}<span class="lcd-cursor"></span></span>`; view.appendChild(row); });
     } else {
-      const result = el('div', 'ineq-result'); result.innerHTML = `<div>${inequalityExpression(iq)}</div><div style="margin-top:8px;">Solution</div><div>${typeof iq.result === 'string' ? iq.result : JSON.stringify(iq.result || '')}</div>`; view.appendChild(result);
+      const result = el('div', 'ineq-result'); result.innerHTML = `<div>${inequalityExpression(iq)}</div><div style="margin-top:8px;">Solution</div><div>${typeof iq.result === 'string' ? displayFormat(iq.result) : displayFormat(JSON.stringify(iq.result || ''))}</div>`; view.appendChild(result);
     }
     body.appendChild(view);
   }
@@ -5007,10 +5593,10 @@
       }
     } catch (e) {}
 
-    // Result — KaTeX inline mode for secondary/result line (fallback = plain text).
+    // Result — display layer (Decimal Mark / Digit Separator), then KaTeX.
     const resultEl = document.getElementById('lcdResultLine');
     if (appState.error) renderMath(appState.error, 'lcdResultLine', false);
-    else if (appState.resultDisplayed && appState.result !== null) renderMath(String(appState.result), 'lcdResultLine', false);
+    else if (appState.resultDisplayed && appState.result !== null) renderMatrixResult(String(appState.result));
     else renderMath('', 'lcdResultLine', false);
 
     // Horizontal scroll to cursor
@@ -5081,6 +5667,29 @@
     } catch(e) { showMathError(); }
   }
 
+  function matrixToLatex(canonical) {
+    // Canonical [[a,b],[c,d]] or [a,b,c] -> bmatrix latex (dots/commas kept
+    // canonical here; '&' separates so no separator ambiguity arises).
+    try {
+      const s = String(canonical).trim();
+      if (/^\[\[.*\]\]$/.test(s)) {
+        const inner = s.slice(2, -2);
+        const rows = inner.split('],[');
+        return '\\begin{bmatrix}' + rows.map(r => r.split(',').map(c => c.trim()).join(' & ')).join(' \\\\ ') + '\\end{bmatrix}';
+      }
+      if (/^\[[^\[\]]*\]$/.test(s) && s.indexOf(',') >= 0) {
+        const cells = s.slice(1, -1).split(',').map(c => c.trim()).join(' \\\\ ');
+        return '\\begin{bmatrix}' + cells + '\\end{bmatrix}';
+      }
+    } catch (e) {}
+    return null;
+  }
+  function renderMatrixResult(canonical) {
+    const shown = displayFormat(canonical);
+    const latex = matrixToLatex(String(canonical));
+    if (latex && typeof katex !== 'undefined') { renderMath(latex, 'lcdResultLine', false); return; }
+    renderMath(shown, 'lcdResultLine', false);
+  }
   function syncQrOverlay() {
     try {
       const qr = document.getElementById('qr-panel');
@@ -5157,6 +5766,35 @@
     } catch(e) { showMathError(); }
   }
 
+  function displayFormat(canonical) {
+    // Display layer only (fx-991EX Decimal Mark / Digit Separator). Canonical
+    // results (dots, no separators) stay untouched for Ans/storage/eval.
+    // With Comma mark, multi-value ',' separators become ';' (per manual).
+    let s = String(canonical == null ? '' : canonical);
+    if (s === '' || s === 'Math ERROR' || s === 'Dimension ERROR' || s === 'To infinity and beyonddd') return s;
+    const mark = (typeof setupSettings !== 'undefined' && setupSettings.decimal_mark) || 'Dot';
+    const sep = (typeof setupSettings !== 'undefined' && !!setupSettings.digit_separator);
+    let approx = '';
+    if (s[0] === '≈') { approx = '≈'; s = s.slice(1); }
+    if (sep) {
+      s = s.replace(/[+-]?\d+(?:\.\d+)?/g, (num) => {
+        let sign = '';
+        if (num[0] === '+' || num[0] === '-') { sign = num[0]; num = num.slice(1); }
+        const dot = num.indexOf('.');
+        let ip = dot >= 0 ? num.slice(0, dot) : num;
+        const fp = dot >= 0 ? num.slice(dot) : '';
+        if (ip.length > 3) {
+          const g = [];
+          while (ip.length > 3) { g.unshift(ip.slice(-3)); ip = ip.slice(0, -3); }
+          g.unshift(ip);
+          ip = g.join(' ');
+        }
+        return sign + ip + fp;
+      });
+    }
+    if (mark === 'Comma') s = s.replace(/,/g, ';').replace(/\./g, ',');
+    return approx + s;
+  }
   function updateMemoryIndicator() {
     const indicator = document.getElementById('indMemory');
     if (indicator) indicator.classList.toggle('active', appState.hasMemory === true);
@@ -5174,22 +5812,29 @@
     }, 700);
   }
 
+  function optnHideAll() {
+    ['optn-main-menu', 'optn-hyp-menu', 'optn-angle-menu', 'optn-mat-menu', 'optn-vct-menu'].forEach(id => {
+      const m = document.getElementById(id);
+      if (m) m.style.display = 'none';
+    });
+  }
   function openOptnPanel() {
+    optnHideAll();
+    // Matrix/Vector modes open their own OPTN page (official menu items).
+    const mat = document.getElementById('optn-mat-menu');
+    const vct = document.getElementById('optn-vct-menu');
     const main = document.getElementById('optn-main-menu');
-    const hyperbolic = document.getElementById('optn-hyp-menu');
-    const angle = document.getElementById('optn-angle-menu');
-    if (main) main.style.display = 'block';
-    if (hyperbolic) hyperbolic.style.display = 'none';
-    if (angle) angle.style.display = 'none';
+    if (appState.mode === 'Matrix' && mat) mat.style.display = 'block';
+    else if (appState.mode === 'Vector' && vct) vct.style.display = 'block';
+    else if (main) main.style.display = 'block';
     const panel = document.getElementById('optn-panel');
     if (panel) panel.style.display = 'block';
   }
 
   function optnSelectCategory(num) {
-    const main = document.getElementById('optn-main-menu');
+    optnHideAll();
     const hyperbolic = document.getElementById('optn-hyp-menu');
     const angle = document.getElementById('optn-angle-menu');
-    if (main) main.style.display = 'none';
     if (hyperbolic) hyperbolic.style.display = num === 1 ? 'block' : 'none';
     if (angle) angle.style.display = num === 2 ? 'block' : 'none';
   }
@@ -5203,6 +5848,8 @@
     const main = document.getElementById('optn-main-menu');
     const hyperbolic = document.getElementById('optn-hyp-menu');
     const angle = document.getElementById('optn-angle-menu');
+    const mat = document.getElementById('optn-mat-menu');
+    const vct = document.getElementById('optn-vct-menu');
     const n = Number.parseInt(key, 10);
     if (main?.style.display !== 'none' && (n === 1 || n === 2)) {
       optnSelectCategory(n);
@@ -5214,6 +5861,14 @@
     }
     if (angle?.style.display !== 'none' && n >= 1 && n <= 3) {
       insertOptn(['°', 'r', 'g'][n - 1]);
+      return true;
+    }
+    if (mat?.style.display !== 'none' && n >= 1 && n <= 7) {
+      insertOptn(['MatA', 'MatB', 'MatC', 'MatD', 'Det(', 'Trn(', 'Identity('][n - 1]);
+      return true;
+    }
+    if (vct?.style.display !== 'none' && n >= 1 && n <= 7) {
+      insertOptn(['VctA', 'VctB', 'VctC', 'VctD', 'Dot(', 'Angle(', 'UnitV('][n - 1]);
       return true;
     }
     return true;
@@ -5586,7 +6241,7 @@
         if (rawKey === '1') { rs.selection = 0; rs.phase = 'confirm'; renderLCD(); return; }
         if (rawKey === '2') { rs.selection = 1; rs.phase = 'confirm'; renderLCD(); return; }
         if (rawKey === '3') { rs.selection = 2; rs.phase = 'confirm'; renderLCD(); return; }
-        if (rawKey === 'equals' || rawKey === 'dpad_right') { rs.phase = 'confirm'; renderLCD(); return; }
+        if (rawKey === 'equals' || rawKey === 'dpad_right' || rawKey === 'dpad_center') { rs.phase = 'confirm'; renderLCD(); return; }
         return;
       }
       if (rs.phase === 'confirm') {
@@ -5654,7 +6309,7 @@
           renderLCD();
           return;
         }
-        if (rawKey === 'equals' || rawKey === 'dpad_right') {
+        if (rawKey === 'equals' || rawKey === 'dpad_right' || rawKey === 'dpad_center') {
           cs.itemIndex = 0;
           cs.phase = 'list';
           renderLCD();
@@ -5725,7 +6380,7 @@
           renderLCD();
           return;
         }
-        if (rawKey === 'equals' || rawKey === 'dpad_right') {
+        if (rawKey === 'equals' || rawKey === 'dpad_right' || rawKey === 'dpad_center') {
           cv.pairIndex = 0;
           cv.phase = 'pair';
           renderLCD();
@@ -5749,7 +6404,7 @@
           renderLCD();
           return;
         }
-        if (rawKey === 'equals' || rawKey === 'dpad_right') {
+        if (rawKey === 'equals' || rawKey === 'dpad_right' || rawKey === 'dpad_center') {
           cv.valueBuffer = '';
           cv.result = null;
           cv.error = null;
@@ -5873,7 +6528,7 @@
         if (st.submenu === 'numberFormat') {
           if (key === 'dpad_up') { st.subSelection = (st.subSelection + 2) % 3; renderLCD(); return; }
           if (key === 'dpad_down') { st.subSelection = (st.subSelection + 1) % 3; renderLCD(); return; }
-          if (key === 'equals' || key === 'dpad_right') {
+          if (key === 'equals' || key === 'dpad_right' || key === 'dpad_center') {
             if (st.subSelection === 0) { st.submenu = 'fixPrompt'; st.subSelection = 0; }
             else if (st.subSelection === 1) { st.submenu = 'sciPrompt'; st.subSelection = 0; }
             else if (st.subSelection === 2) { st.submenu = 'normPrompt'; st.subSelection = 0; }
@@ -5930,7 +6585,7 @@
         }
 
         if (st.submenu === 'statistics') {
-          if (key === 'equals' || key === 'dpad_right' || key === '1') {
+          if (key === 'equals' || key === 'dpad_right' || key === 'dpad_center' || key === '1') {
             st.submenu = 'statFrequency';
             st.subSelection = 0;
             renderLCD();
@@ -5949,7 +6604,7 @@
 
         if (st.submenu === 'spreadsheet') {
           if (key === 'dpad_up' || key === 'dpad_down') { st.subSelection = (st.subSelection + 1) % 2; renderLCD(); return; }
-          if (key === 'equals' || key === 'dpad_right') {
+          if (key === 'equals' || key === 'dpad_right' || key === 'dpad_center') {
             if (st.subSelection === 0) { st.submenu = 'autoCalc'; st.subSelection = 0; }
             else if (st.subSelection === 1) { st.submenu = 'showCell'; st.subSelection = 0; }
             renderLCD();
@@ -6011,7 +6666,7 @@
         return;
       }
 
-      if (key === 'equals' || key === 'dpad_right') {
+      if (key === 'equals' || key === 'dpad_right' || key === 'dpad_center') {
         const sub = st.page === 1 ? page1Submenus[st.selection] : page2Submenus[st.selection];
         st.submenu = sub;
         st.subSelection = 0;
@@ -6129,7 +6784,7 @@
         else { appState.menuPage = 2; appState.menuSelection = 3; }
       } else if (rawKey === 'dpad_up' && appState.menuSelection >= 4) appState.menuSelection -= 4;
       else if (rawKey === 'dpad_down' && appState.menuSelection + 4 < pts) appState.menuSelection += 4;
-      else if (rawKey === 'equals') {
+      else if (rawKey === 'equals' || rawKey === 'dpad_center') {
         const modes = appState.menuPage === 1
           ? ['Calculate','Complex','Base-N','Matrix','Vector','Statistics','Distribution','Spreadsheet']
           : ['Table','Equation/Func','Inequality','Ratio'];
@@ -6453,6 +7108,15 @@
           return;
         }
         if (rawKey === 'ac') {
+          minp.phase = 'calc';
+          resetExpr();
+          renderLCD();
+          return;
+        }
+        if (rawKey === 'optn') {
+          minp.phase = 'calc';
+          resetExpr();
+          openOptnPanel();
           renderLCD();
           return;
         }
@@ -6615,8 +7279,10 @@
             minp.row++;
             minp.col = 0;
           } else {
-            // Reached last cell & confirmed: store matrix
+            // Reached last cell & confirmed: store matrix, open calc line
             storeMatrix(active);
+            minp.phase = 'calc';
+            resetExpr();
           }
           renderLCD();
           return;
@@ -6629,7 +7295,8 @@
           return;
         }
       }
-      return;
+      // 'calc' phase uses the shared expression path below (typing MatA+MatB etc.)
+      if (minp.phase !== 'calc') return;
     }
 
     // ── VECTOR MODE KEY HANDLING ──
@@ -6644,6 +7311,13 @@
           vi.active = vMap[key];
           vi.dimBuffer = '';
           vi.phase = 'dim';
+          renderLCD();
+          return;
+        }
+        if (key === 'ac' || key === 'optn') {
+          vi.phase = 'calc';
+          resetExpr();
+          if (key === 'optn') openOptnPanel();
           renderLCD();
           return;
         }
@@ -6710,6 +7384,8 @@
             storeVector(vi.active);
             vi.col = 0;
             vi.cellBuffer = '';
+            vi.phase = 'calc';
+            resetExpr();
           }
           renderLCD();
           return;
@@ -6728,6 +7404,8 @@
         if (key === 'negate' && !vi.cellBuffer.startsWith('-')) { vi.cellBuffer = '-' + vi.cellBuffer; renderLCD(); return; }
         return;
       }
+      // 'calc' phase uses the shared expression path below (typing VctA+VctB etc.)
+      if (vi.phase !== 'calc') return;
     }
 
     // ── STATISTICS MODE KEY HANDLING ──
@@ -6998,7 +7676,7 @@
           renderLCD();
           return;
         }
-        if (key === 'equals' || key === 'dpad_right') {
+        if (key === 'equals' || key === 'dpad_right' || key === 'dpad_center') {
           r.phase = 'input';
           r.activeField = 0;
           r.a = ''; r.b = ''; r.c_or_d = '';
@@ -7114,6 +7792,9 @@
       }
     }
 
+    // D-pad center: no center key on the physical unit (buttons.md); confirm
+    // only inside menus/flows. On an entry line it is an explicit no-op.
+    if (rawKey === 'dpad_center') return;
     if (rawKey === 'dpad_left') { moveCursorLeft(); return; }
     if (rawKey === 'dpad_right') { moveCursorRight(); return; }
     if (rawKey === 'dpad_up') { moveCursorUp(); return; }

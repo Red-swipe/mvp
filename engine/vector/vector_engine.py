@@ -12,9 +12,11 @@ class VectorEngine:
         self.dim = dim
         self.vectors = {}
 
+    _VALID_NAMES = ("VctA", "VctB", "VctC", "VctD")
+
     def store_vector(self, name, components):
-        if name not in ("VctA", "VctB", "VctC"):
-            raise ValueError("name must be VctA, VctB, or VctC")
+        if name not in self._VALID_NAMES:
+            raise ValueError("name must be VctA, VctB, VctC, or VctD")
         if self.dim is None:
             raise ValueError("dimension has not been set")
         comps = list(components)

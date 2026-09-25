@@ -82,6 +82,15 @@ class _Parser:
         return self._power()
 
     def _power(self):
+        # Casio fx-991EX priority: powers bind tighter than a leading
+        # negative sign, so -2**2 == -(2**2) == -4 (while (-2)**2 == 4).
+        token = self._peek()
+        if token is not None and token.kind == TokenKind.MINUS:
+            self._advance()
+            operand = self._power()
+            if isinstance(operand, NumberNode):
+                return NumberNode(-operand.number)
+            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
         node = self._unary()
         token = self._peek()
         if token is not None and token.kind == TokenKind.POWER:

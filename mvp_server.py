@@ -56,12 +56,92 @@ _SPECIAL_FUNCS = ('integral', 'sigma', 'diff', 'log_base', 'xroot', 'cbrt', 'sqr
 
 DIV_ZERO_MSG = "To infinity and beyonddd"
 
+
+def _group_integer_part(ip: str) -> str:
+    """Group an integer digit-run in threes (ClassWiz digit separator)."""
+    if len(ip) <= 3:
+        return ip
+    out = []
+    while len(ip) > 3:
+        out.append(ip[-3:])
+        ip = ip[:-3]
+    out.append(ip)
+    return ' '.join(reversed(out))
+
+
+def format_display(value_str, decimal_mark="Dot", digit_separator=False) -> str:
+    """Display layer only (fx-991EX Decimal Mark / Digit Separator).
+
+    Never touches internal values: callers keep canonical results (dots, no
+    separators) for Ans/storage/evaluation and format only for the LCD.
+    With Comma mark, multi-value ',' separators become ';' (per the manual).
+    """
+    s = str(value_str)
+    if s in ("", "Math ERROR", "Dimension ERROR", DIV_ZERO_MSG):
+        return s
+    approx = s.startswith("≈")
+    core = s[1:] if approx else s
+    if digit_separator:
+        def grp(m):
+            num = m.group(0)
+            sign = ''
+            if num[:1] in ('+', '-'):
+                sign, num = num[0], num[1:]
+            if '.' in num:
+                ip, fp = num.split('.', 1)
+                return sign + _group_integer_part(ip) + '.' + fp
+            return sign + _group_integer_part(num)
+        core = re.sub(r'[+-]?\d+(?:\.\d+)?', grp, core)
+    if decimal_mark == "Comma":
+        core = core.replace(',', ';').replace('.', ',')
+    return ('≈' if approx else '') + core
+
+
+def _rnd_value(v, setting) -> float:
+    """Rnd() per fx-991EX User's Guide: round in accordance with the current
+    Number Format setting. Fix n -> n decimal places; Sci n -> n significant
+    digits; Norm 1/2 -> rounded off at the 11th digit of the mantissa
+    (10 significant digits). Half-up, and the rounded value is internal too.
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+    if isinstance(v, complex):
+        if abs(v.imag) > 1e-14:
+            raise ValueError("Math ERROR")
+        v = v.real
+    d = Decimal(str(v))
+    if d.is_nan() or d.is_infinite():
+        raise ValueError("Math ERROR")
+    kind = (setting or ("Norm",))[0]
+    if kind == "Fix":
+        places = int((setting or ("Fix", 2))[1]) if len(setting or ()) > 1 else 2
+        places = max(0, min(9, places))
+        q = Decimal(1).scaleb(-places)
+        return float(d.quantize(q, rounding=ROUND_HALF_UP))
+    if kind == "Sci":
+        sig = int((setting or ("Sci", 10))[1]) if len(setting or ()) > 1 else 10
+        if sig <= 0:
+            sig = 10
+        sig = max(1, min(10, sig))
+        if d.is_zero():
+            return 0.0
+        exp = d.adjusted()
+        q = Decimal(1).scaleb(exp - sig + 1)
+        return float(d.quantize(q, rounding=ROUND_HALF_UP))
+    # Norm 1 / Norm 2: 10 significant digits
+    if d.is_zero():
+        return 0.0
+    exp = d.adjusted()
+    q = Decimal(1).scaleb(exp - 10 + 1)
+    return float(d.quantize(q, rounding=ROUND_HALF_UP))
+
 def _lit(v) -> str:
     """Format a float so the engine tokenizer can always parse it (no 1e-06)."""
     try:
         f = float(v)
     except Exception:
-        return _lit(v)
+        # Non-floats (e.g. complex) splice verbatim; the safe complex
+        # sub-parser handles the trailing 'j'.
+        return f'({v!r})'
     r = repr(f)
     if 'e' not in r and 'E' not in r and 'inf' not in r and 'nan' not in r:
         return f'({r})'
@@ -75,6 +155,20 @@ def _lit(v) -> str:
         s = '0' + s
     return f'({s})'
 
+
+
+def _casin(z: complex) -> complex:
+    """Principal asin via an explicit formula (deterministic across
+    platforms; matches the FILE_MODE bridge exactly)."""
+    return -1j * cmath.log(1j * z + cmath.sqrt(1 - z * z))
+
+
+def _cacos(z: complex) -> complex:
+    return math.pi / 2 - _casin(z)
+
+
+def _catan(z: complex) -> complex:
+    return _casin(z / cmath.sqrt(1 + z * z))
 
 
 def _prime_factorization_str(n: int) -> str:
@@ -199,7 +293,7 @@ def _find_special_call(s: str):
     return best
 
 
-def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False) -> str:
+def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None) -> str:
     """Replace supported special-function calls with plain Python expressions.
 
     Uses a balanced-parentheses scan so nested parentheses inside arguments and
@@ -221,35 +315,68 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             if len(args) != 3 or not all(args):
                 raise ValueError("Math ERROR: integral expects 3 arguments")
             integrand_str = args[0]
-            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
-            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode)
+            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             def integrand_func(x):
                 sub_expr = re.sub(r'\bx\b', _lit(x), integrand_str)
-                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.integrate(integrand_func, a_val, b_val)
             replacement = _lit(float(res))
         elif name == 'log_base':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: log_base expects 2 arguments")
-            base = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            value = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            base = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            value = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             replacement = _lit(math.log(value) / math.log(base))
         elif name == 'xroot':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: xroot expects 2 arguments")
-            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            radicand = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
-            replacement = _lit(radicand ** (1 / n_val))
+            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            radicand = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if (not isinstance(radicand, complex) and not isinstance(n_val, complex)
+                    and float(n_val).is_integer() and int(n_val) % 2 == 1 and radicand < 0):
+                # Real odd root of a negative (fx-991EX gives a real result).
+                replacement = _lit(-((-radicand) ** (1 / n_val)))
+            else:
+                replacement = _lit(radicand ** (1 / n_val))
         elif name == 'cbrt':
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: cbrt expects 1 argument")
-            replacement = _lit(safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode) ** (1 / 3))
+            _cbrt_v = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if not isinstance(_cbrt_v, complex) and _cbrt_v < 0:
+                # Real cube root of a negative (fx-991EX gives a real result).
+                replacement = _lit(-((-_cbrt_v) ** (1 / 3)))
+            else:
+                replacement = _lit(_cbrt_v ** (1 / 3))
         elif name in {'sin', 'cos', 'tan'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
+                value = value.real
+            if isinstance(value, complex):
+                if not complex_mode:
+                    raise ValueError("Math ERROR")
+                if angle_unit == "Radian":
+                    radians = value
+                elif angle_unit == "Gradian":
+                    radians = value * (math.pi / 200.0)
+                else:
+                    radians = value * (math.pi / 180.0)
+                if name == 'sin':
+                    result = cmath.sin(radians)
+                elif name == 'cos':
+                    result = cmath.cos(radians)
+                else:
+                    cosine = cmath.cos(radians)
+                    if abs(cosine) < 1e-12:
+                        raise ValueError("Math ERROR")
+                    result = cmath.tan(radians)
+                replacement = _lit(result)
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
             if angle_unit == "Radian":
                 radians = value
             elif angle_unit == "Gradian":
@@ -269,11 +396,29 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name in {'asin', 'acos', 'atan'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            if isinstance(value, complex):
-                if abs(value.imag) > 1e-14:
-                    raise ValueError("Math ERROR")
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
                 value = value.real
+            if isinstance(value, complex) or (
+                    name in ('asin', 'acos') and not abs(value) <= 1):
+                if not complex_mode:
+                    raise ValueError("Math ERROR")
+                cv = value if isinstance(value, complex) else complex(float(value))
+                if name == 'asin':
+                    radians = _casin(cv)
+                elif name == 'acos':
+                    radians = _cacos(cv)
+                else:
+                    radians = _catan(cv)
+                if angle_unit == "Radian":
+                    result = radians
+                elif angle_unit == "Gradian":
+                    result = radians * (200.0 / math.pi)
+                else:
+                    result = radians * (180.0 / math.pi)
+                replacement = _lit(result)
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
             if name == 'asin':
                 if not abs(value) <= 1:
                     raise ValueError("Math ERROR")
@@ -294,23 +439,59 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name == 'ln':
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: ln expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            if isinstance(value, complex) or not value > 0:
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
+                value = value.real
+            if isinstance(value, complex):
+                if not complex_mode or value == 0:
+                    raise ValueError("Math ERROR")
+                replacement = _lit(cmath.log(value))
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
+            if not value > 0:
+                if complex_mode and value < 0:
+                    replacement = _lit(cmath.log(value))
+                    s = s[:start] + replacement + s[close_idx + 1:]
+                    continue
                 raise ValueError("Math ERROR")
             replacement = _lit(math.log(value))
         elif name == 'log':
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: log expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            if isinstance(value, complex) or not value > 0:
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
+                value = value.real
+            if isinstance(value, complex):
+                if not complex_mode or value == 0:
+                    raise ValueError("Math ERROR")
+                replacement = _lit(cmath.log10(value))
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
+            if not value > 0:
+                if complex_mode and value < 0:
+                    replacement = _lit(cmath.log10(value))
+                    s = s[:start] + replacement + s[close_idx + 1:]
+                    continue
                 raise ValueError("Math ERROR")
             replacement = _lit(math.log10(value))
         elif name in {'sinh', 'cosh', 'tanh'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
+                value = value.real
             if isinstance(value, complex):
-                raise ValueError("Math ERROR")
+                if not complex_mode:
+                    raise ValueError("Math ERROR")
+                if name == 'sinh':
+                    result = cmath.sinh(value)
+                elif name == 'cosh':
+                    result = cmath.cosh(value)
+                else:
+                    result = cmath.tanh(value)
+                replacement = _lit(result)
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
             if name == 'sinh':
                 result = math.sinh(value)
             elif name == 'cosh':
@@ -321,30 +502,19 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name in {'Abs', 'abs'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             replacement = _lit(abs(value))
         elif name in {'round', 'Rnd'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: round expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            if isinstance(value, complex):
-                raise ValueError("Math ERROR")
-            # Calculator rounding (matches the FILE_MODE bridge): halves go
-            # to the nearest even integer, mirroring JS `%` sign semantics
-            # via abs() so negative halves behave identically.
-            f = math.floor(value)
-            d = value - f
-            if d == 0.5:
-                result = f if abs(f) % 2 == 0 else f + 1
-            elif d > 0.5:
-                result = f + 1
-            else:
-                result = f
-            replacement = _lit(result)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            # fx-991EX Rnd: round per the current Number Format setting
+            # (Fix decimals / Sci significant digits / Norm 10-digit mantissa).
+            replacement = _lit(_rnd_value(value, rnd_setting or ("Norm",)))
         elif name == 'RanInt':
             if len(args) not in (1, 2) or not all(args):
                 raise ValueError("Math ERROR: RanInt expects 1 or 2 arguments")
-            vals = [safe_evaluate_expression(a, ans_val, angle_unit, variables, complex_mode) for a in args]
+            vals = [safe_evaluate_expression(a, ans_val, angle_unit, variables, complex_mode, rnd_setting) for a in args]
             for v in vals:
                 if isinstance(v, complex) or not float(v).is_integer():
                     raise ValueError("Math ERROR")
@@ -361,8 +531,8 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name == 'Pol':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: Pol expects 2 arguments")
-            x = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            y = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            x = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            y = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if isinstance(x, complex) or isinstance(y, complex):
                 raise ValueError("Math ERROR")
             r_val = math.hypot(x, y)
@@ -379,8 +549,8 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name == 'Rec':
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: Rec expects 2 arguments")
-            r = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            theta = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            r = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            theta = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if isinstance(r, complex) or isinstance(theta, complex):
                 raise ValueError("Math ERROR")
             if angle_unit == "Radian":
@@ -399,8 +569,8 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             if len(args) != 3 or not all(args):
                 raise ValueError("Math ERROR: sigma expects 3 arguments")
             body_str = args[0]
-            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
-            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode)
+            a_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             for v in (a_val, b_val):
                 if isinstance(v, complex) or not float(v).is_integer():
                     raise ValueError("Math ERROR")
@@ -408,7 +578,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
 
             def sigma_func(x):
                 sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
-                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.sigma(sigma_func, a_int, b_int)
             replacement = _lit(float(res))
@@ -416,21 +586,21 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             if len(args) != 2 or not all(args):
                 raise ValueError("Math ERROR: diff expects 2 arguments")
             body_str = args[0]
-            x0 = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            x0 = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if isinstance(x0, complex):
                 raise ValueError("Math ERROR")
 
             def diff_func(x):
                 sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
-                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode)
+                return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.differentiate(diff_func, float(x0))
             replacement = _lit(float(res))
         elif name in {'nCr', 'nPr'}:
             if len(args) != 2 or not all(args):
                 raise ValueError(f"Math ERROR: {name} expects 2 arguments")
-            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            r_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode)
+            n_val = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            r_val = safe_evaluate_expression(args[1], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if not float(n_val).is_integer() or not float(r_val).is_integer():
                 raise ValueError("Math ERROR")
             n_int, r_int = int(n_val), int(r_val)
@@ -441,18 +611,35 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         elif name in {'asinh', 'acosh', 'atanh'}:
             if len(args) != 1 or not args[0]:
                 raise ValueError(f"Math ERROR: {name} expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
-            if name == 'asinh':
-                result = math.asinh(value)
-            elif name == 'acosh':
-                result = math.acosh(value)
-            else:
-                result = math.atanh(value)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
+            if isinstance(value, complex) and abs(value.imag) <= 1e-14:
+                value = value.real
+            if isinstance(value, complex):
+                if not complex_mode:
+                    raise ValueError("Math ERROR")
+                if name == 'asinh':
+                    result = cmath.asinh(value)
+                elif name == 'acosh':
+                    result = cmath.acosh(value)
+                else:
+                    result = cmath.atanh(value)
+                replacement = _lit(result)
+                s = s[:start] + replacement + s[close_idx + 1:]
+                continue
+            try:
+                if name == 'asinh':
+                    result = math.asinh(value)
+                elif name == 'acosh':
+                    result = math.acosh(value)
+                else:
+                    result = math.atanh(value)
+            except ValueError:
+                raise ValueError("Math ERROR")
             replacement = _lit(result)
         elif name == 'FACT':
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: FACT expects 1 argument")
-            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            value = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if isinstance(value, complex):
                 if abs(value.imag) > 1e-14:
                     raise ValueError("Math ERROR")
@@ -467,7 +654,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
         else:  # sqrt
             if len(args) != 1 or not args[0]:
                 raise ValueError("Math ERROR: sqrt expects 1 argument")
-            _sq = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode)
+            _sq = safe_evaluate_expression(args[0], ans_val, angle_unit, variables, complex_mode, rnd_setting)
             if isinstance(_sq, complex):
                 if abs(_sq.imag) > 1e-14:
                     raise ValueError("Math ERROR")
@@ -477,14 +664,15 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             except ValueError:
                 if complex_mode and _sq < 0:
                     _cv = cmath.sqrt(_sq)
-                    replacement = f'({_cv.real!r}{_cv.imag:+!r}j)'
+                    _im = ('+' if _cv.imag >= 0 else '') + repr(_cv.imag)
+                    replacement = f'({repr(_cv.real)}{_im}j)'
                 else:
                     raise ValueError("Math ERROR")
 
         s = s[:start] + replacement + s[close_idx + 1:]
 
 
-def _transform_factorials(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False) -> str:
+def _transform_factorials(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None) -> str:
     """Resolve postfix '!' for arbitrary operands (not just bare digits).
 
     Supports 5!, (5)!, (3+2)!, (Ans)!, (pi)! and other valid calculator
@@ -529,7 +717,7 @@ def _transform_factorials(s: str, ans_val: float, angle_unit: str = "Degree", va
             if not operand:
                 raise ValueError("Math ERROR")
             start = k
-        value = safe_evaluate_expression(operand, ans_val, angle_unit, variables, complex_mode)
+        value = safe_evaluate_expression(operand, ans_val, angle_unit, variables, complex_mode, rnd_setting)
         if isinstance(value, complex):
             if abs(value.imag) > 1e-14:
                 raise ValueError("Math ERROR")
@@ -825,7 +1013,7 @@ def _parse_complex(toks):
     return v
 
 
-def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree", variables=None, complex_mode: bool = False):
+def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None):
     """Evaluate mathematical expressions with scientific functions, roots, powers, and integrals."""
     s = expr_str.strip()
     if not s:
@@ -881,7 +1069,7 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
     s = s.replace('^', '**')
 
     # Handle supported special functions (integral, log_base, xroot, cbrt, sqrt)
-    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode)
+    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode, rnd_setting)
     if '__FACT__' in s:
         m = re.search(r'__FACT__(\d+)__', s)
         if m:
@@ -890,7 +1078,7 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
 
     # Factorials: postfix '!' over arbitrary operands (5!, (5)!, (3+2)!,
     # (Ans)!, (pi)!). Precomputed via the safe pipeline; no eval().
-    s = _transform_factorials(s, ans_val, angle_unit, variables, complex_mode)
+    s = _transform_factorials(s, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
     # Angle conversion functions
     if angle_unit == "Radian":
@@ -967,7 +1155,7 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
     # Second pass: catch any trig calls revealed by earlier substitutions
     # (e.g. after Ans/pi substitution exposes a new sin(...) call) so trig
     # always routes through the angle-aware path.
-    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode)
+    s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
     if 'j' in s:
         try:
@@ -1251,6 +1439,533 @@ def _solve_ratio(ratio_type: int, a: float, b: float, c_or_d: float) -> float:
         raise ValueError("Invalid ratio type. Must be 1 or 2.")
 
 
+
+# ── MATRIX / VECTOR EXPRESSION SUPPORT (fx-991EX Matrix & Vector modes) ──────
+# Official ops: MatA-D (<=4x4): + - * scalar* Det( Trn( Identity( inverse(^-1)
+# powers(^2 ^3) Abs(elementwise). VctA-D: + - scalar* Dot(,) Angle(,) UnitV(
+# Abs(magnitude) cross via *. Dimension mismatches -> "Dimension ERROR",
+# singular/undefined -> "Math ERROR". Dedicated typed parser (NOT scalar hack).
+
+_MAT_REF_RE = r'Mat[ABCD]'
+_VCT_REF_RE = r'Vct[ABCD]'
+_MAT_FUNCS = ('Det', 'Trn', 'Identity', 'Dot', 'Angle', 'UnitV', 'Abs')
+
+
+def _contains_matvec(s: str) -> bool:
+    return bool(re.search(r'\b(?:Mat[ABCD]|Vct[ABCD]|Det|Trn|Identity|Dot|Angle|UnitV)\b', s))
+
+
+def _format_matrix_canonical(mat, fmt) -> str:
+    return '[' + ','.join(
+        '[' + ','.join(fmt(v) for v in row) + ']' for row in mat) + ']'
+
+
+def _format_vector_canonical(vec, fmt) -> str:
+    return '[' + ','.join(fmt(v) for v in vec) + ']'
+
+
+def _parse_matrix_literal(s: str, pos: int):
+    """Parse canonical [[a,b],[c,d]] at pos. Returns (matrix, new_pos)."""
+    assert s[pos:pos + 2] == '[['
+    rows = []
+    i = pos + 1
+    n = len(s)
+    while True:
+        assert s[i] == '['
+        j = s.find(']', i)
+        if j < 0:
+            raise ValueError("Math ERROR")
+        row = [float(x) for x in s[i + 1:j].split(',') if x.strip() != '']
+        rows.append(row)
+        i = j + 1
+        if i < n and s[i] == ',':
+            i += 1
+            continue
+        if i < n and s[i] == ']':
+            return rows, i + 1
+        raise ValueError("Math ERROR")
+
+
+def _parse_vector_literal(s: str, pos: int):
+    """Parse canonical [a,b,c] (single brackets) at pos."""
+    j = s.find(']', pos)
+    if j < 0:
+        raise ValueError("Math ERROR")
+    return [float(x) for x in s[pos + 1:j].split(',') if x.strip() != ''], j + 1
+
+
+class _MVParser:
+    """Typed recursive-descent parser for matrix/vector expressions."""
+
+    def __init__(self, s, matrices, vectors, angle_unit, eval_scalar):
+        self.s = s
+        self.n = len(s)
+        self.pos = 0
+        self.matrices = matrices
+        self.vectors = vectors
+        self.angle_unit = angle_unit
+        self.eval_scalar = eval_scalar
+
+    def _dim_error(self):
+        raise ValueError("Dimension ERROR")
+
+    def peek(self):
+        return self.s[self.pos] if self.pos < self.n else None
+
+    def eat(self, ch):
+        assert self.peek() == ch
+        self.pos += 1
+
+    def parse(self):
+        kind, val = self.parse_expr()
+        if self.pos != self.n:
+            raise ValueError("Math ERROR")
+        return kind, val
+
+    def parse_expr(self):
+        kind, val = self.parse_term()
+        while self.peek() in ('+', '-'):
+            op = self.peek()
+            self.pos += 1
+            k2, v2 = self.parse_term()
+            kind, val = self.apply_add(kind, val, op, k2, v2)
+        return kind, val
+
+    def parse_term(self):
+        kind, val = self.parse_factor()
+        while self.peek() in ('*', '/', '×', '÷'):
+            op = self.peek()
+            self.pos += 1
+            k2, v2 = self.parse_factor()
+            kind, val = self.apply_mul(kind, val, op, k2, v2)
+        return kind, val
+
+    def parse_factor(self):
+        kind, val = self.parse_unary()
+        if self.peek() == '^':
+            self.pos += 1
+            if self.peek() == '*':
+                self.pos += 1
+            k2, v2 = self.parse_unary()
+            kind, val = self.apply_pow(kind, val, k2, v2)
+        return kind, val
+
+    def parse_unary(self):
+        if self.peek() == '-':
+            self.pos += 1
+            kind, val = self.parse_unary()
+            if kind == 's':
+                return 's', -val
+            if kind == 'm':
+                return 'm', [[-x for x in row] for row in val]
+            return 'v', [-x for x in val]
+        if self.peek() == '+':
+            self.pos += 1
+            return self.parse_unary()
+        return self.parse_primary()
+
+    def parse_primary(self):
+        c = self.peek()
+        if c is None:
+            raise ValueError("Math ERROR")
+        if c == '(':
+            self.pos += 1
+            kind, val = self.parse_expr()
+            if self.peek() != ')':
+                raise ValueError("Math ERROR")
+            self.pos += 1
+            return kind, val
+        if c == '[':
+            if self.s[self.pos:self.pos + 2] == '[[':
+                mat, npos = _parse_matrix_literal(self.s, self.pos)
+                self.pos = npos
+                return 'm', mat
+            vec, npos = _parse_vector_literal(self.s, self.pos)
+            self.pos = npos
+            return 'v', vec
+        if c.isdigit() or c == '.':
+            return self.parse_number()
+        if c.isalpha() or c == '_':
+            return self.parse_named()
+        raise ValueError("Math ERROR")
+
+    def parse_number(self):
+        j = self.pos
+        while j < self.n and (self.s[j].isdigit() or self.s[j] == '.'):
+            j += 1
+        try:
+            v = float(self.s[self.pos:j])
+        except ValueError:
+            raise ValueError("Math ERROR")
+        self.pos = j
+        return 's', v
+
+    def parse_named(self):
+        j = self.pos
+        while j < self.n and (self.s[j].isalnum() or self.s[j] == '_'):
+            j += 1
+        name = self.s[self.pos:j]
+        self.pos = j
+        if re.fullmatch(r'Mat[ABCD]', name):
+            return 'm', self.get_matrix(name[-1])
+        if re.fullmatch(r'Vct[ABCD]', name):
+            return 'v', self.get_vector(name[-1])
+        if self.peek() == '(':
+            self.pos += 1
+            args = self.parse_arg_list()
+            if self.peek() != ')':
+                raise ValueError("Math ERROR")
+            self.pos += 1
+            return self.apply_func(name, args)
+        raise ValueError("Math ERROR")
+
+    def parse_arg_list(self):
+        args = []
+        if self.peek() == ')':
+            return args
+        while True:
+            args.append(self.parse_expr())
+            if self.peek() == ',':
+                self.pos += 1
+                continue
+            return args
+
+    def get_matrix(self, letter):
+        m = self.matrices.get(letter)
+        if not m or not m.get("data") or m.get("rows", 0) <= 0:
+            raise ValueError("Math ERROR")
+        return [[float(x) for x in row] for row in m["data"]]
+
+    def get_vector(self, letter):
+        v = self.vectors.get(letter)
+        if not v or not v.get("data") or v.get("dim", 0) <= 0:
+            raise ValueError("Math ERROR")
+        return [float(x) for x in v["data"]]
+
+    def to_angle(self, radians):
+        if self.angle_unit == "Radian":
+            return radians
+        if self.angle_unit == "Gradian":
+            return radians * (200.0 / math.pi)
+        return radians * (180.0 / math.pi)
+
+    def apply_func(self, name, args):
+        from engine.matrix.matrix_engine import MatrixEngine
+        if name == 'Det':
+            if len(args) != 1 or args[0][0] != 'm':
+                raise ValueError("Math ERROR")
+            mat = args[0][1]
+            if len(mat) != len(mat[0]):
+                self._dim_error()
+            from engine.matrix.matrix_engine import MatrixEngineError
+            try:
+                eng = MatrixEngine()
+                eng.define_matrix("MatA", mat)
+                return 's', float(eng.determinant("MatA"))
+            except MatrixEngineError as exc:
+                if "Dimension" in str(exc):
+                    self._dim_error()
+                raise ValueError("Math ERROR")
+        if name == 'Trn':
+            if len(args) != 1 or args[0][0] != 'm':
+                raise ValueError("Math ERROR")
+            mat = args[0][1]
+            return 'm', [[mat[i][j] for i in range(len(mat))] for j in range(len(mat[0]))]
+        if name == 'Identity':
+            if len(args) != 1 or args[0][0] != 's':
+                raise ValueError("Math ERROR")
+            nv = args[0][1]
+            if not float(nv).is_integer() or not 1 <= int(nv) <= 4:
+                raise ValueError("Math ERROR")
+            n = int(nv)
+            return 'm', [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+        if name == 'Abs':
+            if len(args) != 1:
+                raise ValueError("Math ERROR")
+            k, v = args[0]
+            if k == 's':
+                return 's', abs(v)
+            if k == 'm':
+                return 'm', [[abs(x) for x in row] for row in v]
+            return 's', math.sqrt(sum(x * x for x in v))
+        if name == 'Dot':
+            if len(args) != 2 or args[0][0] != 'v' or args[1][0] != 'v':
+                raise ValueError("Math ERROR")
+            a, b = args[0][1], args[1][1]
+            if len(a) != len(b):
+                self._dim_error()
+            return 's', float(sum(x * y for x, y in zip(a, b)))
+        if name == 'Angle':
+            if len(args) != 2 or args[0][0] != 'v' or args[1][0] != 'v':
+                raise ValueError("Math ERROR")
+            a, b = args[0][1], args[1][1]
+            if len(a) != len(b):
+                self._dim_error()
+            ma = math.sqrt(sum(x * x for x in a))
+            mb = math.sqrt(sum(x * x for x in b))
+            if ma == 0 or mb == 0:
+                raise ValueError("Math ERROR")
+            ratio = max(-1.0, min(1.0, sum(x * y for x, y in zip(a, b)) / (ma * mb)))
+            return 's', self.to_angle(math.acos(ratio))
+        if name == 'UnitV':
+            if len(args) != 1 or args[0][0] != 'v':
+                raise ValueError("Math ERROR")
+            v = args[0][1]
+            m = math.sqrt(sum(x * x for x in v))
+            if m == 0:
+                raise ValueError("Math ERROR")
+            return 'v', [x / m for x in v]
+        raise ValueError("Math ERROR")
+
+    def apply_add(self, k1, v1, op, k2, v2):
+        if k1 == 's' and k2 == 's':
+            return 's', v1 + v2 if op == '+' else v1 - v2
+        if k1 == 'm' and k2 == 'm':
+            if len(v1) != len(v2) or len(v1[0]) != len(v2[0]):
+                self._dim_error()
+            if op == '+':
+                return 'm', [[a + b for a, b in zip(r1, r2)] for r1, r2 in zip(v1, v2)]
+            return 'm', [[a - b for a, b in zip(r1, r2)] for r1, r2 in zip(v1, v2)]
+        if k1 == 'v' and k2 == 'v':
+            if len(v1) != len(v2):
+                self._dim_error()
+            if op == '+':
+                return 'v', [a + b for a, b in zip(v1, v2)]
+            return 'v', [a - b for a, b in zip(v1, v2)]
+        self._dim_error()
+
+    def apply_mul(self, k1, v1, op, k2, v2):
+        if op in ('/', '÷'):
+            if k1 == 's' and k2 == 's':
+                if v2 == 0:
+                    raise ZeroDivisionError("division by zero")
+                return 's', v1 / v2
+            raise ValueError("Math ERROR")
+        if k1 == 's' and k2 == 's':
+            return 's', v1 * v2
+        if k1 == 's' and k2 == 'm':
+            return 'm', [[v1 * x for x in row] for row in v2]
+        if k1 == 'm' and k2 == 's':
+            return 'm', [[x * v2 for x in row] for row in v1]
+        if k1 == 's' and k2 == 'v':
+            return 'v', [v1 * x for x in v2]
+        if k1 == 'v' and k2 == 's':
+            return 'v', [x * v2 for x in v1]
+        if k1 == 'm' and k2 == 'm':
+            if len(v1[0]) != len(v2):
+                self._dim_error()
+            inner = len(v1[0])
+            return 'm', [[sum(v1[i][k] * v2[k][j] for k in range(inner))
+                          for j in range(len(v2[0]))] for i in range(len(v1))]
+        if k1 == 'v' and k2 == 'v':
+            if len(v1) != 3 or len(v2) != 3:
+                self._dim_error()
+            ax, ay, az = v1
+            bx, by, bz = v2
+            return 'v', [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx]
+        self._dim_error()
+
+    def apply_pow(self, k1, v1, k2, v2):
+        if k2 != 's' or not float(v2).is_integer():
+            raise ValueError("Math ERROR")
+        e = int(v2)
+        if k1 == 's':
+            if v1 < 0 and e != v2:
+                raise ValueError("Math ERROR")
+            try:
+                return 's', v1 ** e
+            except ZeroDivisionError:
+                raise
+            except Exception:
+                raise ValueError("Math ERROR")
+        if k1 == 'm':
+            n = len(v1)
+            if len(v1[0]) != n:
+                self._dim_error()
+            if e == -1:
+                from engine.matrix.matrix_engine import MatrixEngine, MatrixEngineError
+                try:
+                    eng = MatrixEngine()
+                    eng.define_matrix("MatA", v1)
+                    return 'm', eng.inverse("MatA")
+                except MatrixEngineError as exc:
+                    if "Dimension" in str(exc):
+                        self._dim_error()
+                    raise ValueError("Math ERROR")
+            if e < 0:
+                raise ValueError("Math ERROR")
+            from engine.matrix.matrix_engine import MatrixEngine
+            eng = MatrixEngine()
+            eng.define_matrix("MatA", v1)
+            eng.define_matrix("MatB", [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)])
+            res = eng.get_matrix("MatB")
+            base = v1
+            exp = e
+            while exp > 0:
+                if exp % 2 == 1:
+                    eng.define_matrix("MatA", res)
+                    eng.define_matrix("MatB", base)
+                    res = eng.multiply("MatA", "MatB")
+                exp //= 2
+                if exp:
+                    eng.define_matrix("MatA", base)
+                    eng.define_matrix("MatB", base)
+                    base = eng.multiply("MatA", "MatB")
+            return 'm', res
+        raise ValueError("Math ERROR")
+
+
+def _resolve_matvec_funcs(s, matrices, vectors, angle_unit, eval_scalar):
+    """Innermost-first resolution of Det/Trn/Identity/Dot/Angle/UnitV/Abs-with-
+    matrix-or-vector-arg calls, splicing canonical literals. Pure-scalar Abs()
+    is left for the scalar evaluator."""
+    out = s
+    for _ in range(50):
+        found = None
+        for name in ('Det', 'Trn', 'Identity', 'Dot', 'Angle', 'UnitV', 'Abs'):
+            pos = 0
+            while True:
+                idx = out.find(name, pos)
+                if idx < 0:
+                    break
+                end = idx + len(name)
+                ok = (idx == 0 or not (out[idx - 1].isalnum() or out[idx - 1] == '_'))
+                if ok and end < len(out) and out[end] == '(':
+                    if found is None or idx < found[1]:
+                        found = (name, idx)
+                pos = end
+        if found is None:
+            return out
+        name, start = found
+        open_idx = start + len(name)
+        close_idx = _find_matching_paren(out, open_idx)
+        if close_idx < 0:
+            raise ValueError("Math ERROR: unbalanced parentheses")
+        inner = out[open_idx + 1:close_idx]
+        args = _split_top_level_args(inner)
+        parser = _MVParser('', matrices, vectors, angle_unit, eval_scalar)
+        kind, val = parser.apply_func(name, [parser_arg_eval(a, matrices, vectors, angle_unit, eval_scalar) for a in args])
+        if kind == 's':
+            if isinstance(val, complex):
+                raise ValueError("Math ERROR")
+            replacement = _lit(val)
+        elif kind == 'm':
+            replacement = _format_matrix_canonical(val, lambda v: repr(float(v)))
+        else:
+            replacement = _format_vector_canonical(val, lambda v: repr(float(v)))
+        out = out[:start] + replacement + out[close_idx + 1:]
+    return out
+
+
+def _split_matvec_atoms(s):
+    """Split into (is_atom, text) runs. Atoms are Mat/Vct refs or balanced
+    [...] literals (matrix [[..]] or vector [..]); everything else is a
+    scalar chunk. Unbalanced brackets -> Math ERROR."""
+    parts = []
+    buf = []
+
+    def flush():
+        if buf:
+            parts.append((False, ''.join(buf)))
+            buf.clear()
+
+    i, n = 0, len(s)
+    while i < n:
+        m = re.match(r'Mat[ABCD]\b|Vct[ABCD]\b', s[i:])
+        if m and (i == 0 or not (s[i - 1].isalnum() or s[i - 1] == '_')):
+            flush()
+            parts.append((True, m.group()))
+            i += len(m.group())
+            continue
+        if s[i] == '[':
+            depth = 0
+            j = i
+            while j < n:
+                if s[j] == '[':
+                    depth += 1
+                elif s[j] == ']':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            if depth != 0:
+                raise ValueError("Math ERROR")
+            flush()
+            parts.append((True, s[i:j + 1]))
+            i = j + 1
+            continue
+        buf.append(s[i])
+        i += 1
+    flush()
+    return parts
+
+
+def parser_arg_eval(arg, matrices, vectors, angle_unit, eval_scalar):
+    arg = arg.strip()
+    if not arg:
+        raise ValueError("Math ERROR")
+    if not _contains_matvec(arg):
+        v = eval_scalar(arg)
+        if isinstance(v, complex):
+            raise ValueError("Math ERROR")
+        return 's', float(v)
+    sub = _MVParser(arg, matrices, vectors, angle_unit, eval_scalar)
+    return sub.parse()
+
+
+def evaluate_matvec_expression(expr_str, matrices, vectors, angle_unit="Degree", variables=None, ans_val=0.0):
+    """Evaluate a Matrix/Vector-mode expression. Returns (kind, value) with
+    kind in {'s','m','v'}. Raises ValueError("Dimension ERROR") or
+    ValueError("Math ERROR") / ZeroDivisionError."""
+    s = expr_str.strip()
+    if not s:
+        raise ValueError("Math ERROR")
+
+    def eval_scalar(chunk):
+        return safe_evaluate_expression(chunk, ans_val, angle_unit, variables)
+
+    # Phase 1: resolve matrix/vector function calls to canonical literals.
+    s = _resolve_matvec_funcs(s, matrices, vectors, angle_unit, eval_scalar)
+    # Phase 2: split on matrix/vector atoms; evaluate pure-scalar chunks.
+    split_parts = _split_matvec_atoms(s)
+    rebuilt = []
+    for is_atom, part in split_parts:
+        if is_atom:
+            rebuilt.append(part)
+            continue
+        if part == '' or not re.search(r'[0-9A-Za-z(.]', part):
+            # Pure operators/whitespace between atoms: keep verbatim.
+            rebuilt.append(part)
+            continue
+        if part.lstrip()[:1] in ('*', '/', '^'):
+            # Leading connector (e.g. '^2', '*MatA' fragments): the typed
+            # parser owns it; scalar evaluation would choke on '^2'.
+            rebuilt.append(part)
+            continue
+        m = re.match(r'^(.*?)([+\-*/^]+)$', part, re.DOTALL)
+        trail = ''
+        core = part
+        if m and re.search(r'[0-9A-Za-z)]', m.group(1)):
+            core, trail = m.group(1), m.group(2)
+        if core.strip() == '':
+            rebuilt.append(part)
+            continue
+        try:
+            v = eval_scalar(core)
+        except ZeroDivisionError:
+            raise
+        except Exception:
+            raise ValueError("Math ERROR")
+        if isinstance(v, complex):
+            raise ValueError("Math ERROR")
+        rebuilt.append(_lit(v) + trail)
+    s = ''.join(rebuilt)
+    # Phase 3: typed structural parse.
+    parser = _MVParser(s, matrices, vectors, angle_unit, eval_scalar)
+    return parser.parse()
+
+
+
 class CalculatorController:
     def __init__(self) -> None:
         self.engine = Engine()
@@ -1297,6 +2012,8 @@ class CalculatorController:
         self.spreadsheet = {}  # { "A1": {"value": "123", "formula": ""}, ... }
         self.ratio = {"type": 1, "a": None, "b": None, "c_or_d": None, "x": None}
         self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
+        self.ans_matrix = None
+        self.ans_vector = None
 
     def get_settings(self) -> dict:
         return dict(self.settings)
@@ -1848,7 +2565,12 @@ class CalculatorController:
             except (ValueError, TypeError):
                 ans_float = 0.0
             angle_u = self.setup_settings["angle_unit"]
-            res = safe_evaluate_expression(str(expression), ans_float, angle_u, merged, self.mode_name == "Complex")
+            res = safe_evaluate_expression(str(expression), ans_float, angle_u, merged, self.mode_name == "Complex", self._rnd_setting())
+            if isinstance(res, complex):
+                if abs(res.imag) < 1e-14:
+                    res = float(res.real)
+                elif self.mode_name != "Complex":
+                    return {"ok": False, "error": "Math ERROR"}
             # Persist any caller-supplied values like the real CALC prompt does.
             if isinstance(values, dict):
                 for k, v in values.items():
@@ -1942,6 +2664,129 @@ class CalculatorController:
         except Exception as exc:
             msg = str(exc) if str(exc).startswith("Math ERROR") else f"Math ERROR: {exc}"
             return {"ok": False, "error": msg}
+
+    def _matvec_result(self, kind, val):
+        if kind == 's':
+            return self._format_result(val)
+        if kind == 'm':
+            return _format_matrix_canonical(val, self._format_single_number)
+        return _format_vector_canonical(val, self._format_single_number)
+
+    def _run_matvec(self, expr):
+        try:
+            ans_float = float(self.ans) if self.ans is not None else 0.0
+        except (ValueError, TypeError):
+            ans_float = 0.0
+        angle_u = self.setup_settings["angle_unit"]
+        return evaluate_matvec_expression(expr, self.matrices, self.vectors,
+                                          angle_u, self.variables, ans_float)
+
+    def _store_matvec_answer(self, kind, val, formatted):
+        # Like the physical unit (separate MatAns/VctAns memories), matrix and
+        # vector answers must not clobber the scalar Ans register.
+        if kind == 's':
+            self.last_result = formatted
+            self.ans = formatted
+        elif kind == 'm':
+            self.ans_matrix = formatted
+            self.last_result = formatted
+        else:
+            self.ans_vector = formatted
+            self.last_result = formatted
+        self.result_displayed = True
+        self.shift = False
+        self.alpha = False
+        self.state = "RESULT"
+        return self._state(display=self._display(formatted))
+
+    def calculate_matrix(self, op, a=None, b=None, scalar=None, n=None):
+        """Explicit Matrix-mode operation (mirrors OPTN menu items)."""
+        try:
+            o = str(op).strip().lower()
+            A = (str(a or "").strip().upper())[-1:] if a else ""
+            B = (str(b or "").strip().upper())[-1:] if b else ""
+            if o == "add":
+                expr = f"Mat{A}+Mat{B}"
+            elif o == "subtract":
+                expr = f"Mat{A}-Mat{B}"
+            elif o == "multiply":
+                expr = f"Mat{A}*Mat{B}"
+            elif o == "scalar_multiply":
+                expr = f"({float(scalar)})*Mat{A}"
+            elif o == "transpose":
+                expr = f"Trn(Mat{A})"
+            elif o == "determinant":
+                expr = f"Det(Mat{A})"
+            elif o == "inverse":
+                expr = f"Mat{A}^(-1)"
+            elif o == "power":
+                expr = f"Mat{A}^({int(scalar if scalar is not None else 2)})"
+            elif o == "identity":
+                expr = f"Identity({int(n if n is not None else scalar or 0)})"
+            elif o == "abs":
+                expr = f"Abs(Mat{A})"
+            else:
+                return {"ok": False, "error": "Math ERROR"}
+            kind, val = self._run_matvec(expr)
+            return {"ok": True, "success": True, "result": self._matvec_result(kind, val)}
+        except ZeroDivisionError:
+            return {"ok": False, "error": DIV_ZERO_MSG}
+        except ValueError as exc:
+            return {"ok": False, "error": "Dimension ERROR" if "Dimension" in str(exc) else "Math ERROR"}
+        except Exception:
+            return {"ok": False, "error": "Math ERROR"}
+
+    def calculate_vector(self, op, a=None, b=None, scalar=None):
+        """Explicit Vector-mode operation (mirrors OPTN menu items)."""
+        try:
+            o = str(op).strip().lower()
+            A = (str(a or "").strip().upper())[-1:] if a else ""
+            B = (str(b or "").strip().upper())[-1:] if b else ""
+            if o == "add":
+                expr = f"Vct{A}+Vct{B}"
+            elif o == "subtract":
+                expr = f"Vct{A}-Vct{B}"
+            elif o == "scalar_multiply":
+                expr = f"({float(scalar)})*Vct{A}"
+            elif o in ("multiply", "cross"):
+                expr = f"Vct{A}*Vct{B}"
+            elif o in ("dot", "dot_product"):
+                expr = f"Dot(Vct{A},Vct{B})"
+            elif o == "angle":
+                expr = f"Angle(Vct{A},Vct{B})"
+            elif o in ("unit", "unit_vector"):
+                expr = f"UnitV(Vct{A})"
+            elif o in ("abs", "magnitude"):
+                expr = f"Abs(Vct{A})"
+            else:
+                return {"ok": False, "error": "Math ERROR"}
+            kind, val = self._run_matvec(expr)
+            return {"ok": True, "success": True, "result": self._matvec_result(kind, val)}
+        except ZeroDivisionError:
+            return {"ok": False, "error": DIV_ZERO_MSG}
+        except ValueError as exc:
+            return {"ok": False, "error": "Dimension ERROR" if "Dimension" in str(exc) else "Math ERROR"}
+        except Exception:
+            return {"ok": False, "error": "Math ERROR"}
+
+    def _display(self, canonical):
+        return format_display(
+            canonical,
+            self.setup_settings.get("decimal_mark", "Dot"),
+            bool(self.setup_settings.get("digit_separator", False)))
+
+    def _rnd_setting(self):
+        fmt = self.settings.get("numberFormat", "Norm")
+        prec = self.settings.get("numberFormatPrecision", 1)
+        try:
+            prec_int = int(prec)
+        except (ValueError, TypeError):
+            prec_int = 1
+        if fmt == "Fix":
+            return ("Fix", max(0, min(9, prec_int)))
+        if fmt == "Sci":
+            return ("Sci", prec_int)
+        return ("Norm", 2 if prec_int == 2 else 1)
 
     def _state(self, ok=True, error=None, display=None):
         if not self.powered_on:
@@ -2231,10 +3076,11 @@ class CalculatorController:
                 self._update_viewport()
                 return self._state()
 
-            if key == "equals":
+            if key == "equals" or (key == "dpad_center" and self.state == "MENU"):
                 if self.state == "MENU":
                     # Canonical cursor comes from the frontend payload; adopt it
-                    # so MENU + D-pad + equals confirms the visible selection.
+                    # so MENU + D-pad + equals/center confirms the visible selection.
+                    # (The physical unit has no center key; center is confirm-only.)
                     self._sync_menu_from_payload(payload)
                     return self._enter_selected_mode()
 
@@ -2252,7 +3098,7 @@ class CalculatorController:
                         self.shift = False
                         self.alpha = False
                         self.state = "RESULT"
-                        return self._state(display=result_str)
+                        return self._state(display=self._display(result_str))
                     except ZeroDivisionError:
                         self.shift = False
                         self.alpha = False
@@ -2270,17 +3116,52 @@ class CalculatorController:
                 except (ValueError, TypeError):
                     ans_float = 0.0
 
+                # Matrix/Vector-mode expressions use the dedicated typed parser.
+                mv_probe = eval_expr.replace('×', '*').replace('÷', '/').replace('−', '-')
+                mv_probe = re.sub(r'(\d|\))(?=Mat[ABCD]|Vct[ABCD])', r'\1*', mv_probe)
+                if _contains_matvec(mv_probe):
+                    try:
+                        angle_u = self.setup_settings["angle_unit"]
+                        kind, mval = evaluate_matvec_expression(
+                            mv_probe, self.matrices, self.vectors,
+                            angle_u, self.variables, ans_float)
+                        formatted = self._matvec_result(kind, mval)
+                        return self._store_matvec_answer(kind, mval, formatted)
+                    except ZeroDivisionError:
+                        self.shift = False
+                        self.alpha = False
+                        self.state = "ERROR"
+                        return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
+                    except ValueError as exc:
+                        self.shift = False
+                        self.alpha = False
+                        self.state = "ERROR"
+                        msg = "Dimension ERROR" if "Dimension" in str(exc) else "Math ERROR"
+                        return self._state(False, msg, msg)
+                    except Exception:
+                        self.shift = False
+                        self.alpha = False
+                        self.state = "ERROR"
+                        return self._state(False, "Math ERROR", "Math ERROR")
+
                 try:
                     # Evaluate with safe mathematical evaluator
                     angle_u = self.setup_settings["angle_unit"]
-                    res_val = safe_evaluate_expression(eval_expr, ans_float, angle_u, self.variables, self.mode_name == "Complex")
+                    res_val = safe_evaluate_expression(eval_expr, ans_float, angle_u, self.variables, self.mode_name == "Complex", self._rnd_setting())
+                    if isinstance(res_val, complex):
+                        if abs(res_val.imag) < 1e-14:
+                            res_val = float(res_val.real)
+                        elif self.mode_name != "Complex":
+                            # Physical unit: non-Complex modes reject complex
+                            # results with Math ERROR.
+                            raise ValueError("Math ERROR")
                     self.last_result = self._format_result(res_val)
                     self.ans = self.last_result
                     self.result_displayed = True
                     self.shift = False
                     self.alpha = False
                     self.state = "RESULT"
-                    return self._state(display=self.last_result)
+                    return self._state(display=self._display(self.last_result))
                 except ZeroDivisionError:
                     self.shift = False
                     self.alpha = False
@@ -2296,7 +3177,7 @@ class CalculatorController:
                         self.shift = False
                         self.alpha = False
                         self.state = "RESULT"
-                        return self._state(display=self.last_result)
+                        return self._state(display=self._display(self.last_result))
                     except ZeroDivisionError:
                         self.shift = False
                         self.alpha = False
@@ -2638,6 +3519,19 @@ class MvpHandler(BaseHTTPRequestHandler):
                     response = CONTROLLER.set_spreadsheet_cell(ref, val)
                 elif path == "/api/spreadsheet/clear":
                     response = CONTROLLER.clear_spreadsheet()
+                elif path == "/api/matrix/calculate":
+                    response = CONTROLLER.calculate_matrix(
+                        payload.get("op", payload.get("operation", "")),
+                        payload.get("a", payload.get("matrix", payload.get("A"))),
+                        payload.get("b", payload.get("B")),
+                        payload.get("scalar", payload.get("k")),
+                        payload.get("n", payload.get("size")))
+                elif path == "/api/vector/calculate":
+                    response = CONTROLLER.calculate_vector(
+                        payload.get("op", payload.get("operation", "")),
+                        payload.get("a", payload.get("vector", payload.get("A"))),
+                        payload.get("b", payload.get("B")),
+                        payload.get("scalar", payload.get("k")))
                 elif path == "/api/ratio/calculate":
                     t = payload.get("type", payload.get("ratio_type", 1))
                     a = payload.get("a", 0)
