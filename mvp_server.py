@@ -1013,6 +1013,17 @@ def _parse_complex(toks):
     return v
 
 
+# Lowercase spellings of the X/Y variables. The keypad prints these keys (and
+# their ALPHA labels) in lowercase, so an expression can arrive holding a bare
+# `x`/`y` that means the X/Y variable. This is deliberately NOT a general
+# lowercase-identifier rule: only `x` and `y` are ever substituted, and the
+# word-boundary guards reject adjacency to letters/digits/dots so names such as
+# `xroot` and implicit products such as `2x` behave exactly as uppercase `X`
+# already does.
+_VAR_ALIAS_RE = re.compile(r'(?<![A-Za-z0-9_.])([xy])(?![A-Za-z0-9_])')
+_VAR_ALIAS_CANON = {'x': 'X', 'y': 'Y'}
+
+
 def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None):
     """Evaluate mathematical expressions with scientific functions, roots, powers, and integrals."""
     s = expr_str.strip()
@@ -1070,6 +1081,24 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
 
     # Handle supported special functions (integral, log_base, xroot, cbrt, sqrt)
     s = _transform_special_functions(s, ans_val, angle_unit, variables, complex_mode, rnd_setting)
+
+    # Lowercase `x`/`y` are the keypad spelling of the X/Y variables, not free
+    # identifiers. Deliberately runs AFTER _transform_special_functions so a
+    # `x` bound as the dummy variable of integral()/sigma()/diff() has already
+    # been consumed numerically and cannot be mistaken for the X variable. By
+    # this point the `d/dx(` and `Σ(` keypad templates are also already
+    # rewritten, so no special-case guards are needed for them.
+    if variables:
+        def _alias_sub(_m):
+            _canon = _VAR_ALIAS_CANON[_m.group(1)]
+            if _canon not in variables:
+                return _m.group(0)
+            try:
+                return _lit(float(variables[_canon]))
+            except Exception:
+                return _m.group(0)
+        s = _VAR_ALIAS_RE.sub(_alias_sub, s)
+
     if '__FACT__' in s:
         m = re.search(r'__FACT__(\d+)__', s)
         if m:
@@ -2011,7 +2040,7 @@ class CalculatorController:
         self.distribution = {"type": 0, "params": {}, "result": None}
         self.spreadsheet = {}  # { "A1": {"value": "123", "formula": ""}, ... }
         self.ratio = {"type": 1, "a": None, "b": None, "c_or_d": None, "x": None}
-        self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
+        self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "M": 0.0, "X": 0.0, "Y": 0.0}
         self.ans_matrix = None
         self.ans_vector = None
 
@@ -2430,7 +2459,7 @@ class CalculatorController:
             return {"ok": True, "success": True, "settings": dict(self.settings)}
         elif t == "memory":
             self.ans = "0"
-            self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "x": 0.0, "y": 0.0, "M": 0.0}
+            self.variables = {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": 0.0, "M": 0.0, "X": 0.0, "Y": 0.0}
             self.matrices = {k: {"rows": 0, "cols": 0, "data": []} for k in ("A", "B", "C", "D")}
             self.vectors = {k: {"dim": 0, "data": []} for k in ("A", "B", "C", "D")}
             self.statistics = {"type": 0, "data": []}

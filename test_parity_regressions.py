@@ -447,7 +447,7 @@ class TestFrontendWiring(unittest.TestCase):
         self.assertIn('data-shift="d/dx" data-alpha=":" data-key="integral"', self.html)
         self.assertIn('data-shift="Sigma" data-key="variable"', self.html)
         self.assertIn("if (isAlpha) { insertToken(':'); return; }", self.html)
-        self.assertIn("insertToken(isShift ? '\\u03a3(' : 'x'); return;", self.html)
+        self.assertIn("insertToken(isShift ? '\\u03a3(' : 'X'); return;", self.html)
 
     def test_percent_comma_fact_wiring(self):
         self.assertIn('data-shift="percent" data-key="ans"', self.html)

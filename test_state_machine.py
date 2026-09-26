@@ -606,7 +606,7 @@ class TestShiftAlphaRouting3A(unittest.TestCase):
             "'divide': isShift ? 'C'",
             "if (isShift) { insertToken('!'); return; }",
             "if (isShift) { insertToken('d/dx('); return; }",
-            "insertToken(isShift ? '\\u03a3(' : 'x')",
+            "insertToken(isShift ? '\\u03a3(' : 'X')",
             "if (isShift) { insertToken('FACT('); return; }",
         ]
         for branch in branches:
