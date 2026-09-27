@@ -6389,6 +6389,23 @@
     appState.lastAnswer = appState.result;
     renderLCD();
   }
+  // SHIFT+ENG is the ENG key's other direction (the ← half of the ←→ legend):
+  // expand a displayed engineering-notation value back to normal decimal. Like
+  // ENG it is a display transform on the shown result, so it must never insert
+  // an entry token - the old '<' token had no meaning to the parser and always
+  // evaluated to Math ERROR. A value that is not in ENG form is left alone.
+  function expandEngNotation() {
+    if (!appState.resultDisplayed || appState.result === null) {
+      renderLCD(); return;
+    }
+    const parts = String(appState.result).match(/^(-?[\d.]+)[×x]\s*10\^([+-]?\d+)$/);
+    if (!parts) { renderLCD(); return; }
+    const value = Number(parts[1]) * Math.pow(10, Number(parts[2]));
+    if (!Number.isFinite(value)) { renderLCD(); return; }
+    appState.result = localFormat(value);
+    appState.lastAnswer = appState.result;
+    renderLCD();
+  }
   function updateMemory(delta) {
     const currentAnswer = answerAsNumber(appState.lastAnswer ?? appState.result);
     if (!appState.resultDisplayed || !Number.isFinite(currentAnswer)) return;
@@ -8084,7 +8101,7 @@
     }
     if (rawKey === 'eng') {
       if (isAlpha || action === 'i') { appState.stoPending = false; appState.recallPending = false; insertToken('i'); return; }
-      if (isShift || action === 'ENG_LEFT') { insertToken('<'); return; }
+      if (isShift || action === 'ENG_LEFT') { expandEngNotation(); return; }
       cycleEngNotation(); return;
     }
     if (rawKey === 'ac') { closeOptnPanel(); appState.qrOpen = false; appState.stoPending = false; appState.recallPending = false; resetExpr(); renderLCD(); return; }
