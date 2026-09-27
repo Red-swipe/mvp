@@ -2534,6 +2534,8 @@
         out += '((' + (serializeSlot(item.base)||'0') + ')^(' + (serializeSlot(item.exp)||'1') + '))';
       } else if (item.type === 'log') {
         out += 'log_base(' + (serializeSlot(item.base)||'10') + ',' + (serializeSlot(item.arg)||'1') + ')';
+      } else if (item.type === 'rnd') {
+        out += 'Rnd(' + (serializeSlot(item.arg)||'0') + ')';
       } else if (item.type === 'integral') {
         out += 'integral(' + (serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
       }
@@ -3842,6 +3844,14 @@
   }
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
   function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
+  // SHIFT+0 is Rnd (that is the key's printed SHIFT label). Rnd is a unary
+  // function, so it uses the same single-slot template mechanism as the other
+  // argument templates: serializeSlot supplies the closing parenthesis and the
+  // cursor starts inside the argument. That is what stops a half-typed
+  // "Rnd(" - the raw-token form left an unbalanced paren that always failed
+  // with Math ERROR. The slot is named 'arg' so cloneSlot/getSlotPath/
+  // findParent already traverse it.
+  function insertRndTemplate() { insertTemplate({ type:'rnd', id:nextId(), arg:createSlot() }, 'arg'); }
 
   // °′″ key: pick the next DMS component from what is already typed, instead of
   // dumping all three symbols at once. The backend only understands a complete
@@ -3983,6 +3993,7 @@
         else if (prev.type === 'mixed') { cursor.slot = prev.den; cursor.index = prev.den.items.length; }
         else if (prev.type === 'power') { cursor.slot = prev.exp; cursor.index = prev.exp.items.length; }
         else if (prev.type === 'log') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
+        else if (prev.type === 'rnd') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
         else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
         else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
         else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
@@ -3993,7 +4004,8 @@
         const t = p.par; const ps = t.parentSlot || rootSlot;
         if (p.slotName === 'den') { cursor.slot = t.num; cursor.index = t.num.items.length; }
         else if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.whole; cursor.index = t.whole.items.length; }
-        else if (p.slotName === 'arg') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else if (p.slotName === 'arg' && t.type === 'log') { cursor.slot = t.base; cursor.index = t.base.items.length; }
+        else if (p.slotName === 'arg') { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
         else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
       }
@@ -4011,6 +4023,7 @@
         else if (next.type === 'mixed') { cursor.slot = next.whole; cursor.index = 0; }
         else if (next.type === 'power') { cursor.slot = next.exp; cursor.index = 0; }
         else if (next.type === 'log') { cursor.slot = next.base; cursor.index = 0; }
+        else if (next.type === 'rnd') { cursor.slot = next.arg; cursor.index = 0; }
         else if (next.type === 'radical') { cursor.slot = next.index || next.radicand; cursor.index = 0; }
         else if (next.type === 'cbrt') { cursor.slot = next.radicand; cursor.index = 0; }
         else if (next.type === 'integral') { cursor.slot = next.lower; cursor.index = 0; }
@@ -4144,6 +4157,14 @@
           lg.appendChild(arg);
           lg.appendChild(document.createTextNode(')'));
           wrap.appendChild(lg);
+        } else if (item.type === 'rnd') {
+          // Reuses the generic log-template/arg spans; no Rnd-specific CSS.
+          const rd = el('span','math-log-base-template');
+          rd.appendChild(document.createTextNode('Rnd('));
+          const rarg = el('span','math-log-arg'); rarg.appendChild(renderSlotDOM(item.arg));
+          rd.appendChild(rarg);
+          rd.appendChild(document.createTextNode(')'));
+          wrap.appendChild(rd);
         } else if (item.type === 'integral') {
           const ig = el('span','math-integral-template');
           const col = el('span','math-int-sym-col');
@@ -8225,8 +8246,10 @@
       insertToken(')'); return;
     }
 
+    if (rawKey === '0' && isShift) { insertRndTemplate(); return; }
+
     const tkMap = {
-      '0': isShift ? 'round(' : '0', '1':'1','2':'2','3':'3','4':'4',
+      '0': '0', '1':'1','2':'2','3':'3','4':'4',
       '5':'5','6':'6','7':'7','8':'8','9':'9',
       'decimal': isShift ? 'Ran#' : isAlpha ? 'RanInt(' : '.',
       'plus': isShift ? 'Pol(' : '+',
