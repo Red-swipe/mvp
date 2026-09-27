@@ -196,15 +196,120 @@ def _prime_factorization_str(n: int) -> str:
     return "×".join(parts)
 
 
+# Operand immediately left of a '%', as the existing implementation matched it.
+_PERCENT_OPERAND = r'(\(\s*[^()]*\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)'
+_PERCENT_RE = re.compile(_PERCENT_OPERAND + r'\s*%')
+
+# Characters that can form part of the value preceding a '+'/'-' operator. The
+# walk is a liveness scan, not a parse: identifier characters, parens and commas
+# are included so a function call or argument list to the left of the operator is
+# captured whole (`sqrt(4)+10%` -> base `sqrt(4)`, `log_base(2,8)+10%` -> base
+# `log_base(2,8)`).
+def _is_percent_lvalue_char(ch: str) -> bool:
+    return ch.isalnum() or ch in '._,()^*/+-'
+
+
+def _match_open_paren(s: str, close_idx: int) -> int:
+    """Index of the '(' matching the ')' at close_idx, or -1. Leftward twin of
+    _find_matching_paren, used to keep a percent base inside its own group."""
+    depth = 0
+    for i in range(close_idx, -1, -1):
+        if s[i] == ')':
+            depth += 1
+        elif s[i] == '(':
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _percent_base(s: str, start: int, depth: list):
+    """Text of the value to the left of a binary '+'/'-' governing a '%'.
+
+    `start` is the first index of the percent operand. Only an operator at the
+    *same* paren depth counts, so `2+(10%)` keeps a standalone 10%, and only a
+    binary +/- counts, so a leading sign (`-10%`) stays standalone. Returns
+    None when no such operator exists, meaning a plain /100 scale applies.
+    """
+    target = depth[start]
+    i = start - 1
+    while i >= 0:
+        ch = s[i]
+        if ch.isspace():
+            i -= 1
+            continue
+        if ch in '+-*/^':
+            if depth[i] != target:
+                return None
+            if ch not in '+-':
+                return None            # *, / and ^ keep the plain /100 scale
+            j = i - 1                   # binary only: skip a unary sign
+            while j >= 0 and s[j].isspace():
+                j -= 1
+            if j < 0 or s[j] in '+-*/^(':
+                return None
+            k = i                       # the base is everything left of the op
+            while k > 0:
+                ch = s[k - 1]
+                if ch == ')':           # a closed group belongs to the operand
+                    op = _match_open_paren(s, k - 1)
+                    if op < 0:
+                        break
+                    k = op
+                    continue
+                if ch == '(':
+                    break                # an open paren is the group boundary
+                if not _is_percent_lvalue_char(ch):
+                    break
+                k -= 1
+            text = s[k:i].strip()
+            return text or None
+        i -= 1
+    return None
+
+
 def _transform_percent(s: str) -> str:
-    """Casio % = postfix percent (/100). 50% -> (50/100). Handles )% and digit% and Ans%)."""
-    # Apply repeatedly for cases like 50%%.
+    """Casio contextual %.
+
+    A '%' following '+' or '-' takes the value to its left as its base, so
+    100+10% = 100+(100*10/100) = 110 and 100-10% = 90. After '*' or '/', and
+    on its own, the operand is simply scaled: 100*10% = 10, 100/10% = 1000 and
+    10% = 0.1. Chained forms fall out of rewriting left to right, because each
+    pass sees the already-expanded value of the previous percentage:
+    100+10%+5% = 100+(100*10/100)+(<that>)*5/100.
+    """
+    depth = [0] * (len(s) + 1)
+    level = 0
+    for i, ch in enumerate(s):
+        depth[i] = level
+        if ch == '(':
+            level += 1
+        elif ch == ')':
+            level -= 1
+    depth[len(s)] = level
+
+    # Apply repeatedly for cases like 50%% and chained percentages.
     for _ in range(20):
-        m = re.search(r'(\(\s*[^()]*\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%', s)
+        m = _PERCENT_RE.search(s)
         if not m:
             return s
         operand = m.group(1)
-        s = s[:m.start()] + f'(({operand})/100)' + s[m.end():]
+        base = _percent_base(s, m.start(), depth)
+        if base is not None:
+            repl = f'(({base})*({operand})/100)'
+        else:
+            repl = f'(({operand})/100)'
+        # Depth map is stale after a rewrite; the next pass needs a fresh one.
+        s = s[:m.start()] + repl + s[m.end():]
+        depth = [0] * (len(s) + 1)
+        level = 0
+        for i, ch in enumerate(s):
+            depth[i] = level
+            if ch == '(':
+                level += 1
+            elif ch == ')':
+                level -= 1
+        depth[len(s)] = level
     return s
 
 

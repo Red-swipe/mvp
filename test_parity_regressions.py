@@ -39,8 +39,13 @@ class TestCore(unittest.TestCase):
 
 class TestShiftFunctions(unittest.TestCase):
     def test_percent(self):
+        # Contextual % (BUG-08): 200+10% is 200 + 10% *of 200* = 220, not 200.1.
+        # This line previously asserted 200.1, encoding the old /100-only rule.
         self.assertAlmostEqual(ev("50%"), 0.5)
-        self.assertAlmostEqual(ev("200+10%"), 200.1, places=6)
+        self.assertAlmostEqual(ev("200+10%"), 220.0, places=6)
+        self.assertAlmostEqual(ev("200-10%"), 180.0, places=6)
+        self.assertAlmostEqual(ev("200*10%"), 20.0, places=6)
+        self.assertAlmostEqual(ev("200/10%"), 2000.0, places=6)
 
     def test_factorial(self):
         self.assertAlmostEqual(ev("5!"), 120.0)
