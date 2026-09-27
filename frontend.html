@@ -3843,6 +3843,27 @@
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
   function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
 
+  // °′″ key: pick the next DMS component from what is already typed, instead of
+  // dumping all three symbols at once. The backend only understands a complete
+  // form (30°31′32″), so a lone ° must be completed by digits + ′, then digits
+  // + ″. Deriving the choice from the slot rather than a press counter keeps the
+  // progression self-healing: DEL, AC, cursor movement and starting a new
+  // operand all stay consistent with no extra state to reset. Only the trailing
+  // numeric run counts, so a completed DMS group followed by an operator
+  // correctly begins a fresh °.
+  function nextDmsSymbol() {
+    const items = (cursor.slot && cursor.slot.items) || [];
+    const before = items.slice(0, cursor.index)
+      .map((item) => (typeof item === 'string' ? item : ' '))
+      .join('');
+    const match = before.match(/[0-9.°′″]+$/);
+    const typed = match ? match[0] : '';
+    if (typed.indexOf('″') !== -1) return '°';
+    if (typed.indexOf('′') !== -1) return '″';
+    if (typed.indexOf('°') !== -1) return '′';
+    return '°';
+  }
+
   function resetExpr() {
     // Clear the current entry only. Scalar Ans (lastAnswer) and the separate
     // MatAns/VctAns registers survive: AC/RESULT/ERROR transitions must never
@@ -8100,7 +8121,7 @@
     if (rawKey === 'ellipsis') {
       if (isShift) { insertToken('FACT('); return; }
       if (isAlpha || useAlphaForHex) { if (handlePendingVar('B')) return; insertToken('B'); return; }
-      insertToken('\u00b0\u2032\u2033'); return;
+      insertToken(nextDmsSymbol()); return;
     }
     if (rawKey === 'integral') {
       if (isAlpha) { insertToken(':'); return; }
