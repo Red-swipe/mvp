@@ -983,6 +983,26 @@ def _find_infix_pc(s: str, start: int = 0):
     return None
 
 
+def _infix_pc_operator_indices(s: str) -> set:
+    """Indices of every infix ``P``/``C`` operator ``_find_infix_pc`` can parse.
+
+    ``C`` is both the ``C`` register and the infix ``nCr`` operator, so the
+    variable-substitution pass in ``safe_evaluate_expression`` must know which
+    ``C`` characters are operators and leave those alone. Mirrors
+    ``_find_infix_pc``'s operand scan exactly (same bounded loop) so the two
+    can never disagree about which ``C`` is an operator.
+    """
+    indices = set()
+    pos = 0
+    for _ in range(100):
+        found = _find_infix_pc(s, pos)
+        if found is None:
+            return indices
+        indices.add(found[5])
+        pos = found[5] + 1
+    return indices
+
+
 def _transform_combinatorics_infix(s: str, ans_val: float, angle_unit: str = "Degree") -> str:
     """Rewrite keypad infix `n P r` / `n C r` to nPr()/nCr() calls.
 
@@ -1166,6 +1186,18 @@ def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: st
                     _vval = float(variables[_vname])
                 except Exception:
                     continue
+                if _vname == 'C':
+                    # `C` is both the C register and the infix nCr operator
+                    # (`5 C 2`, `(5)C(2)`, `Ans C 2`). Substituting it here
+                    # would destroy the operator before
+                    # _transform_combinatorics_infix ever sees it, so protect
+                    # the operator positions. Same guard the frontend applies
+                    # in _transformSpecial.
+                    _pc_ops = _infix_pc_operator_indices(s)
+                    if _pc_ops:
+                        s = ''.join(ch if (i in _pc_ops or ch != 'C') else _lit(_vval)
+                                    for i, ch in enumerate(s))
+                        continue
                 s = re.sub(rf'\b{_vname}\b', _lit(_vval), s)
 
     # Keypad aliases: frontend display tokens -> backend function names.
