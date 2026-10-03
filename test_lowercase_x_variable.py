@@ -197,6 +197,7 @@ class TestSolve(unittest.TestCase):
 # which token is inserted.
 ROUTE_SLICES = [
     ("ellipsis", "if (rawKey === 'ellipsis') {", "if (rawKey === 'integral') {"),
+    ("integral", "if (rawKey === 'integral') {", "if (rawKey === 'log') {"),
     ("inverse", "if (rawKey === 'inverse') {", "if (rawKey === 'ellipsis') {"),
     ("sin", "if (rawKey === 'sin') {", "if (rawKey === 'cos') {"),
     ("cos", "if (rawKey === 'cos') {", "if (rawKey === 'tan') {"),
@@ -213,11 +214,15 @@ NODE_STUBS = """
 const inserted = [];
 function insertToken(t) { inserted.push(t); return true; }
 function insertPower() { inserted.push('<power>'); return true; }
+function insertIntegral() { inserted.push('<integral-template>'); return true; }
+function insertSigma() { inserted.push('<sigma-template>'); return true; }
+function insertDerivative() { inserted.push('<derivative-template>'); return true; }
+function insertLog() { inserted.push('<log-template>'); return true; }
+function nextDmsSymbol() { inserted.push('<dms>'); return true; }
 function handlePendingVar() { return false; }
 function updateMemory() { inserted.push('<mem>'); return true; }
 function toggleAnswerFormat() { inserted.push('<toggle>'); return true; }
 function renderLCD() {}
-function useAlphaForHex() { return false; }
 const appState = { mode: 'Calculate', baseNBase: 10, variables: {} };
 """
 
@@ -225,7 +230,7 @@ const appState = { mode: 'Calculate', baseNBase: 10, variables: {} };
 def route_source():
     # Several `rawKey === 'negate'` / `'optn'` branches exist in the per-mode
     # handlers above the main key router. Anchor on the unique `rawKey ===
-    # 'sto'` line so only the real routing block is sliced.
+    # 'sto'` line so only the real key routing block is sliced.
     anchor = FRONTEND.index("if (rawKey === 'sto') {")
     parts = []
     for _name, start_marker, end_marker in ROUTE_SLICES:
@@ -245,12 +250,16 @@ class TestFrontendVariableRouting(unittest.TestCase):
         cls.tmp.write_text(
             NODE_STUBS
             + "function route(rawKey, isShift, isAlpha) {\n"
+            # Mirrors handleKey: useAlphaForHex is a per-press boolean, not a
+            # function reference (a function object would always be truthy and
+            # silently divert every non-ALPHA press into the ALPHA branches).
+            + "const useAlphaForHex = false;\n"
             + route_source() + "\nreturn inserted;\n}\n"
             + "const out=[];"
-            + "for(const c of JSON.parse(process.argv[2])){"
-            + "inserted.length=0;route(c.k,c.s,c.a);"
-            + "out.push(inserted.slice());}"
-            + "process.stdout.write(JSON.stringify(out));\n",
+            "for(const c of JSON.parse(process.argv[2])){"
+            "inserted.length=0;route(c.k,c.s,c.a);"
+            "out.push(inserted.slice());}"
+            "process.stdout.write(JSON.stringify(out));\n",
             encoding="utf-8")
 
     @classmethod
@@ -275,9 +284,32 @@ class TestFrontendVariableRouting(unittest.TestCase):
                          [["X"]])
 
     def test_shift_x_key_still_inserts_sigma(self):
-        # SHIFT on the same key must keep producing the summation template.
+        # SHIFT on the same key must produce the SUMMATION TEMPLATE, not the raw
+        # text token "\u03a3(" it used to insert. raw/buttons.md: "shift + x ->
+        # Sigma [with three input boxes, 1 on top of it, with beneath it,
+        # x = [] and one in front of it]".
         out = self._route([{"k": "variable", "s": True, "a": False}])
-        self.assertEqual(out, [["\u03a3("]])
+        self.assertEqual(out, [["<sigma-template>"]])
+
+    def test_alpha_x_key_inserts_lowercase_y(self):
+        # ALPHA on the x key is `y` on the fx-991EX (raw/buttons.md).
+        self.assertEqual(self._route([{"k": "variable", "s": False, "a": True}]),
+                         [["y"]])
+
+    def test_shift_integral_key_inserts_derivative_template(self):
+        # SHIFT + integral is the derivative template (raw/buttons.md:
+        # "SHIFT + \u222b -> d/dx [input box]"), not the raw text "d/dx(".
+        self.assertEqual(self._route([{"k": "integral", "s": True, "a": False}]),
+                         [["<derivative-template>"]])
+
+    def test_neither_calculus_key_emits_a_raw_text_token(self):
+        # Guard against the raw-token regression: neither key may reach
+        # insertToken with "\u03a3(" or "d/dx(" any more.
+        for case in ({"k": "variable", "s": True, "a": False},
+                     {"k": "integral", "s": True, "a": False}):
+            for tok in self._route([case])[0]:
+                self.assertNotIn("\u03a3(", tok)
+                self.assertNotIn("d/dx(", tok)
 
     def test_plain_right_paren_unchanged(self):
         self.assertEqual(self._route([{"k": "right_paren", "s": False, "a": False}]),
@@ -344,7 +376,20 @@ class TestFrontendAlphaWiring(unittest.TestCase):
         self.assertEqual(m.group(1), "X")
 
     def test_variable_key_present(self):
-        self.assertIn('data-shift="Sigma" data-key="variable"', FRONTEND)
+        # SHIFT on the x key is the summation template and ALPHA is `y`.
+        self.assertIn('data-shift="d/dx" data-alpha="y" data-key="variable"',
+                      FRONTEND)
+
+    def test_variable_key_printed_legend_matches_routing(self):
+        # The printed legends must agree with the real device / raw/buttons.md:
+        # SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
+        self.assertIn('data-shift="Sigma" data-alpha=":" data-key="integral"',
+                      FRONTEND)
+        legend = re.search(
+            r'<span class="shift-mark">(d/dx|Σ)</span><span class="alpha-mark">:</span>'
+            r'</span>\s*<button class="b math-template" data-shift="Sigma"', FRONTEND)
+        assert legend, "integral key legend not found"
+        self.assertEqual(legend.group(1), "d/dx")
 
     def test_all_nine_variables_reachable_from_alpha_buttons(self):
         alpha = set(re.findall(r'data-alpha="([A-Za-z])"', FRONTEND))

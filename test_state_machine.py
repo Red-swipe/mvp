@@ -580,8 +580,9 @@ class TestShiftAlphaRouting3A(unittest.TestCase):
                 buttons[km.group(1)] = tag
         expected = {
             "calc": ('data-shift="SOLVE"', 'data-alpha="="'),
-            "integral": ('data-shift="d/dx"', 'data-alpha=":"'),
-            "variable": ('data-shift="Sigma"', None),
+            # raw/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
+            "integral": ('data-shift="Sigma"', 'data-alpha=":"'),
+            "variable": ('data-shift="d/dx"', 'data-alpha="y"'),
             "ellipsis": ('data-shift="FACT"', 'data-alpha="B"'),
             "inverse": ('data-shift="factorial"', 'data-alpha="C"'),
             "multiply": ('data-shift="nPr"', None),
@@ -605,8 +606,10 @@ class TestShiftAlphaRouting3A(unittest.TestCase):
             "'multiply': isShift ? 'P'",
             "'divide': isShift ? 'C'",
             "if (isShift) { insertToken('!'); return; }",
-            "if (isShift) { insertToken('d/dx('); return; }",
-            "insertToken(isShift ? '\\u03a3(' : 'X')",
+            "if (rawKey === '0' && isShift) { insertRndTemplate(); return; }",
+            "if (isShift) { insertDerivative(); return; }",
+            "if (isShift) { insertSigma(); return; }",
+            "insertToken(isShift ? 'sin\\u207b\\u00b9(' : 'sin('",
             "if (isShift) { insertToken('FACT('); return; }",
         ]
         for branch in branches:

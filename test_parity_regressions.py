@@ -449,10 +449,17 @@ class TestFrontendWiring(unittest.TestCase):
         cls.html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
 
     def test_swapped_mappings_fixed(self):
-        self.assertIn('data-shift="d/dx" data-alpha=":" data-key="integral"', self.html)
-        self.assertIn('data-shift="Sigma" data-key="variable"', self.html)
+        # raw/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
+        # The printed legends, the data-shift attributes and the routing must
+        # all agree (they were previously swapped on the keycaps).
+        self.assertIn('data-shift="Sigma" data-alpha=":" data-key="integral"', self.html)
+        self.assertIn('data-shift="d/dx" data-alpha="y" data-key="variable"', self.html)
         self.assertIn("if (isAlpha) { insertToken(':'); return; }", self.html)
-        self.assertIn("insertToken(isShift ? '\\u03a3(' : 'X'); return;", self.html)
+        self.assertIn("if (isShift) { insertDerivative(); return; }", self.html)
+        self.assertIn("if (isShift) { insertSigma(); return; }", self.html)
+        # The raw text tokens these replaced must be gone from the router.
+        self.assertNotIn("insertToken('d/dx(')", self.html)
+        self.assertNotIn("insertToken('\\u03a3(')", self.html)
 
     def test_percent_comma_fact_wiring(self):
         self.assertIn('data-shift="percent" data-key="ans"', self.html)
