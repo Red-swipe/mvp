@@ -6515,7 +6515,13 @@ function itemLatex(item, ph) {
 
     // Result — display layer (Decimal Mark / Digit Separator), then KaTeX.
     const resultEl = document.getElementById('lcdResultLine');
-    if (appState.error) renderMath(appState.error, 'lcdResultLine', false);
+    // An error is PROSE, not mathematics. Sending it through renderMath made
+    // KaTeX typeset every letter as a math-italic `<mi>` in KaTeX_Math, which
+    // dropped the space ("MathERROR") and painted the message in a serif
+    // italic face instead of the calculator's LCD font. Write it as a plain
+    // text node instead: `.lcd-result-line` is already right-aligned and is
+    // covered by the `.lcd *` font rule, so it needs no extra styling.
+    if (appState.error) { resultEl.textContent = String(appState.error); }
     else if (appState.resultDisplayed && appState.result !== null) renderMatrixResult(String(appState.result));
     else renderMath('', 'lcdResultLine', false);
 
