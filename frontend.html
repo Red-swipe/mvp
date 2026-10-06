@@ -3895,21 +3895,57 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       if (peekOp(['+'])) { p++; return unary(); }
       return power();
     }
+    // True when the current token can begin a factor, i.e. an operand was
+    // omitted and implicit multiplication applies. Mirrors the engine parser's
+    // _starts_factor exactly.
+    //
+    // A bare identifier is deliberately NOT a factor start. The backend only
+    // rewrites `e` to `(2.718...)` when it is not preceded by an alphanumeric
+    // character, which is what keeps scientific notation (`1e10`) working; it
+    // therefore rejects `2e`. Accepting it here would make the two evaluators
+    // disagree. Constants that CAN be juxtaposed (pi, Ans) are already
+    // parenthesised by the substitution above and arrive as `(`.
+    const startsFactor = () => tokens[p] && (tokens[p][0] === 'n' || tokens[p][0] === '(');
+
+    // IMPLICIT MULTIPLICATION. Mirrors engine/parser.py exactly (the two
+    // evaluators must agree or file:// and the server disagree). SHIFT+pi
+    // inserts the constant with no operator, so `2pi` reaches here already
+    // rewritten as `2(3.14159...)` by the pi/Ans substitution above, and the
+    // same holds for `Ans2` -> `(5)2`.
+    //
+    // A group directly followed by another group is refused: that is the shape
+    // the postfix-% rewrite produces for `10%10%` -> `((10)/100)((10)/100)`,
+    // which must stay Math ERROR. Every real juxtaposition form (`2pi`,
+    // `2(3)`, `Ans2`, `3 4`) ends its left operand in something other than a
+    // closing paren, so this one exclusion keeps the error contract.
+    const implicitAllowed = () => {
+      const prev = p > 0 ? tokens[p - 1] : null;
+      if (prev && prev.length === 1 && prev[0] === ')') return tokens[p][0] !== '(';
+      return true;
+    };
     function mulDiv() {
       let l = unary();
-      while (peekOp(['*', '/'])) {
-        const op = tokens[p][0]; p++;
-        const r = unary();
-        if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
-        if (_cIsC(l) || _cIsC(r)) {
-          if (_cIsZero(r)) throw new Error('Math ERROR');
-          l = _cDiv(l, r);
+      for (;;) {
+        if (peekOp(['*', '/'])) {
+          const op = tokens[p][0]; p++;
+          const r = unary();
+          if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
+          if (_cIsC(l) || _cIsC(r)) {
+            if (_cIsZero(r)) throw new Error('Math ERROR');
+            l = _cDiv(l, r);
+            continue;
+          }
+          if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
+          l = l / r;
           continue;
         }
-        if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
-        l = l / r;
+        if (startsFactor() && implicitAllowed()) {
+          const r = unary();
+          l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
+          continue;
+        }
+        return l;
       }
-      return l;
     }
     function addSub() {
       let l = mulDiv();
