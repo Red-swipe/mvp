@@ -3,18 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casio MX-911 ClassWiz - OG-style mockup</title>
+<title>Casio MX-911 ClassWiz - mockup</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* NO WEBFONT IS DECLARED ANYWHERE IN THIS SHEET.
-     The screen and the key faces both use ordinary system text: the keycap
-     artwork TTF is not a text face (in it the ASCII digits are circled keycap
-     icons and the operators are circled glyphs), so naming it anywhere made
-     digits unreadable -- first on the LCD, then on the keys themselves. The
-     math glyphs the text faces lack are covered by "Cambria Math" /
-     "Segoe UI Symbol", and typeset results by KaTeX inside `.katex`. */
+  /* LCD DISPLAY FONT -- "ClassWiz CW Display" v3.009 by Windy Deng, a
+     derivative of the CASIO Classwiz typeface. SIL Open Font License 1.1;
+     the licence travels with the file as ClassWizFontSet/OFL-CWDisplay.txt.
+     This is a genuine text face: 1287 glyphs, uniform tabular digits, and the
+     LCD-style segment shapes the ClassWiz screen actually uses.
+
+     It replaces an earlier attempt to use the keycap ARTWORK face that also
+     lives in that folder (see the keycap-legend comments below): that one is
+     not a text face -- its ASCII digits are circled keycap icons, 2.3x the
+     advance width of a real digit, and it carries only 116 glyphs -- so naming
+     it anywhere made the screen unreadable. It is retained as artwork and is
+     deliberately not named here.
+
+     NB: `--lcd` is already taken by the LCD BACKGROUND COLOUR (#d5dfb8), so
+     the font stack lives in its own `--lcd-font` variable. */
+  @font-face {
+    font-family: "CWDisplay";
+    src: url("ClassWizFontSet/ClassWizCWDisplay-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+  }
 
   :root{
     --face:#2c2c2d;
@@ -32,6 +47,10 @@
     --alpha-legend:#d3222b;
     --cyan:#4aa6d5;
     --lcd:#d5dfb8;
+    /* The calculator's screen face. `--lcd` above is the screen's background
+       COLOUR, so the font stack gets its own name. The trailing faces cover the
+       handful of code points CW Display lacks (pi, theta, infinity, prime). */
+    --lcd-font:"CWDisplay", "Cambria Math", "Segoe UI Symbol", monospace;
     --ink:#141614;
     --calc-contrast:.5;
   }
@@ -121,12 +140,11 @@
     box-shadow:
       inset 0 2px 5px rgba(0,0,0,.17),
       inset 0 0 0 1px rgba(255,255,255,.35);
-    /* SCREEN TEXT STACK -- ordinary system text only. The keycap artwork TTF is
-     * deliberately absent: it draws digits and operators as keycap icons, so it
-     * made the whole screen unreadable. `.math-sym` names a real math face for
-     * the code points this stack cannot supply, and `.katex` brings its own
-     * KaTeX_* faces for typeset results. */
-    font-family:"Segoe UI", Arial, sans-serif;
+    /* SCREEN TEXT STACK -- the ClassWiz CW Display face (see the @font-face
+     * above). `tabular-nums` keeps digits on a fixed pitch so the input line
+     * does not jitter sideways as digits are typed. */
+    font-family:var(--lcd-font);
+    font-variant-numeric:lining-nums tabular-nums;
     color:var(--ink);
     padding:4px 6px;
     overflow:hidden;
@@ -861,8 +879,6 @@
   .math-radical-symbol,
   .math-int-sym,
   .math-sigma-sym,
-  .math-deriv-diff,
-  .math-deriv-dx,
   .math-frac-power,
   .lbl .shift-mark,
   .lbl .alpha-mark{
@@ -1029,6 +1045,13 @@
     align-items:baseline;
     min-width:8px;
     margin:0 1px;
+  }
+  /* The differential `d` is an operator, not a variable: upright, to match the
+     \mathrm{d} of the KaTeX renderer. */
+  .math-int-dx,
+  .math-deriv-diff,
+  .math-deriv-dx{
+    font-style:normal;
   }
   .math-int-dx{
     font-size:14px;
@@ -1703,10 +1726,30 @@
   /* subtle lower-body taper illusion */
   .bottom-pad{height:1px;}
 
+  /* ── LCD DISPLAY FACE ─────────────────────────────────────────────────────
+     The modes below (.lcd-expr-content, .lcd-result-line, #lcdMatrix,
+     #lcdSpreadsheet, ...) each declare their own font-family for their own
+     historical reasons, and the keycap legends intentionally keep the plain
+     sans-serif stack. This one rule puts the ClassWiz CW Display face back on
+     every SCREEN element without touching the keypad, which lives outside
+     .lcd entirely.
+
+     `:not(.katex)` on both this rule and the universal one is deliberate:
+     KaTeX positions fractions, radicals and stacked limits with em-based
+     metrics taken from its OWN KaTeX_Main/Math/Size faces. Forcing CWDisplay
+     onto `.katex` would leave every one of those vlists mis-measured and
+     overlap the numerator with the fraction bar, so KaTeX keeps its faces and
+     this rule applies to the plain LCD text only. */
+  .lcd,
+  .lcd *:not(.katex):not(.katex *) {
+    font-family:var(--lcd-font) !important;
+    font-variant-numeric:lining-nums tabular-nums;
+  }
+
   /* KaTeX is scoped to the LCD's own wrapper: the KaTeX_* faces apply inside
      .katex-lcd-wrap only. No rule above forces a family over `.katex`, so the
      typeset results keep their own glyphs while the surrounding screen text
-     uses the plain text stack from `.lcd`. */
+     uses the ClassWiz display stack from `.lcd`. */
   #lcdDisplay .expr-katex-wrap{ padding:1px 0; }
   /* A hydrated slot: KaTeX typesets the skeleton and every editable box inside
      it is a real element again, so it must lay out inline like the plain text
@@ -1751,7 +1794,7 @@
 
     <div class="hdr">
       <div class="brand-casio">MENTIS</div>
-      <div class="brand-cwiz">CLASSWIZ</div>
+      <div class="brand-cwiz">MX-911</div>
     </div>
 
     <div class="lcd-bezel">
@@ -2193,7 +2236,9 @@
       if (!s) return '';
       s = s.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/π/g, '\\pi ');
       // integral(body,lower,upper) -> \int_{lower}^{upper} body \, dx
-      s = s.replace(/integral\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\int_{$2}^{$3}($1)\\,dx');
+      // \mathrm{d}: the differential is an upright operator. Bare `d` typesets
+      // as math-italic, so "dx" reads as a product of two letters.
+      s = s.replace(/integral\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\int_{$2}^{$3}($1)\\,\\mathrm{d}x');
       s = s.replace(/log_base\(([^,()]+),([^,()]+)\)/g, '\\log_{$1}{$2}');
       s = s.replace(/xroot\(([^,()]+),([^,()]+)\)/g, '\\sqrt[$1]{$2}');
       s = s.replace(/cbrt\(([^()]+)\)/g, '\\sqrt[3]{$1}');
@@ -2210,8 +2255,9 @@
       s = s.replace(/\^/g, '^');
       s = s.replace(/sigma\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\sum_{$2}^{$3}($1)');
       s = s.replace(/\u03a3\(([^,()]+),([^,()]+),([^,()]+)\)/g, '\\sum_{$2}^{$3}($1)');
-      s = s.replace(/diff\(([^,()]+),([^,()]+)\)/g, '\\frac{d}{dx}\\left[$1\\right]_{x=$2}');
-      s = s.replace(/d\/dx\(([^,()]+),([^,()]+)\)/g, '\\frac{d}{dx}\\left[$1\\right]_{x=$2}');
+      // \mathrm{d} on both differentials -- see the integral note above.
+      s = s.replace(/diff\(([^,()]+),([^,()]+)\)/g, '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\left[$1\\right]_{x=$2}');
+      s = s.replace(/d\/dx\(([^,()]+),([^,()]+)\)/g, '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\left[$1\\right]_{x=$2}');
       s = s.replace(/FACT\(([^()]+)\)/g, '\\text{FACT}($1)');
       s = s.replace(/\*/g, '\\cdot ');
       return s;
@@ -2250,9 +2296,24 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
 } catch (_) {}
     }
   }
-  // Re-typeset once deferred KaTeX CDN scripts finish loading (no auto-render of body).
+  // Re-typeset once the deferred KaTeX scripts and the LCD webfont have both
+  // finished loading. `font-display: block` already makes the face invisible for
+  // up to 3s, so without this the first paint can show a fallback face and then
+  // reflow; loading it explicitly and re-rendering afterwards guarantees the
+  // very first LCD content is already in CW Display.
   window.addEventListener('load', function () {
-    try { if (typeof renderLCD === 'function' && typeof katex !== 'undefined') renderLCD(); } catch (e) {}
+    var done = function () {
+      try { if (typeof renderLCD === 'function' && typeof katex !== 'undefined') renderLCD(); } catch (e) {}
+    };
+    // Guarded: an older engine without the CSS Font Loading API still renders.
+    if (document.fonts && typeof document.fonts.load === 'function') {
+      Promise.all([
+        document.fonts.load('20px CWDisplay'),
+        document.fonts.load('16px CWDisplay')
+      ]).then(done, done);
+    } else {
+      done();
+    }
   });
   // ── SETTINGS PERSISTENCE & DEFAULTS ──
   const SETTINGS_STORAGE_KEY = 'casio_fx991ex_settings';
@@ -4533,10 +4594,13 @@ function itemLatex(item, ph) {
       case 'rnd': return '\\operatorname{Rnd}\\left(' + S(item.arg) + '\\right)';
       // Natural display: \int puts the limits above and below a full-height sign.
       case 'integral': return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
-                          + '}' + S(item.body) + '\\,d' + S(item.dvar);
+                          + '}' + S(item.body) + '\\,\\mathrm{d}' + S(item.dvar);
       case 'sigma': return '\\sum_{' + S(item.lower) + '}^{' + S(item.upper)
                        + '}x=' + S(item.body);
-      case 'derivative': return '\\frac{d}{dx}\\left[' + S(item.body)
+      // \mathrm{d} for the differential: the `d` is an operator, not a variable,
+      // so it must be upright. Without \mathrm, KaTeX typesets it as the
+      // italic math-italic `d` and dy/dx reads as a product of two letters.
+      case 'derivative': return '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\left[' + S(item.body)
                           + '\\right]_{x=' + S(item.point) + '}';
       default: return '';
     }
@@ -4690,9 +4754,12 @@ function itemLatex(item, ph) {
           // editable box holding the function being differentiated.
           const dv = el('span','math-derivative-template');
           const col = el('span','math-deriv-col');
+          // Upright differential, matching the \mathrm{d} of the KaTeX path above.
           const num = el('span','math-deriv-diff'); num.textContent = 'd';
           const bar = el('span','math-deriv-bar');
-          const den = el('span','math-deriv-dx'); den.textContent = 'dx';
+          const den = el('span','math-deriv-dx');
+          den.appendChild(document.createTextNode('d'));
+          den.appendChild(document.createTextNode('x'));
           col.append(num, bar, den); dv.appendChild(col);
           const bd = el('span','math-deriv-body'); bd.appendChild(renderSlotDOM(item.body));
           dv.appendChild(bd);

@@ -89,14 +89,28 @@ CSS_NO_COMMENTS = strip_comments(FRONTEND)
 class TestTypographySource(unittest.TestCase):
     """TYPO-1 / TYPO-2 / TYPO-3 at the source level."""
 
-    def test_lcd_font_stack_declares_a_real_math_face(self):
-        # The ClassWiz face carries no math glyphs, so a math face must be
-        # named after it in the stack (CSS fallback is per character).
+    def test_lcd_font_stack_declares_an_explicit_text_face(self):
+        # `.lcd` now names the genuine ClassWiz CW DISPLAY face, which IS a
+        # real text face (1287 glyphs, tabular digits). What must stay
+        # unreachable is the other ClassWiz face -- the CW01 keycap ARTWORK,
+        # whose digits are circled keycap icons.
         m = re.search(r"\.lcd\{[^}]*?font-family:([^;]+);", CSS_NO_COMMENTS, re.S)
         self.assertIsNotNone(m, ".lcd font-family not found")
         stack = m.group(1)
-        self.assertIn("CASIO ClassWiz", stack)
-        self.assertIn(MATH_FONT_PREFIX, stack, stack)
+        self.assertNotIn("CASIO ClassWiz", stack, stack)
+        self.assertIn("var(--lcd-font)", stack, stack)
+        self.assertNotEqual(stack.strip(), "monospace", stack)
+
+    def test_lcd_font_stack_resolves_to_the_display_face(self):
+        # The indirection through --lcd-font must land on the real webfont and
+        # carry the per-character fallbacks for the code points it lacks
+        # (pi, theta, infinity, prime are absent from CW Display).
+        m = re.search(r"--lcd-font\s*:\s*([^;]+);", CSS_NO_COMMENTS)
+        self.assertIsNotNone(m, "--lcd-font not declared")
+        stack = m.group(1)
+        self.assertIn("CWDisplay", stack, stack)
+        self.assertIn("Cambria Math", stack, stack)
+        self.assertNotIn("CASIO ClassWiz", stack, stack)
 
     def test_expression_and_result_lines_do_not_declare_their_own_font(self):
         for sel in (".lcd-expr-content", ".lcd-result-line"):
@@ -139,11 +153,22 @@ class TestCalculusTemplateSource(unittest.TestCase):
                        FRONTEND.index("function calculusBody(") + 400]
         self.assertIn("\\bX\\b", seg)
 
-    def test_derivative_point_comes_from_the_x_register(self):
-        self.assertIn("function derivativePoint(", FRONTEND)
-        seg = FRONTEND[FRONTEND.index("function derivativePoint("):
-                       FRONTEND.index("function derivativePoint(") + 600]
-        self.assertIn("appState.variables.X", seg)
+    def test_the_differentiation_point_is_an_editable_slot(self):
+        # The derivative template is d/dx([expr])|x=[point]: the point is its
+        # own editable part, so there is no implicit X-register fallback left
+        # to resolve at serialization time.
+        self.assertNotIn("function derivativePoint(", FRONTEND)
+        m = re.search(r"function insertDerivative\(\)[^\n]*", FRONTEND)
+        self.assertIsNotNone(m)
+        self.assertIn("point:createSlot()", m.group(0))
+
+    def test_an_empty_calculus_part_is_a_syntax_error_on_equals(self):
+        # Empty slots are legal while editing; `=` must refuse rather than
+        # coerce a missing bound / dx variable / point to 0.
+        self.assertIn("function validateCalculusTree(", FRONTEND)
+        m = re.search(r"async function evaluate\(\)\s*\{[\s\S]{0,600}", FRONTEND)
+        self.assertIsNotNone(m)
+        self.assertIn("validateCalculusTree", m.group(0))
 
 
 class TestShiftLegendParity(unittest.TestCase):
@@ -249,44 +274,71 @@ class BrowserCase(unittest.TestCase):
     def has_cursor(self):
         return bool(self.page.query_selector("#lcdExprContent .lcd-cursor"))
 
+    def katex_html(self):
+        return self.page.inner_html("#lcdExprContent")
+
+    def assert_katex_slots(self, count, msg=""):
+        """The expression line is typeset by KaTeX; every editable box is a real
+        hydrated element carrying its slot id (see renderExprKatex)."""
+        html = self.katex_html()
+        self.assertIn("katex", html, msg or "the line is not typeset by KaTeX")
+        ids = self.page.eval_on_selector_all(
+            "#lcdExprContent [data-slot-id]", "els => els.map(e => e.dataset.slotId)")
+        self.assertEqual(len(ids), count, msg or f"expected {count} slots: {ids}")
+        self.assertEqual(len(set(ids)), count, f"slot ids not unique: {ids}")
+
+    def assert_katex_class(self, cls, msg=""):
+        # EXACT class match. A substring test would wrongly pass 'msup' on
+        # KaTeX's 'msupsub', which is the name it gives to ANY script container
+        # (x^{2} emits msupsub too) -- so a substring check proves nothing.
+        classes = set()
+        for m in re.finditer(r'class="([^"]*)"', self.katex_html()):
+            classes.update(m.group(1).split())
+        self.assertIn(cls, classes, msg or f"KaTeX did not emit .{cls}")
+
 
 class TestTypographyRendered(BrowserCase):
     """TYPO-1 / TYPO-2."""
 
-    def test_expression_and_result_lines_use_the_calculator_typeface(self):
+    def test_expression_and_result_lines_use_the_screen_text_stack(self):
         for sel in ("#lcdExprContent", "#lcdResultLine"):
             font = self.page.evaluate(
                 "(s) => getComputedStyle(document.querySelector(s)).fontFamily", sel)
-            self.assertIn("CASIO ClassWiz", font, sel)
+            self.assertIn("Segoe UI", font, sel)
+            # The keycap-legend face must never paint screen text: its digits
+            # are keycap icons.
+            self.assertNotIn("CASIO ClassWiz", font, sel)
             self.assertNotEqual(font.strip(), "monospace", sel)
-            # ...and it must name a real math face for the glyphs the LCD face
-            # cannot supply.
-            self.assertIn(MATH_FONT_PREFIX, font, sel)
 
-    def test_every_math_symbol_the_lcd_font_lacks_gets_a_math_face(self):
-        # Drive the real insertion path and inspect the real rendered DOM.
-        missing = self.page.evaluate(
+    def test_every_math_symbol_is_drawn_by_katex(self):
+        # The whole expression line is typeset by KaTeX, so every mathematical
+        # code point is drawn from a KaTeX face rather than being diverted into
+        # a hand-rolled `.math-sym` span.
+        rows = self.page.evaluate(
             """(pairs) => {
               const out = [];
               for (const [name, ch] of pairs) {
                 resetExpr();
                 insertToken(ch);
                 const host = document.getElementById('lcdExprContent');
-                const span = host.querySelector('.math-sym');
-                out.push({ name: name, ch: ch, wrapped: !!span,
-                           text: host.textContent,
-                           font: span ? getComputedStyle(span).fontFamily : null });
+                const k = host.querySelector('.katex');
+                const slot = host.querySelector('[data-slot-id]');
+                out.push({ name: name, ch: ch, katex: !!k,
+                           inSlot: !!slot,
+                           text: slot ? slot.textContent : host.textContent,
+                           font: k ? getComputedStyle(k).fontFamily : null });
               }
               return out;
             }""", [[k, v] for k, v in MATH_SYMBOLS_NOT_IN_LCD_FONT.items()])
 
-        self.assertEqual(len(missing), len(MATH_SYMBOLS_NOT_IN_LCD_FONT))
-        for row in missing:
-            self.assertTrue(row["wrapped"],
-                            f"{row['name']} ({row['ch']!r}) is not inside .math-sym; "
-                            f"the LCD face has no glyph for it, so the browser "
-                            f"substitutes an arbitrary font")
-            self.assertIn(MATH_FONT_PREFIX, row["font"], row["name"])
+        self.assertEqual(len(rows), len(MATH_SYMBOLS_NOT_IN_LCD_FONT))
+        for row in rows:
+            self.assertTrue(row["katex"],
+                            f"{row['name']} ({row['ch']!r}) is not typeset by KaTeX")
+            self.assertTrue(row["inSlot"],
+                            f"{row['name']} ({row['ch']!r}) is not in an editable slot")
+            self.assertIn("KaTeX", row["font"],
+                          f"{row['name']} is not drawn in a KaTeX face: {row['font']}")
             self.assertEqual(row["text"], row["ch"])
 
     def test_lcd_font_really_lacks_those_code_points(self):
@@ -307,13 +359,16 @@ class TestTypographyRendered(BrowserCase):
         for ch in "0123456789+-=<>()":
             self.assertIn(ord(ch), cmap)
 
-    def test_ascii_stays_in_the_calculator_typeface(self):
+    def test_ascii_is_typeset_not_diverted(self):
         self.reset()
         self.types("x2+3")
-        wrapped = self.page.evaluate(
-            """() => document.querySelectorAll('#lcdExprContent .math-sym').length""")
-        self.assertEqual(wrapped, 0, "plain ASCII must not be diverted to a math face")
-        self.assertEqual(self.lcd_html().count("math-sym"), 0)
+        html = self.katex_html()
+        self.assertIn("katex", html)
+        self.assertNotIn("math-sym", html,
+                         "the hand-rolled .math-sym path is no longer used")
+        self.assertEqual(self.page.evaluate(
+            """() => document.querySelector(
+                 '#lcdExprContent [data-slot-id]').textContent"""), "x2+3")
 
 
 class TestKatexIsolation(BrowserCase):
@@ -348,19 +403,27 @@ class TestKatexIsolation(BrowserCase):
         self.assertIsNotNone(cls)
         self.assertEqual(cls.split(), ["katex-lcd-wrap", "katex-inline"])
 
-    def test_katex_does_not_touch_the_editable_input_line_after_equals(self):
+    def test_the_editable_input_line_stays_editable_after_equals(self):
+        # The line IS typeset by KaTeX now, so the original hazard is real
+        # again: a re-render must not destroy the slot DOM. What matters is
+        # that every editable box is still a live element and the cursor
+        # survives -- not which renderer produced the glyphs.
         self.press("2"); self.press("3"); self.press("plus")
         self.press("3"); self.press("equals")
         self.page.wait_for_timeout(250)
         info = self.page.evaluate(
             """() => ({ katexInExpr: document.querySelectorAll(
                           '#lcdExprContent .katex').length,
+                        slots: document.querySelectorAll(
+                          '#lcdExprContent [data-slot-id]').length,
                         expr: document.getElementById('lcdExprContent').innerHTML,
                         result: appState.result })""")
-        self.assertEqual(info["katexInExpr"], 0,
-                         "the editable line must not be re-typeset with KaTeX")
+        self.assertGreaterEqual(info["katexInExpr"], 1,
+                                "the input line is not typeset by KaTeX")
         self.assertIn("math-slot", info["expr"],
                       "the editable slot DOM was destroyed by the result render")
+        self.assertGreaterEqual(info["slots"], 1,
+                                "no editable slot element survived the render")
         self.assertTrue(self.has_cursor(),
                         "the cursor must survive pressing =")
         self.assertEqual(info["result"], "26")
@@ -386,10 +449,10 @@ class TestFractionsRendered(BrowserCase):
         self.press("dpad_right")
         self.types("2")
         html = self.lcd_html()
-        self.assertIn('class="math-fraction"', html)
-        self.assertIn('class="math-numerator"', html)
-        self.assertIn('class="math-fraction-bar"', html)
-        self.assertIn('class="math-denominator"', html)
+        self.assert_katex_class("mfrac", "the fraction is not a KaTeX \\frac")
+        self.assert_katex_class("frac-line", "no fraction bar")
+        self.assert_katex_slots(2, "numerator and denominator")
+        self.assert_katex_slots(2)
         # the bar must be a drawn rule, not a "/" character in the text
         self.assertNotIn("/", self.lcd_text())
         self.assertEqual(self.page.evaluate("() => getExpr()"), "((1)/(2))")
@@ -418,7 +481,7 @@ class TestFractionsRendered(BrowserCase):
         self.press("dpad_right"); self.types("3")
         self.assertEqual(self.page.evaluate("() => getExpr()"),
                          "((((1)/(2))3)/(1))")
-        self.assertEqual(self.lcd_html().count('class="math-fraction"'), 2)
+        self.assertEqual(self.katex_html().count('class="mfrac"'), 2)
 
     def test_mixed_fraction_has_a_whole_part_and_a_fraction(self):
         self.press("fraction", shift=True)
@@ -426,9 +489,8 @@ class TestFractionsRendered(BrowserCase):
         self.press("dpad_right"); self.types("2"); self.types("3")
         self.press("dpad_right"); self.types("4"); self.types("5")
         html = self.lcd_html()
-        self.assertIn('class="math-mixed-row"', html)
-        self.assertIn('class="math-numerator"', html)
-        self.assertIn('class="math-denominator"', html)
+        self.assert_katex_class("mfrac", "the mixed fraction is not a KaTeX \\frac")
+        self.assert_katex_slots(3, "whole, numerator and denominator")
         self.assertEqual(self.page.evaluate("() => getExpr()"),
                          "((1)+((23)/(45)))")
 
@@ -468,11 +530,12 @@ class TestDerivativeTemplate(BrowserCase):
         self.assertEqual(st["template"], "derivative")
         self.assertEqual(st["slot"], "body")
         html = self.lcd_html()
-        self.assertIn('class="math-derivative-template"', html)
-        self.assertIn('class="math-deriv-diff">d<', html)
-        self.assertIn('class="math-deriv-bar"', html)
-        self.assertIn('class="math-deriv-dx">dx<', html)
-        self.assertIn('class="math-deriv-body"', html)
+        # d/dx is now a real KaTeX fraction and the two editable boxes are
+        # hydrated slot elements, not CSS divs.
+        self.assert_katex_class("mfrac", "d/dx is not a KaTeX fraction")
+        self.assert_katex_slots(2, "expression and evaluation point")
+        self.assert_katex_class("msupsub", "the |x= point is not a subscript")
+        self.assertIn("frac-line", html, "no fraction bar under d")
         # The old defect: a literal, unbalanced "d/dx(" text token.
         self.assertNotIn("d/dx(", html)
         self.assertTrue(self.has_cursor())
@@ -481,29 +544,38 @@ class TestDerivativeTemplate(BrowserCase):
         self.press("integral", shift=True)
         self.page.evaluate("() => { insertToken('X'); }")
         self.page.evaluate("() => { insertPower('2'); }")
-        self.assertEqual(self.page.evaluate("() => getExpr()"), "diff(((x)^(2)),0)")
-        self.assertIn('class="math-power-exp"', self.lcd_html())
+        self.press("dpad_right")
+        self.types("3")
+        self.assertEqual(self.page.evaluate("() => getExpr()"), "diff(((x)^(2)),3)")
+        self.assert_katex_class("msupsub", "the exponent is not a real superscript")
 
-    def test_derivative_uses_the_x_register_as_the_differentiation_point(self):
-        for x, expected in ((3, 6.0), (2, 4.0), (0, 0.0)):
+    def test_derivative_evaluates_at_its_own_point(self):
+        for point, expected in ((3, 6.0), (2, 4.0), (0, 0.0)):
             res = self.page.evaluate(
-                """(xv) => { appState.variables.X = xv;
+                """(p) => { appState.variables.X = 999;  // must not leak in
                      resetExpr(); insertDerivative();
-                     insertToken('X'); insertPower('2');
+                     const t = rootSlot.items[0];
+                     t.body.items = [{ type: 'power', id: 970,
+                                       base: createSlot(['X']),
+                                       exp: createSlot(['2']) }];
+                     t.point.items = [String(p)];
                      const ser = getExpr();
                      let value; try { value = localEvaluate(ser); }
                      catch (e) { value = 'THREW: ' + e.message; }
-                     return { ser: ser, value: value }; }""", x)
-            self.assertIn(f",{x})", res["ser"], res["ser"])
+                     return { ser: ser, value: value }; }""", str(point))
+            self.assertIn(f",{point})", res["ser"], res["ser"])
             self.assertNotIn("X^", res["ser"], "the X register leaked into the body")
             self.assertAlmostEqual(float(res["value"]), expected, places=3,
-                                   msg=f"d/dx(X^2) at X={x}")
+                                   msg=f"d/dx(X^2) at {point}: {res}")
 
     def test_derivative_delete_and_exit(self):
         self.press("integral", shift=True)
         self.types("X")
         self.press("del")
-        self.assertEqual(self.page.evaluate("() => getExpr()"), "diff(x,0)")
+        self.press("dpad_right")
+        self.assertEqual(self.cursor_state()["slot"], "point")
+        self.types("2")
+        self.assertEqual(self.page.evaluate("() => getExpr()"), "diff(x,2)")
         self.press("dpad_right")
         self.assertIsNone(self.cursor_state()["template"])
         self.press("del")
@@ -514,7 +586,7 @@ class TestDerivativeTemplate(BrowserCase):
         self.types("X")
         before = self.page.evaluate("() => getExpr()")
         self.page.evaluate("() => { popUndoState(); }")
-        self.assertIn("math-derivative-template", self.lcd_html())
+        self.assert_katex_class("mfrac", "d/dx is not a KaTeX fraction")
 
 
 class TestSigmaTemplate(BrowserCase):
@@ -526,12 +598,15 @@ class TestSigmaTemplate(BrowserCase):
         self.assertEqual(st["template"], "sigma")
         self.assertEqual(st["slot"], "body")
         html = self.lcd_html()
-        self.assertIn('class="math-sigma-template"', html)
-        self.assertIn('class="math-sigma-upper"', html)
-        self.assertIn('class="math-sigma-lower"', html)
-        self.assertIn('class="math-sigma-sym">\u03a3<', html)
-        self.assertIn('class="math-sigma-prefix">x=<', html)
-        self.assertIn('class="math-sigma-body"', html)
+        self.assert_katex_class("op-symbol", "no summation operator")
+        # \sum is a limits operator: KaTeX builds it as op-limits + a vlist, not
+        # msupsub (which is what \int uses).
+        self.assert_katex_class("op-limits", "the sum is not a limits operator")
+        self.assert_katex_class("vlist", "the bounds are not stacked on the \u03a3")
+        self.assert_katex_slots(3, "upper bound, lower bound and summand")
+        # \sum is typeset as U+2211 N-ARY SUMMATION, not U+03A3 GREEK SIGMA.
+        self.assertIn("\u2211", html)
+        self.assert_katex_class("mrel", "the x= prefix is missing")
         # The old defect: a literal, unbalanced "\u03a3(" text token.
         self.assertNotIn("\u03a3(", html)
         self.assertTrue(self.has_cursor())
@@ -591,7 +666,8 @@ class TestSigmaTemplate(BrowserCase):
         self.types("X")
         self.press("del")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "sigma(0,0,0)")
-        self.assertIn('class="math-sigma-template"', self.lcd_html())
+        self.assert_katex_class("op-symbol", "the summation template is gone")
+        self.assert_katex_slots(3)
 
 
 class TestIntegralTemplate(BrowserCase):
@@ -602,11 +678,12 @@ class TestIntegralTemplate(BrowserCase):
         st = self.cursor_state()
         self.assertEqual((st["template"], st["slot"]), ("integral", "body"))
         html = self.lcd_html()
-        for cls in ("math-integral-template", "math-int-upper",
-                    "math-int-sym", "math-int-lower",
-                    "math-int-body", "math-int-dx"):
-            self.assertIn(f'class="{cls}"', html, cls)
+        # A real, tall integral with its limits stacked above and below it.
+        self.assert_katex_class("op-symbol", "no integral operator")
+        self.assert_katex_class("msupsub", "the limits are not on the sign")
+        self.assert_katex_class("vlist", "no vlist: the limits are not stacked")
         self.assertIn("\u222b", html)
+        self.assert_katex_slots(4, "lower, upper, integrand and dx variable")
 
     def test_integral_bounds_are_editable_and_serialize_in_order(self):
         self.press("integral")
@@ -641,13 +718,13 @@ class TestRootsPowersAndLog(BrowserCase):
         self.assertEqual(self.cursor_state()["slot"], "exp")
         self.types("5")
         html = self.lcd_html()
-        self.assertIn('class="math-power-base"', html)
-        self.assertIn('class="math-power-exp"', html)
+        self.assert_katex_class("msupsub", "the power is not a superscript")
+        self.assert_katex_slots(2, "base and exponent")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "((2)^(5))")
 
     def test_square_and_cube_use_the_power_template(self):
         self.types("3"); self.press("square")
-        self.assertIn('class="math-power-exp"', self.lcd_html())
+        self.assert_katex_class("msupsub", "the exponent is not a real superscript")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "((3)^(2))")
         self.reset()
         self.types("3"); self.press("square", shift=True)
@@ -655,13 +732,18 @@ class TestRootsPowersAndLog(BrowserCase):
 
     def test_sqrt_cbrt_and_nth_root_are_templates_with_slots(self):
         self.press("sqrt"); self.types("2"); self.types("5")
-        self.assertIn("\u221a", self.lcd_html())
+        self.assert_katex_class("sqrt", "the radical is not a KaTeX \\sqrt")
+        # KaTeX draws the radical as an inline SVG, not the U+221A character.
+        self.assertIn("<svg", self.lcd_html(),
+                      "the radical sign should be KaTeX's own glyph")
+        self.assert_katex_slots(1, "radicand")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "sqrt(25)")
 
         self.reset()
         self.press("sqrt", shift=True); self.types("2"); self.types("7")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "cbrt(27)")
-        self.assertIn('class="math-root-index"', self.lcd_html())
+        self.assert_katex_class("sqrt", "the root is not a KaTeX radical")
+        self.assert_katex_class("mtight", "the root index is not tight-set")
 
         self.reset()
         self.press("power", shift=True)
@@ -680,14 +762,15 @@ class TestRootsPowersAndLog(BrowserCase):
         self.assertEqual(self.cursor_state()["slot"], "arg")
         self.types("8")
         html = self.lcd_html()
-        self.assertIn('class="math-log-sub"', html)
-        self.assertIn('class="math-log-arg"', html)
+        self.assert_katex_class("mop", "no log operator")
+        self.assert_katex_class("msupsub", "the base is not a script")
+        self.assert_katex_slots(2, "base and argument")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "log_base(2,8)")
 
     def test_inverse_power_key_produces_a_superscript_slot(self):
         self.types("4")
         self.press("inverse")
-        self.assertIn('class="math-power-exp"', self.lcd_html())
+        self.assert_katex_class("msupsub", "the exponent is not a real superscript")
         self.assertEqual(self.page.evaluate("() => getExpr()"), "((4)^(-1))")
 
 
@@ -777,10 +860,12 @@ class TestLatexConversion(unittest.TestCase):
     def test_special_functions_become_real_latex(self):
         self.assertEqual(self.out["sqrt(25)"], "\\sqrt{25}")
         self.assertEqual(self.out["sigma(x,1,5)"], "\\sum_{1}^{5}(x)")
+        # \mathrm{d}: the differential is an upright operator, so it must not be
+        # the math-italic `d` that KaTeX produces for a bare letter.
         self.assertEqual(self.out["diff(x^2,3)"],
-                         "\\frac{d}{dx}\\left[x^2\\right]_{x=3}")
+                         "\\frac{\\mathrm{d}}{\\mathrm{d}x}\\left[x^2\\right]_{x=3}")
         self.assertEqual(self.out["integral(x^2,0,3)"],
-                         "\\int_{0}^{3}(x^2)\\,dx")
+                         "\\int_{0}^{3}(x^2)\\,\\mathrm{d}x")
         self.assertEqual(self.out["log_base(2,8)"], "\\log_{2}{8}")
         self.assertEqual(self.out["xroot(3,16)"], "\\sqrt[3]{16}")
 

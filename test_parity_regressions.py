@@ -493,7 +493,10 @@ class TestFrontendWiring(unittest.TestCase):
 
     def test_katex_mappings(self):
         self.assertIn("sum_{", self.html)
-        self.assertIn("frac{d}{dx}", self.html)
+        # \mathrm{d}: the differential is an upright operator, not math-italic.
+        # The TeX lives in a JS string literal, so its backslashes are doubled
+        # in the HTML source; match that form.
+        self.assertIn(r"frac{\\mathrm{d}}{\\mathrm{d}x}", self.html)
 
     def test_matrix_vector_ui(self):
         self.assertIn('id="optn-mat-menu"', self.html)
