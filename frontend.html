@@ -3,28 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casio fx-991EX ClassWiz - OG-style mockup</title>
+<title>Casio MX-911 ClassWiz - OG-style mockup</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  @font-face {
-    font-family: 'CASIO ClassWiz';
-    src: url('/ClassWizFontSet/CASIOClassWizCW01.ttf') format('truetype'),
-         url('/fonts/CASIOClassWizCW01.ttf') format('truetype'),
-         url('ClassWizFontSet/CASIOClassWizCW01.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: 'CASIO ClassWiz RS';
-    src: url('/ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
-         url('/fonts/CASIO%20ClassWiz%20RS.ttf') format('truetype'),
-         url('ClassWizFontSet/CASIO%20ClassWiz%20RS.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
+  /* NO WEBFONT IS DECLARED ANYWHERE IN THIS SHEET.
+     The screen and the key faces both use ordinary system text: the keycap
+     artwork TTF is not a text face (in it the ASCII digits are circled keycap
+     icons and the operators are circled glyphs), so naming it anywhere made
+     digits unreadable -- first on the LCD, then on the keys themselves. The
+     math glyphs the text faces lack are covered by "Cambria Math" /
+     "Segoe UI Symbol", and typeset results by KaTeX inside `.katex`. */
 
   :root{
     --face:#2c2c2d;
@@ -38,6 +28,8 @@
     --blue:#2470e8;
     --yellow:#d8a527;
     --pink:#d7517f;
+    --shift-legend:#F2C230;
+    --alpha-legend:#d3222b;
     --cyan:#4aa6d5;
     --lcd:#d5dfb8;
     --ink:#141614;
@@ -129,19 +121,12 @@
     box-shadow:
       inset 0 2px 5px rgba(0,0,0,.17),
       inset 0 0 0 1px rgba(255,255,255,.35);
-    /* CASIOClassWizCW01.ttf only carries ASCII + a handful of Latin-1 /
-     * typographic code points. Every mathematical glyph (pi, root, Sigma,
-     * integral, infinity, times, divides, minus, degree, neq/leq/geq, the
-     * superscript minus/nine, primes, Greek, partial, nabla, ...) is absent
-     * from that font, so the browser was silently substituting a DIFFERENT
-     * font for exactly those code points -- which is why digits looked right
-     * while mathematical symbols looked like gibberish. CSS font fallback is
-     * per character, so naming a real math face immediately after the LCD face
-     * keeps digits/letters in the ClassWiz face and draws only the glyphs the
-     * ClassWiz face cannot supply from the math face.
-     * `.math-sym` (below) makes the same choice explicit for generated math
-     * fragments; this stack is the defence-in-depth for static text. */
-    font-family:'CASIO ClassWiz', "Cambria Math", "Segoe UI Symbol", monospace;
+    /* SCREEN TEXT STACK -- ordinary system text only. The keycap artwork TTF is
+     * deliberately absent: it draws digits and operators as keycap icons, so it
+     * made the whole screen unreadable. `.math-sym` names a real math face for
+     * the code points this stack cannot supply, and `.katex` brings its own
+     * KaTeX_* faces for typeset results. */
+    font-family:"Segoe UI", Arial, sans-serif;
     color:var(--ink);
     padding:4px 6px;
     overflow:hidden;
@@ -198,9 +183,9 @@
     right:2px;
     bottom:1px;
     font-size:6px;
-    font-family:Arial;
+    font-family:"Segoe UI", Arial, sans-serif;
   }
-  .menu-icon .mi-main{font-family:Arial; font-size:9px; font-weight:700; line-height:1.15; text-align:center;}
+  .menu-icon .mi-main{font-family:"Segoe UI", Arial, sans-serif; font-size:9px; font-weight:700; line-height:1.15; text-align:center;}
   .second-page{
     grid-template-columns:repeat(4,1fr);
   }
@@ -405,7 +390,7 @@
      * rule was removed: an id selector (1,0,0) beats KaTeX's own `.katex`
      * class rule (0,1,0), so it re-typed every KaTeX glyph in Courier New and
      * silently broke math rendering inside this mode. */
-    font-family: 'Courier New', "Cambria Math", "Segoe UI Symbol", Courier, monospace;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
   }
   .dist-type-list { font-family: inherit; font-size: 11px; line-height: 14px; padding: 2px 4px; }
   .dist-type-item { display: block; }
@@ -562,7 +547,7 @@
     height: 100%;
     position: relative;
     color: var(--ink);
-    font-family: 'Courier New', "Cambria Math", "Segoe UI Symbol", Courier, monospace;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
   }
   /* See the note on #lcdDistribution: the old `#lcdSpreadsheet *` rule
      outranked KaTeX's `.katex` declaration and re-typed every math glyph. */
@@ -781,7 +766,7 @@
     font-size:9px;
     font-weight:700;
     line-height:1;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
   }
   .status-left, .status-right{
     display:flex;
@@ -795,14 +780,14 @@
     font-size:8px;
     line-height:9px;
     border-radius:1px;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
   }
    .status-tag.active{display:inline-block;}
    .scroll-ind{
      font-size:8px;
      line-height:9px;
      margin-left:1px;
-     font-family:Arial,Helvetica,sans-serif;
+     font-family:"Segoe UI",Arial,Helvetica,sans-serif;
    }
   .status-indicator{
     font-size:9px;
@@ -817,8 +802,9 @@
     background:#dce6c2;
     border:1px solid #353735;
     color:var(--ink);
-    /* OPTN lists sinh⁻¹ / cosh⁻¹ / tanh⁻¹; Arial lacks U+207B. */
-    font-family:Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
+    /* Screen text, never the keycap face. OPTN lists sinh⁻¹ / cosh⁻¹ / tanh⁻¹;
+       Arial lacks U+207B, so a math face is named after the text stack. */
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:10px;
     pointer-events:auto;
   }
@@ -880,7 +866,7 @@
   .math-frac-power,
   .lbl .shift-mark,
   .lbl .alpha-mark{
-    font-family:"Cambria Math", "Segoe UI Symbol", "Times New Roman", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
   }
 
   /* CURSOR */
@@ -1128,6 +1114,17 @@
     align-items:baseline;
     min-width:8px;
   }
+  /* `|x=[point]` -- the evaluation point of the derivative */
+  .math-deriv-point{
+    display:inline-flex;
+    align-items:baseline;
+    margin-left:2px;
+  }
+  .math-deriv-point-lbl{
+    font-size:9px;
+    line-height:1;
+    padding:0 1px 0 0;
+  }
   .top-row{
     display:grid;
     grid-template-columns:30px 30px 86px 30px 30px;
@@ -1150,15 +1147,26 @@
     font-size:6px;
     line-height:10px;
     font-weight:700;
-    /* Printed legends carry real math code points (sin⁻¹, x⁻¹, 10ˣ, ˣ√□,
-       °′″, ≠, ≶). Arial has no glyph for U+207B/U+02C3/U+02E3, so those
-       code points were being substituted. Naming a math face after Arial
-       leaves every ASCII legend byte-identical and fixes only the glyphs
-       Arial cannot draw. */
-    font-family:Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
+    /* The small SHIFT/ALPHA legend printed above each key. Plain system text:
+       super/subscripts are real <sup>/<sub> markup, and "Cambria Math" /
+       "Segoe UI Symbol" sit AFTER the text faces purely to cover the few code
+       points Segoe UI and Arial lack (∛ ∇ ∈ ∅ ∀ ∃ ∥, U+207B …). */
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
   }
-  .ly{color:var(--yellow);}
-  .lp{color:var(--pink);}
+  /* Legends spell out their super/subscripts as real markup rather than as
+     precomposed Unicode glyphs, so they stay legible at 5-6px and never depend
+     on a font shipping U+207B / U+02E3 / U+1D62. */
+  .lbl sup,
+  .lbl sub{
+    font-size:0.72em;
+    line-height:0;
+    position:relative;
+    vertical-align:baseline;
+  }
+  .lbl sup{top:-0.5em;}
+  .lbl sub{bottom:-0.25em;}
+  .ly{color:var(--shift-legend);}
+  .lp{color:var(--alpha-legend);}
   .lc{color:var(--cyan);}
   .lg{color:#c8c8c8;}
 
@@ -1169,6 +1177,7 @@
     color:#fff;
     font-size:7px;
     font-weight:700;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     box-shadow:0 2px 0 #151516,0 3px 6px rgba(0,0,0,.25);
     cursor:pointer;
   }
@@ -1266,6 +1275,12 @@
     color:#fff;
     font-size:10px;
     font-weight:700;
+    /* The printed face of a key. Plain system text, so a digit reads "7" and an
+       operator reads the real Unicode character. The math face after it only
+       fills glyphs the text faces lack; the per-glyph rules below (.math-key,
+       .root-sign, .int-glyph, .pow-glyph, .xroot-legend) come later in this
+       sheet and therefore still win for their own characters. */
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     cursor:pointer;
     box-shadow:0 2px 0 #050506,0 3px 5px rgba(0,0,0,.25);
   }
@@ -1292,7 +1307,7 @@
     border-radius:3px;
   }
   .bn{
-    font-family:Arial, Helvetica, sans-serif;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:18px;
     font-weight:800;
     color:#121212;
@@ -1303,7 +1318,7 @@
       inset 0 1px 0 rgba(255,255,255,.9);
   }
   .bop{
-    font-family:Arial, Helvetica, sans-serif;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:17px;
     font-weight:500;
     color:#111;
@@ -1316,6 +1331,7 @@
   .bdel,.bac{
     background:linear-gradient(180deg,#3d8df5 0%,#216edb 70%,#175ec7 100%);
     color:#fff;
+    font-family:"Segoe UI", Arial, "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:13px;
     font-weight:800;
     box-shadow:
@@ -1349,7 +1365,7 @@
 
   /* Calculator-style mathematical glyphs instead of text approximations */
   .math-key{
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-weight:700;
     font-size:15px;
   }
@@ -1378,7 +1394,7 @@
     line-height:1;
   }
   .root-sign{
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:19px;
     line-height:16px;
     transform:scaleX(.92);
@@ -1437,9 +1453,9 @@
     gap:2px;
     width:100%;
   }
-  .lbl .alpha-mark{color:var(--pink);}
-  .lbl .base-mark{color:var(--cyan);}
-  .lbl .shift-mark{color:var(--yellow);}
+  .lbl .alpha-mark{color:var(--alpha-legend);}
+  .lbl .base-mark{color:var(--alpha-legend);}
+  .lbl .shift-mark{color:var(--shift-legend);}
 
 
   /* ── More faithful fx-991EX key glyphs ── */
@@ -1456,7 +1472,7 @@
     position:relative;
     width:23px;
     height:15px;
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     transform:translateY(1px);
   }
   .int-glyph .int-sign{
@@ -1548,7 +1564,7 @@
     position:relative;
     width:25px;
     height:17px;
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-style:italic;
   }
   .pow-glyph .x{
@@ -1608,7 +1624,7 @@
 
   /* x-th-root legend above the power key */
   .xroot-legend{
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-size:8px;
     white-space:nowrap;
   }
@@ -1620,8 +1636,10 @@
     font-size:8px;
     font-weight:900;
   }
-  .eng-arrows .left{color:#8d6fd4;}
-  .eng-arrows .right{color:var(--yellow);}
+  /* The ENG legend is a SHIFT label (data-shift="ENG_LEFT"), so it follows the
+     SHIFT colour like every other orange legend. */
+  .eng-arrows .left{color:var(--shift-legend);}
+  .eng-arrows .right{color:var(--shift-legend);}
 
   /* S↔D legend is a composite on the original */
   .sd-legend{
@@ -1635,7 +1653,7 @@
   .sd-legend .alpha-mark{font-size:6px;}
 
   .key.math-template{
-    font-family:"Cambria Math", "Segoe UI Symbol", serif;
+    font-family:"Segoe UI", "Cambria Math", "Segoe UI Symbol", sans-serif;
     font-weight:700;
     overflow:hidden;
     display:flex;
@@ -1685,7 +1703,32 @@
   /* subtle lower-body taper illusion */
   .bottom-pad{height:1px;}
 
-  /* KaTeX scoped to LCD only — outer LCD keeps Casio ClassWiz TTF; KaTeX fonts apply inside child wrapper only */
+  /* KaTeX is scoped to the LCD's own wrapper: the KaTeX_* faces apply inside
+     .katex-lcd-wrap only. No rule above forces a family over `.katex`, so the
+     typeset results keep their own glyphs while the surrounding screen text
+     uses the plain text stack from `.lcd`. */
+  #lcdDisplay .expr-katex-wrap{ padding:1px 0; }
+  /* A hydrated slot: KaTeX typesets the skeleton and every editable box inside
+     it is a real element again, so it must lay out inline like the plain text
+     it replaces. min-width keeps an empty slot visible as a box. */
+  #lcdDisplay .kx-slot{
+    display:inline-flex;
+    align-items:baseline;
+    min-width:.5em;
+    min-height:1em;
+  }
+  #lcdDisplay .kx-slot > .math-slot{
+    display:inline-flex;
+    align-items:baseline;
+  }
+  #lcdDisplay .kx-slot .slot-empty{
+    display:inline-block;
+    width:.42em;
+    height:.62em;
+    border:1px solid currentColor;
+    opacity:.45;
+    vertical-align:-.05em;
+  }
   #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
   #lcdDisplay .katex-lcd-wrap.katex-block { display: block; text-align: center; }
   #lcdDisplay .katex { color: inherit; background: transparent; font-size: 1.02em; white-space: nowrap; }
@@ -1693,9 +1736,13 @@
   #lcdDisplay .katex-display > .katex { white-space: nowrap; }
 
 </style>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<!-- KaTeX 0.16.11 is VENDORED under ./katex (css, js and the woff2 faces) and
+     referenced relatively, so the page renders identically offline and from a
+     packaged build with no network. The stylesheet resolves its own `fonts/`
+     references relative to itself, which is why the whole folder must ship. -->
+<link rel="stylesheet" href="katex/katex.min.css">
+<script defer src="katex/katex.min.js"></script>
+<script defer src="katex/contrib/auto-render.min.js"></script>
 </head>
 <body>
 
@@ -2055,35 +2102,35 @@
           </button>
         </div>
         <div class="bw">
-          <span class="lbl"><span class="shift-mark">x³</span> <span class="base-mark">DEC</span></span>
-          <button class="b" data-shift="cube" data-alpha="DEC" data-key="square">x²</button>
+          <span class="lbl"><span class="shift-mark">x<sup>3</sup></span> <span class="base-mark">DEC</span></span>
+          <button class="b" data-shift="cube" data-alpha="DEC" data-key="square">x<sup>2</sup></button>
         </div>
         <div class="bw">
-          <span class="lbl"><span class="shift-mark xroot-legend">ˣ√□</span> <span class="base-mark">HEX</span></span>
+          <span class="lbl"><span class="shift-mark xroot-legend"><sup>x</sup>√□</span> <span class="base-mark">HEX</span></span>
           <button class="b math-template" data-shift="xroot" data-alpha="HEX" data-key="power" aria-label="power template">
             <span class="glyph pow-glyph"><span class="x">x</span><span class="expbox"></span></span>
           </button>
         </div>
         <div class="bw">
-          <span class="lbl"><span class="shift-mark">10ˣ</span> <span class="base-mark">BIN</span></span>
+          <span class="lbl"><span class="shift-mark">10<sup>x</sup></span> <span class="base-mark">BIN</span></span>
           <button class="b" data-shift="10^x" data-alpha="BIN" data-key="log">
             <span class="logbase-glyph">log<span class="basebox"></span></span>
           </button>
         </div>
         <div class="bw">
-          <span class="lbl"><span class="shift-mark">eˣ</span> <span class="base-mark">OCT</span></span>
+          <span class="lbl"><span class="shift-mark">e<sup>x</sup></span> <span class="base-mark">OCT</span></span>
           <button class="b" data-shift="e^x" data-alpha="OCT" data-key="ln">ln</button>
         </div>
       </div>
 
       <!-- Magenta ALPHA variables A-F belong across this six-key row. -->
       <div class="row">
-        <div class="bw"><span class="lbl"><span class="shift-mark">logₐ</span> <span class="alpha-mark">A</span></span><button class="b" data-shift="log_base" data-alpha="A" data-key="negate">(-)</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">log<sub>a</sub></span> <span class="alpha-mark">A</span></span><button class="b" data-shift="log_base" data-alpha="A" data-key="negate">(-)</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">FACT</span> <span class="alpha-mark">B</span></span><button class="b" data-shift="FACT" data-alpha="B" data-key="ellipsis">°′″</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">x!</span> <span class="alpha-mark">C</span></span><button class="b" data-shift="factorial" data-alpha="C" data-key="inverse">x⁻¹</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">sin⁻¹</span> <span class="alpha-mark">D</span></span><button class="b" data-shift="asin" data-alpha="D" data-key="sin">sin</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">cos⁻¹</span> <span class="alpha-mark">E</span></span><button class="b" data-shift="acos" data-alpha="E" data-key="cos">cos</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">tan⁻¹</span> <span class="alpha-mark">F</span></span><button class="b" data-shift="atan" data-alpha="F" data-key="tan">tan</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">x!</span> <span class="alpha-mark">C</span></span><button class="b" data-shift="factorial" data-alpha="C" data-key="inverse">x<sup>−1</sup></button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">sin<sup>−1</sup></span> <span class="alpha-mark">D</span></span><button class="b" data-shift="asin" data-alpha="D" data-key="sin">sin</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">cos<sup>−1</sup></span> <span class="alpha-mark">E</span></span><button class="b" data-shift="acos" data-alpha="E" data-key="cos">cos</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">tan<sup>−1</sup></span> <span class="alpha-mark">F</span></span><button class="b" data-shift="atan" data-alpha="F" data-key="tan">tan</button></div>
       </div>
 
       <div class="row">
@@ -2122,7 +2169,7 @@
       <div class="row numeric-row">
         <div class="bw"><span class="lbl"><span class="shift-mark">Rnd</span></span><button class="b bn" data-shift="Rnd" data-key="0">0</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">Ran#</span> <span class="alpha-mark">RanInt</span></span><button class="b bn" data-shift="Ran#" data-alpha="RanInt" data-key="decimal">.</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-alpha="e" data-key="scientific">×10ˣ</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-alpha="e" data-key="scientific">×10<sup>x</sup></button></div>
         <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-shift="percent" data-key="ans">Ans</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">≈</span></span><button class="b bop" data-shift="approx" data-key="equals">=</button></div>
       </div>
@@ -2135,8 +2182,8 @@
 <script>
   // KaTeX Integration — Mentis ClassWiz — Sept 2026
   // Scoped math typesetting: KaTeX renders ONLY inside #lcdDisplay (the LCD
-  // container). Never auto-render the whole page. The outer LCD
-  // keeps the Casio ClassWiz TTF; KaTeX output lives in a child span/div
+  // container). Never auto-render the whole page. The outer LCD keeps its own
+  // plain text stack; KaTeX output lives in a child span/div
   // (.katex-lcd-wrap) so container styling is preserved. Main expression line
   // uses displayMode=true (block); secondary/result lines use false (inline).
   // On any KaTeX error, falls back to plain text so no mode ever breaks.
@@ -2628,26 +2675,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   setTimeout(loadSetupSettings, 0);
 
   // ── SERIALIZATION ──
-  // The derivative template carries one editable box (the function), matching
-  // the fx-991EX SHIFT+∫ layout, but the calculus engine's contract is
-  // diff(function, point). The point is the X register, so resolve it here
-  // from the same variable map the evaluator uses. Emitting the bare name `X`
-  // instead would reach the engine unsubstituted and raise Math ERROR,
-  // because X/Y substitution happens after special-function reduction.
-  function derivativePoint() {
-    try {
-      const v = (typeof appState !== 'undefined' && appState.variables)
-        ? Number(appState.variables.X) : NaN;
-      if (!Number.isFinite(v)) return '0';
-      // Plain positional notation only: the expression parser has no exponent
-      // syntax, and display rounding (localFormat) would move the point the
-      // derivative is taken at.
-      const s = v.toFixed(10).replace(/0+$/, '').replace(/\.$/, '');
-      return s === '' || s === '-' ? '0' : s;
-    } catch (e) { return '0'; }
-  }
-  // The calculus engines bind the dummy variable as lowercase `x`
-  // (diff/sigma/integral), while the calculator's `x` key emits the canonical
+  // The calculus engines bind lowercase `x` as the dummy variable of
+  // diff/sigma/integral, while the calculator's `x` key emits the canonical
   // variable register `X`. Serializing the body verbatim therefore produced
   // diff(X^2,3), which the engine rejects, and in the FILE_MODE bridge the `X`
   // was substituted with the X register BEFORE the special function was
@@ -2657,6 +2686,61 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   // bounds and the differentiation point keep their own meaning.
   function calculusBody(text) {
     return String(text == null ? '' : text).replace(/\bX\b/g, 'x');
+  }
+  // An empty calculus part is legal WHILE EDITING (you type the bounds before
+  // the integrand); it becomes an error only when `=` is pressed. See
+  // validateCalculusTree().
+  const CALCULUS_SYNTAX_ERROR = 'Syntax ERROR';
+  const slotHasContent = (s) => !!(s && s.items && s.items.length);
+  // The dx-variable part holds exactly ONE variable letter. insertToken()
+  // refuses anything else at the keystroke; this is the defensive re-check used
+  // by serialization and validation, so a malformed slot (undo, paste, a future
+  // template) can never reach the engine.
+  function validDvar(slot) {
+    if (!slotHasContent(slot) || slot.items.length !== 1) return '';
+    const v = slot.items[0];
+    return (typeof v === 'string' && /^[A-Za-z]$/.test(v)) ? v : '';
+  }
+  // Token-bounded rewrite of the chosen variable onto the engine dummy. The
+  // `\b` is load-bearing: a bare character replace would turn `tan` into
+  // `xan`. Word boundaries also keep `sin`, `ln`, `log_base`, `nCr` and the
+  // rest of the function names intact, because none of their letters stand
+  // alone between two non-word characters.
+  function integralBody(text, dvar) {
+    const body = calculusBody(text);
+    if (!dvar || dvar === 'x') return body;
+    return body.replace(new RegExp('\\b' + dvar + '\\b', 'g'), 'x');
+  }
+  // The engine binds `x` as the dummy, so a FREE `x` in the integrand while the
+  // user has chosen some other variable is genuinely ambiguous -- it cannot be
+  // told apart from a second spelling of the dummy. Aliasing it silently would
+  // integrate the wrong expression, so it is reported instead.
+  function integralCollides(text, dvar) {
+    if (!dvar || dvar === 'x') return false;
+    return /\bx\b/.test(calculusBody(text));
+  }
+  function validateCalculusTree(slot) {
+    if (!slot || !slot.items) return null;
+    for (const item of slot.items) {
+      if (typeof item === 'string') continue;
+      if (item.type === 'integral') {
+        const dvar = validDvar(item.dvar);
+        const body = serializeSlot(item.body);
+        if (!dvar || !body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
+          return CALCULUS_SYNTAX_ERROR;
+        }
+        if (integralCollides(body, dvar)) return CALCULUS_SYNTAX_ERROR;
+      } else if (item.type === 'derivative') {
+        if (!slotHasContent(item.body) || !slotHasContent(item.point)) {
+          return CALCULUS_SYNTAX_ERROR;
+        }
+      }
+      for (const k of SLOT_KEYS) {
+        const sub = validateCalculusTree(item[k]);
+        if (sub) return sub;
+      }
+    }
+    return null;
   }
   function serializeSlot(slot) {
     if (!slot || !slot.items) return '';
@@ -2698,11 +2782,20 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       } else if (item.type === 'rnd') {
         out += 'Rnd(' + (serializeSlot(item.arg)||'0') + ')';
       } else if (item.type === 'integral') {
-        out += 'integral(' + calculusBody(serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
+        // Four editable parts on screen (lower, upper, integrand, dx variable)
+        // but the engine's contract is integral(expr, lower, upper): the chosen
+        // variable exists only as the engine's own dummy `x`, rewritten here at
+        // serialization so the screen never has to show it.
+        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', validDvar(item.dvar))
+             + ',' + (serializeSlot(item.lower)||'0')
+             + ',' + (serializeSlot(item.upper)||'0') + ')';
       } else if (item.type === 'sigma') {
         out += 'sigma(' + calculusBody(serializeSlot(item.body)||'0') + ',' + (serializeSlot(item.lower)||'0') + ',' + (serializeSlot(item.upper)||'0') + ')';
       } else if (item.type === 'derivative') {
-        out += 'diff(' + calculusBody(serializeSlot(item.body)||'x') + ',' + derivativePoint() + ')';
+        // diff(expr, point): the point is the template's own editable part.
+        // Empty while editing; validateCalculusTree() turns it into a Syntax
+        // ERROR on `=`.
+        out += 'diff(' + calculusBody(serializeSlot(item.body)||'x') + ',' + serializeSlot(item.point) + ')';
       }
     }
     return out;
@@ -3864,7 +3957,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         newSlot.items.push(item);
       } else {
         const clonedTmpl = { type: item.type, id: item.id };
-        for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
+        for (const k of SLOT_KEYS) {
           if (item[k]) {
             clonedTmpl[k] = cloneSlot(item[k]);
             clonedTmpl[k].parentSlot = newSlot;
@@ -3884,7 +3977,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     for (let i = 0; i < currentSlot.items.length; i++) {
       const item = currentSlot.items[i];
       if (typeof item !== 'string') {
-        for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
+        for (const k of SLOT_KEYS) {
           if (item[k]) {
             const res = getSlotPath(targetSlot, item[k], [...currentPath, i, k]);
             if (res !== null) return res;
@@ -3944,8 +4037,27 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   }
 
   // ── TREE MANIPULATION ──
+  // Every slot a template can own. cloneSlot (undo), getSlotPath (undo/cursor
+  // restore), findParent (cursor navigation) and validateCalculusTree all walk
+  // this one list, so a new slot added here is immediately reachable by the
+  // cursor and by undo -- a slot missing from it would be invisible to both.
+  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','dvar','point'];
+
   function insertToken(tok) {
     pushUndoState();
+    // The dx-variable part takes exactly ONE variable letter: on the real
+    // calculator it is a single symbol, so a digit, an operator, a constant or
+    // a second character is refused rather than silently truncated.
+    const _dp = getParent();
+    if (_dp && _dp.par && _dp.par.type === 'integral' && _dp.slotName === 'dvar') {
+      const t = String(tok == null ? '' : tok);
+      if (!/^[A-Za-z]$/.test(t)) return;
+      cursor.slot.items.length = 0;
+      cursor.slot.items.push(t);
+      cursor.index = 1;
+      renderLCD();
+      return;
+    }
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
     if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
@@ -4008,17 +4120,22 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     syncBackendExpression();
   }
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
-  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
+  // The integral has FOUR editable parts: the lower bound, the upper bound, the
+  // integrand and the variable of integration (printed after `d`). The cursor
+  // enters in the integrand, as on the fx-991EX; `dvar` holds a single variable
+  // letter and is rewritten onto the engine's own dummy at serialization.
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot(), dvar:createSlot() }, 'body'); }
   // SHIFT + x is the summation template on the fx-991EX. It needs three
   // editable boxes -- upper bound above the operator, lower bound beneath it,
   // and the summand as `x = [term]` in front -- so it is a real template, not
   // the bare "Σ(" text token it used to be. Reading order for the cursor is
   // lower -> upper -> body, matching the integral template.
   function insertSigma() { insertTemplate({ type:'sigma', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
-  // SHIFT + ∫ is the derivative template on the fx-991EX: a `d` over `dx`
-  // fraction followed by one editable function box. Serialization supplies
-  // the X register as the differentiation point (see derivativePoint()).
-  function insertDerivative() { insertTemplate({ type:'derivative', id:nextId(), body:createSlot() }, 'body'); }
+  // SHIFT + ∫ is the derivative template on the fx-991EX: `d/dx([expr])|x=[point]`.
+  // TWO editable parts -- the expression being differentiated and the point it
+  // is evaluated at. Both are legal while empty; `=` reports a Syntax ERROR if
+  // either is still missing, rather than silently falling back to the X register.
+  function insertDerivative() { insertTemplate({ type:'derivative', id:nextId(), body:createSlot(), point:createSlot() }, 'body'); }
   // SHIFT+0 is Rnd (that is the key's printed SHIFT label). Rnd is a unary
   // function, so it uses the same single-slot template mechanism as the other
   // argument templates: serializeSlot supplies the closing parenthesis and the
@@ -4145,7 +4262,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     if (slot === target) return { par, slotName };
     for (const item of slot.items) {
       if (typeof item === 'string') continue;
-      for (const k of ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper']) {
+      for (const k of SLOT_KEYS) {
         if (item[k]) {
           if (item[k] === target) return { par: item, slotName: k };
           const res = findParent(target, item[k], item, k);
@@ -4171,9 +4288,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (prev.type === 'rnd') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
         else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
         else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
-        else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
+        else if (prev.type === 'integral') { cursor.slot = prev.dvar; cursor.index = prev.dvar.items.length; }
         else if (prev.type === 'sigma') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
-        else if (prev.type === 'derivative') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
+        else if (prev.type === 'derivative') { cursor.slot = prev.point; cursor.index = prev.point.items.length; }
       } else { cursor.index--; }
     } else {
       const p = getParent();
@@ -4184,6 +4301,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'arg' && t.type === 'log') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.lower; cursor.index = t.lower.items.length; }
         else if (p.slotName === 'body' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.upper; cursor.index = t.upper.items.length; }
+        else if (p.slotName === 'dvar' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
+        else if (p.slotName === 'point' && t.type === 'derivative') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'arg') { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
         else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
@@ -4220,6 +4339,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
         else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.body; cursor.index = 0; }
+        else if (p.slotName === 'body' && t.type === 'integral') { cursor.slot = t.dvar; cursor.index = 0; }
+        else if (p.slotName === 'body' && t.type === 'derivative') { cursor.slot = t.point; cursor.index = 0; }
         else { cursor.slot = ps; cursor.index = ps.items.indexOf(t) + 1; }
       }
     }
@@ -4282,13 +4403,13 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   }
 
   // ── DOM RENDERING ──
-  // Code points the CASIO ClassWiz LCD face actually carries. Anything else in
-  // a text token (pi, Sigma, the minus sign, the superscript minus/nine, the
-  // primes, the middle dot, the plus-minus...) has no glyph in that face, so
-  // rendering it as bare text made the browser substitute an arbitrary system
-  // font for exactly those characters -- digits stayed correct, mathematics
-  // turned to gibberish. Route such fragments through `.math-sym`, which names
-  // a real math face.
+  // Code points the plain screen text stack can be expected to carry. Anything
+  // else in a text token (pi, Sigma, the minus sign, the superscript minus/nine,
+  // the primes, the middle dot, the plus-minus...) is a mathematical glyph that
+  // Segoe UI/Arial may not have, so rendering it as bare text would make the
+  // browser substitute an arbitrary system font for exactly those characters --
+  // digits stayed correct, mathematics turned to gibberish. Route such fragments
+  // through `.math-sym`, which names a real math face.
   const LCD_TEXT_FONT_CHARS = (() => {
     const keep = new Set();
     for (let cp = 0x20; cp <= 0x7e; cp++) keep.add(cp);   // ASCII
@@ -4308,6 +4429,167 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       wrap.appendChild(s);
     } else {
       wrap.appendChild(document.createTextNode(text));
+    }
+  }
+
+  // ── KATEX EXPRESSION RENDERER ────────────────────────────────────────────
+  // The editable expression line is typeset by KaTeX like the result line, so a
+  // ClassWiz integral really is a tall sign with its limits stacked above and
+  // below it instead of CSS boxes around a literal "∫".
+  //
+  // KaTeX is a string-in / HTML-out renderer, but this line is a live
+  // projection of a mutable tree (rootSlot) with the cursor as a node INSIDE
+  // that projection -- so it cannot round-trip through a LaTeX string. The
+  // model stays the single source of truth; the DOM is still rebuilt from it on
+  // every keystroke. The bridge is a placeholder per editable slot:
+  //
+  //   * every LEAF slot is emitted as `\square`, which KaTeX renders as
+  //     <span class="mord amsrm">□</span>. After rendering we take those spans in
+  //     DOCUMENT ORDER and put the live slot DOM inside the Nth one. Because
+  //     this function is the only producer of `\square`, the Nth placeholder is
+  //     always the Nth slot -- and the count is verified, with a plain-text
+  //     fallback if it ever disagrees.
+  //   * a NON-leaf slot (the cursor can sit between two nested templates) has no
+  //     box of its own; its cursor is emitted as an extra placeholder whose
+  //     hydration inserts the cursor element instead of a slot. Using the same
+  //     mechanism matters: KaTeX emits no class or id we could hook (not even
+  //     via \rule), so the placeholder IS the only reliable handle.
+  const KX_BOX = '\\square';
+  const KX_CURSOR = { isCursorPlaceholder: true };
+  const isLeafSlot = (slot) => !!slot && slot.items.every(i => typeof i === 'string');
+
+  function tokenLatex(s) {
+    return String(s == null ? '' : s)
+      .replace(/×/g, '\\times ')
+      .replace(/÷/g, '\\div ')
+      .replace(/−/g, '-')
+      .replace(/π/g, '\\pi ')
+      .replace(/°/g, '^{\\circ}')
+      .replace(/′/g, "'")
+      .replace(/″/g, "''")
+      .replace(/∞/g, '\\infty ')
+      .replace(/=/g, '=')
+      .replace(/\(/g, '(').replace(/\)/g, ')');
+  }
+
+  // `placeholders` collects leaf slots in emission order; that order is the
+  // contract with hydrateKatexSlots() below.
+  function slotLatex(slot, placeholders) {
+    if (!slot) return '';
+    if (isLeafSlot(slot)) {
+      placeholders.push(slot);
+      return KX_BOX;
+    }
+    let out = '';
+    for (let i = 0; i <= slot.items.length; i++) {
+      if (cursor.slot === slot && cursor.index === i) {
+        // No slot box to sit in, so the cursor gets a placeholder of its own and
+        // is hydrated into the cursor element.
+        out += KX_BOX;
+        placeholders.push(KX_CURSOR);
+      }
+      if (i < slot.items.length) {
+        const item = slot.items[i];
+        out += (typeof item === 'string') ? tokenLatex(item) : itemLatex(item, placeholders);
+      }
+    }
+    return out;
+  }
+
+  // \frac needs its two placeholder blocks SWAPPED.
+//
+// Every other construct KaTeX builds emits its placeholders in source order, but
+// a fraction is a vlist in which the DENOMINATOR row is emitted before the
+// NUMERATOR row (the numerator is then shifted up with a negative offset).
+// Matching placeholders to slots in DOCUMENT order therefore put "2" over "1"
+// for 1/2 -- verified by measuring the rendered boxes, and by dumping the DOM
+// order for \frac{A}{B}, which comes back as B,A.
+//
+// The rule is per-fraction and recursive, so a fraction inside a fraction inside
+// a mixed number also lands correctly.
+function fracLatex(numSlot, denSlot, ph) {
+  const start = ph.length;
+  const numTex = slotLatex(numSlot, ph);
+  const split = ph.length;
+  const denTex = slotLatex(denSlot, ph);
+  const numBlock = ph.splice(start, split - start);
+  const denBlock = ph.splice(split, ph.length - split);
+  ph.push(...denBlock, ...numBlock);
+  return '\\frac{' + numTex + '}{' + denTex + '}';
+}
+
+function itemLatex(item, ph) {
+    const S = (s) => slotLatex(s, ph);
+    switch (item.type) {
+      case 'fraction': return fracLatex(item.num, item.den, ph);
+      case 'mixed': return '{' + S(item.whole) + '}'
+                         + fracLatex(item.num, item.den, ph);
+      case 'cbrt': return '\\sqrt[3]{' + S(item.radicand) + '}';
+      case 'radical': return (item.index && item.index.items.length)
+        ? '\\sqrt[' + S(item.index) + ']{' + S(item.radicand) + '}'
+        : '\\sqrt{' + S(item.radicand) + '}';
+      case 'power': return '{' + S(item.base) + '}^{' + S(item.exp) + '}';
+      case 'log': return '\\log_{' + S(item.base) + '}{' + S(item.arg) + '}';
+      case 'rnd': return '\\operatorname{Rnd}\\left(' + S(item.arg) + '\\right)';
+      // Natural display: \int puts the limits above and below a full-height sign.
+      case 'integral': return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
+                          + '}' + S(item.body) + '\\,d' + S(item.dvar);
+      case 'sigma': return '\\sum_{' + S(item.lower) + '}^{' + S(item.upper)
+                       + '}x=' + S(item.body);
+      case 'derivative': return '\\frac{d}{dx}\\left[' + S(item.body)
+                          + '\\right]_{x=' + S(item.point) + '}';
+      default: return '';
+    }
+  }
+
+  // Replace the Nth \square span with the live DOM of the Nth leaf slot.
+  function hydrateKatexSlots(host, placeholders) {
+    const boxes = host.querySelectorAll('.katex-html .mord.amsrm');
+    if (boxes.length !== placeholders.length) return false;   // caller falls back
+    boxes.forEach((box, i) => {
+      const target = placeholders[i];
+      box.textContent = '';
+      box.classList.add('kx-slot');
+      if (target === KX_CURSOR) {
+        box.classList.add('kx-cursor-slot');
+        box.appendChild(makeCursor());
+        return;
+      }
+      const live = renderSlotDOM(target);
+      live.setAttribute('data-slot-id', String(target.id));
+      box.appendChild(live);
+    });
+    return true;
+  }
+
+  function renderExprKatex() {
+    const host = document.getElementById('lcdExprContent');
+    if (!host) return;
+    const placeholders = [];
+    const latex = '\\displaystyle' + slotLatex(rootSlot, placeholders);
+    host.textContent = '';
+    if (!latex || typeof katex === 'undefined') {
+      // No KaTeX (offline / file:// without the vendored bundle): keep the
+      // hand-built slot DOM so the calculator stays fully usable.
+      host.appendChild(renderSlotDOM(rootSlot));
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'katex-lcd-wrap katex-block expr-katex-wrap';
+    host.appendChild(wrap);
+    try {
+      katex.render(latex, wrap, {
+        displayMode: true, throwOnError: false, strict: false, trust: true,
+      });
+    } catch (e) {
+      host.textContent = '';
+      host.appendChild(renderSlotDOM(rootSlot));
+      return;
+    }
+    if (!hydrateKatexSlots(wrap, placeholders)) {
+      // Placeholder/slot count disagreed -- never render a half-editable line.
+      host.textContent = '';
+      host.appendChild(renderSlotDOM(rootSlot));
     }
   }
 
@@ -4384,7 +4666,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
           col.append(up, sym, lo); ig.appendChild(col);
           const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
           ig.appendChild(bd);
-          const dx = el('span','math-int-dx'); dx.textContent = 'dx';
+          const dx = el('span','math-int-dx');
+          dx.appendChild(document.createTextNode('d'));
+          dx.appendChild(renderSlotDOM(item.dvar));
           ig.appendChild(dx);
           wrap.appendChild(ig);
         } else if (item.type === 'sigma') {
@@ -4412,6 +4696,11 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
           col.append(num, bar, den); dv.appendChild(col);
           const bd = el('span','math-deriv-body'); bd.appendChild(renderSlotDOM(item.body));
           dv.appendChild(bd);
+          // `|x=[point]` -- the point the derivative is evaluated at.
+          const pt = el('span','math-deriv-point');
+          const ptLbl = el('span','math-deriv-point-lbl'); ptLbl.textContent = '|x=';
+          pt.append(ptLbl, renderSlotDOM(item.point));
+          dv.appendChild(pt);
           wrap.appendChild(dv);
         }
       }
@@ -6060,16 +6349,13 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       indMath.textContent = appState.settings.inputOutput.startsWith('Math') ? 'Math' : 'Line';
     }
 
-    // Expression — manual slot DOM preserves cursor/editing while typing.
-    // The editable line deliberately does NOT get re-typeset with KaTeX once a
-    // result appears: doing so wiped the slot DOM (so the cursor and every
-    // editable box vanished) and re-drew the input line in KaTeX_Main while the
-    // rest of the LCD stayed in the ClassWiz face, which is exactly the
-    // "numbers fine, mathematics in the wrong font" symptom. On a ClassWiz the
-    // input line stays as typed; KaTeX owns the result/output line only.
+    // Expression — typeset by KaTeX like the result line, with every editable
+    // slot kept as a real, hydrated DOM element so cursor movement, slot entry
+    // and serialization keep working. See renderExprKatex(): the model
+    // (rootSlot) is still the single source of truth and the DOM is rebuilt
+    // from it on every keystroke, which is what lets the cursor survive.
     const exprContent = document.getElementById('lcdExprContent');
-    exprContent.innerHTML = '';
-    exprContent.appendChild(renderSlotDOM(rootSlot));
+    renderExprKatex();
 
     // Result — display layer (Decimal Mark / Digit Separator), then KaTeX.
     const resultEl = document.getElementById('lcdResultLine');
@@ -6121,6 +6407,16 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // evaluate. EMPTY/RESULT/ERROR are no-ops and never reach
     // prepareExpressionForEvaluation() or /api/key.
     if (!shouldEvaluateNow()) return;
+    // An incomplete calculus template is legal while editing but must never be
+    // guessed at: a missing bound or a missing dx variable would otherwise be
+    // silently coerced to 0 and integrate the wrong expression.
+    const calculusError = validateCalculusTree(rootSlot);
+    if (calculusError) {
+      appState.error = calculusError; appState.result = null;
+      appState.resultDisplayed = false;
+      renderLCD();
+      return;
+    }
     const expr = getExpr();
     const evalExpr = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
