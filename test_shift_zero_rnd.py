@@ -205,7 +205,7 @@ class TestShiftZeroTemplate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         parts = [STUBS]
-        for name in ("nextId", "createSlot", "getParent"):
+        for name in ("nextId", "createSlot", "getParent", "SLOT_KEYS"):
             m = re.search(rf"^  const {name} = .*$", FRONTEND, re.M)
             assert m, f"could not extract {name}"
             parts.append(m.group(0).strip())
