@@ -3590,6 +3590,43 @@ class MvpHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": f"Font file '{font_filename}' not found"}, 404)
             return
 
+        # Vendored KaTeX distribution (stylesheet, scripts, woff2 faces).
+        # frontend.html references it with RELATIVE urls, so a browser served
+        # over http asks for /katex/katex.min.css, /katex/katex.min.js and
+        # /katex/fonts/*.woff2. Without this route every one of them 404'd and
+        # the page fell back to untypeset plain text.
+        if path.startswith("/katex/"):
+            content_types = {
+                ".css": "text/css",
+                ".js": "application/javascript",
+                ".woff2": "font/woff2",
+            }
+            rel = path[len("/katex/"):]
+            root = (PROJECT_ROOT / "katex").resolve()
+            try:
+                target = (root / rel).resolve()
+            except (OSError, ValueError):
+                target = None
+            # `path` is already unquoted above, so `%2e%2e` has already become
+            # `..` by the time we get here: containment has to be checked on the
+            # RESOLVED path, never on the requested string. On Windows a
+            # backslash in the request is also a separator, which resolve()
+            # normalises -- so both traversal spellings are covered.
+            inside = (target is not None and target != root
+                      and root in target.parents)
+            ctype = content_types.get(target.suffix.lower()) if inside else None
+            if not inside or ctype is None or not target.is_file():
+                self._send_json({"ok": False, "error": "not found"}, 404)
+                return
+            body = target.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if path == "/health":
             self._send_json({"ok": True})
             return
