@@ -1746,6 +1746,34 @@
     font-variant-numeric:lining-nums tabular-nums;
   }
 
+  /* ── DIGITS INSIDE KaTeX ────────────────────────────────────────────────
+     The rule above deliberately stops at `.katex`, so every digit on a typeset
+     line was painted in KaTeX_Main/KaTeX_AMS -- a Times-style serif face --
+     while the plain LCD text used the ClassWiz CW Display face. That mismatch
+     is what made the digits read as "tacky": two unrelated numeral designs on
+     one screen.
+
+     KaTeX gives no CSS hook that identifies "this run is nothing but digits",
+     so `tagLcdDigitRuns()` marks those leaf runs after each render and this
+     rule re-faces exactly them. Nothing that takes part in a vlist (fractions,
+     radicals, stacked limits, big operators, delimiters) is ever marked, so
+     KaTeX's own em-based metrics for those constructs are untouched.
+     `.katex-lcd-wrap` is the LCD's own wrapper, so this can never reach a
+     KaTeX instance outside the calculator screen. */
+  #lcdDisplay .katex-lcd-wrap .lcd-digit-run{
+    font-family:var(--lcd-font);
+    font-variant-numeric:lining-nums tabular-nums;
+    /* `.lcd-result-line` is bold and CW Display ships a single normal weight,
+       so the browser fakes a bold by smearing the outline. The fake bold is
+       ~3% taller and wider than the real glyph, which is precisely the
+       input-vs-result mismatch this rule exists to remove. `font-synthesis:
+       none` (the shorthand) drops the fake weight instead of inventing one:
+       the result line keeps its larger size to read as the result, and its
+       digits are then metrically identical to the input line's. */
+    font-synthesis-weight:none;
+    font-synthesis-style:none;
+  }
+
   /* KaTeX is scoped to the LCD's own wrapper: the KaTeX_* faces apply inside
      .katex-lcd-wrap only. No rule above forces a family over `.katex`, so the
      typeset results keep their own glyphs while the surrounding screen text
@@ -2223,6 +2251,26 @@
 </div>
 
 <script>
+  // KaTeX marks no "digits only" hook, so identify them once after each render.
+  // A `.mord` is a LEAF when it contains no further `.mord`; only a leaf whose
+  // entire text is digits, a decimal point or thin-space grouping is marked.
+  // `classList.contains` never throws on SVG, but KaTeX output is HTML-only, so
+  // the check below is safe. Marking is idempotent and never removes a class.
+  var LCD_DIGIT_RUN_RE = /^[0-9.,'\u2009\u00a0\u200b]*$/;
+  function tagLcdDigitRuns(wrap) {
+    if (!wrap || typeof wrap.querySelectorAll !== 'function') return;
+    var mords = wrap.querySelectorAll('.mord');
+    for (var i = 0; i < mords.length; i++) {
+      var m = mords[i];
+      if (m.classList.contains('lcd-digit-run')) continue;
+      if (m.querySelector('.mord')) continue;                 // not a leaf
+      var txt = (m.textContent || '').replace(/\u200b/g, '');
+      if (txt.length && LCD_DIGIT_RUN_RE.test(txt)) {
+        m.classList.add('lcd-digit-run');
+      }
+    }
+  }
+
   // KaTeX Integration — Mentis ClassWiz — Sept 2026
   // Scoped math typesetting: KaTeX renders ONLY inside #lcdDisplay (the LCD
   // container). Never auto-render the whole page. The outer LCD keeps its own
@@ -2286,6 +2334,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       host.appendChild(wrap);
       try {
         katex.render(raw, wrap, { displayMode: !!displayMode, throwOnError: false, strict: false, trust: false });
+        tagLcdDigitRuns(wrap);
       } catch (inner) {
         wrap.textContent = plain;
       }
@@ -4654,7 +4703,11 @@ function itemLatex(item, ph) {
       // Placeholder/slot count disagreed -- never render a half-editable line.
       host.textContent = '';
       host.appendChild(renderSlotDOM(rootSlot));
+      return;
     }
+    // Mark digit runs only AFTER hydration, so each editable box is classified
+    // by the digits it actually holds rather than by its placeholder glyph.
+    tagLcdDigitRuns(wrap);
   }
 
   function renderSlotDOM(slot) {
