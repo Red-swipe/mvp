@@ -8930,8 +8930,9 @@ function itemLatex(item, ph) {
     if (rawKey === 'del') { deleteAtCursor(); return; }
     if (rawKey === 'equals') { (isShift || action === 'approx') ? evaluateApprox() : evaluate(); return; }
 
-    // STEP 2: Base-N mode — SHIFT on these keys switches base (buttons.md); keep local LCD in sync.
-    if (appState.mode === 'Base-N' && isShift) {
+    // STEP 2: Base-N mode - SHIFT/ALPHA on these keys switches base
+    // (buttons.md); keep local LCD in sync.
+    if (appState.mode === 'Base-N' && (isShift || isAlpha)) {
       const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };
       if (baseNSwitchKeys[rawKey]) {
         const nb = baseNSwitchKeys[rawKey];
