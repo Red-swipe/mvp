@@ -24,3 +24,30 @@ class TestIssue4Editing(BrowserCase):
 
         self.assertEqual(self.page.evaluate("() => getExpr()"), "123")
         self.assertEqual(self.cursor_state()["index"], 0)
+
+    def test_ac_clears_insert_mode_with_structured_editing_state(self):
+        self.press("fraction")
+        self.types("1")
+        self.press("dpad_right")
+        self.types("2")
+        self.page.evaluate("""() => {
+            appState.insertMode = true;
+            appState.result = 42;
+            appState.resultDisplayed = true;
+            appState.error = 'Math ERROR';
+            renderLCD();
+        }""")
+
+        self.press("ac")
+
+        state = self.page.evaluate("""() => ({
+            expr: getExpr(), result: appState.result,
+            resultDisplayed: appState.resultDisplayed, error: appState.error,
+            insertMode: appState.insertMode, cursorIndex: cursor.index,
+            cursorIsRoot: cursor.slot === rootSlot
+        })""")
+        self.assertEqual(state, {
+            "expr": "", "result": None, "resultDisplayed": False,
+            "error": None, "insertMode": False, "cursorIndex": 0,
+            "cursorIsRoot": True
+        })

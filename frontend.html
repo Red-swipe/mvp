@@ -4322,6 +4322,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     appState.result = null; appState.resultDisplayed = false; appState.error = null;
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
+    appState.insertMode = false;
   }
 
   function hardResetExpr() {
