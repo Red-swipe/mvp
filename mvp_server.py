@@ -2776,6 +2776,9 @@ class CalculatorController:
             expr = str(expression)
             if "=" in expr and "__BASE_SWITCH__" not in expr:
                 lhs, rhs = expr.split("=", 1)
+                variable_token = re.escape(var)
+                lhs = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', lhs, flags=re.IGNORECASE)
+                rhs = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', rhs, flags=re.IGNORECASE)
                 def f(x):
                     merged = dict(self.variables)
                     merged[var] = float(x)
@@ -2783,6 +2786,8 @@ class CalculatorController:
                     r = safe_evaluate_expression(rhs, ans_val=ans_float, angle_unit=angle_u, variables=merged)
                     return float(l) - float(r)
             else:
+                variable_token = re.escape(var)
+                expr = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', expr, flags=re.IGNORECASE)
                 def f(x):
                     merged = dict(self.variables)
                     merged[var] = float(x)
