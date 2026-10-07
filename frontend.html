@@ -6912,6 +6912,26 @@ function itemLatex(item, ph) {
     return `${numerator}/${denominator}`;
   }
 
+  function exactSolveFormat(value) {
+    if (!Number.isFinite(value) || Number.isInteger(value)) return localFormat(value);
+    const sign = value < 0 ? -1 : 1;
+    let x = Math.abs(value), h0 = 0, h1 = 1, k0 = 1, k1 = 0;
+    for (let i = 0; i < 24; i++) {
+      const a = Math.floor(x);
+      const h2 = a * h1 + h0, k2 = a * k1 + k0;
+      if (k2 > 1000000) break;
+      const candidate = sign * h2 / k2;
+      if (Math.abs(candidate - value) < 1e-9) {
+        return `${sign * h2}/${k2}`;
+      }
+      h0 = h1; h1 = h2; k0 = k1; k1 = k2;
+      const remainder = x - a;
+      if (remainder === 0) break;
+      x = 1 / remainder;
+    }
+    return localFormat(value);
+  }
+
   async function toggleAnswerFormat(mixed = false) {
     if (!appState.resultDisplayed || appState.result === null) return;
     const current = String(appState.result);
@@ -7044,7 +7064,7 @@ function itemLatex(item, ph) {
     if (FILE_MODE) {
       try {
         const v = _localNewtonSolve(prepared, 'X', guess);
-        const r = localFormat(v);
+        const r = exactSolveFormat(v);
         // SOLVE always yields a scalar; storeCalcAnswer keeps the
         // MatAns/VctAns registers provably untouched.
         storeCalcAnswer(r, prepared);

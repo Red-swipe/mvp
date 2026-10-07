@@ -52,3 +52,15 @@ class TestIssue5Solve(BrowserCase):
         self.assertEqual(prompt["active"], True)
         self.assertEqual(prompt["value"], "0")
         self.assertIn("0", prompt["text"])
+
+    def test_solve_preserves_exact_fractional_solution(self):
+        self.types("2")
+        self.press("variable")
+        self.types("+1")
+        self.press("calc", alpha=True)
+        self.types("0")
+        self.press("calc", shift=True)
+        self.press("equals")
+        self.page.wait_for_timeout(100)
+
+        self.assertEqual(self.page.evaluate("() => appState.result"), "X=-1/2")
