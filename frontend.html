@@ -1774,10 +1774,20 @@
     font-synthesis-style:none;
   }
 
-  /* KaTeX is scoped to the LCD's own wrapper: the KaTeX_* faces apply inside
-     .katex-lcd-wrap only. No rule above forces a family over `.katex`, so the
-     typeset results keep their own glyphs while the surrounding screen text
-     uses the ClassWiz display stack from `.lcd`. */
+  /* KaTeX is scoped to the LCD's own wrapper. Ordinary math atoms inherit the
+     same LCD face as the rest of the screen; KaTeX still owns size/stretchy
+     glyph geometry for radicals and integral signs. */
+  .lcd .katex .mord,
+  .lcd .katex .mbin,
+  .lcd .katex .mrel,
+  .lcd .katex .mop,
+  .lcd .katex .mopen,
+  .lcd .katex .mclose,
+  .lcd .katex .mpunct,
+  .lcd .katex .mpunc {
+    font-family:var(--lcd-font) !important;
+    font-variant-numeric:lining-nums tabular-nums;
+  }
   #lcdDisplay .expr-katex-wrap{ padding:1px 0; }
   /* A hydrated slot: KaTeX typesets the skeleton and every editable box inside
      it is a real element again, so it must lay out inline like the plain text
@@ -1800,7 +1810,8 @@
     opacity:.45;
     vertical-align:-.05em;
   }
-  #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+  /* Stacked fractions and limits extend above the inline line box. */
+  #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow: visible; }
   #lcdDisplay .katex-lcd-wrap.katex-block { display: block; text-align: center; }
   #lcdDisplay .katex { color: inherit; background: transparent; font-size: 1.02em; white-space: nowrap; }
   #lcdDisplay .katex-display { margin: 0; padding: 0; }
@@ -2251,25 +2262,9 @@
 </div>
 
 <script>
-  // KaTeX marks no "digits only" hook, so identify them once after each render.
-  // A `.mord` is a LEAF when it contains no further `.mord`; only a leaf whose
-  // entire text is digits, a decimal point or thin-space grouping is marked.
-  // `classList.contains` never throws on SVG, but KaTeX output is HTML-only, so
-  // the check below is safe. Marking is idempotent and never removes a class.
-  var LCD_DIGIT_RUN_RE = /^[0-9.,'\u2009\u00a0\u200b]*$/;
-  function tagLcdDigitRuns(wrap) {
-    if (!wrap || typeof wrap.querySelectorAll !== 'function') return;
-    var mords = wrap.querySelectorAll('.mord');
-    for (var i = 0; i < mords.length; i++) {
-      var m = mords[i];
-      if (m.classList.contains('lcd-digit-run')) continue;
-      if (m.querySelector('.mord')) continue;                 // not a leaf
-      var txt = (m.textContent || '').replace(/\u200b/g, '');
-      if (txt.length && LCD_DIGIT_RUN_RE.test(txt)) {
-        m.classList.add('lcd-digit-run');
-      }
-    }
-  }
+  // Kept as a compatibility hook for older render paths. Typography is now
+  // applied to all normal KaTeX atom classes at the LCD container level.
+  function tagLcdDigitRuns(_) {}
 
   // KaTeX Integration — Mentis ClassWiz — Sept 2026
   // Scoped math typesetting: KaTeX renders ONLY inside #lcdDisplay (the LCD
@@ -2835,9 +2830,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     for (const item of slot.items) {
       if (typeof item === 'string') continue;
       if (item.type === 'integral') {
-        const dvar = validDvar(item.dvar);
+        const dvar = 'x';
         const body = serializeSlot(item.body);
-        if (!dvar || !body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
+        if (!body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
           return CALCULUS_SYNTAX_ERROR;
         }
         if (integralCollides(body, dvar)) return CALCULUS_SYNTAX_ERROR;
@@ -2893,11 +2888,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       } else if (item.type === 'rnd') {
         out += 'Rnd(' + (serializeSlot(item.arg)||'0') + ')';
       } else if (item.type === 'integral') {
-        // Four editable parts on screen (lower, upper, integrand, dx variable)
-        // but the engine's contract is integral(expr, lower, upper): the chosen
-        // variable exists only as the engine's own dummy `x`, rewritten here at
-        // serialization so the screen never has to show it.
-        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', validDvar(item.dvar))
+        // The display token is fixed to dx; the engine uses x as its dummy.
+        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', 'x')
              + ',' + (serializeSlot(item.lower)||'0')
              + ',' + (serializeSlot(item.upper)||'0') + ')';
       } else if (item.type === 'sigma') {
@@ -4188,23 +4180,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   // restore), findParent (cursor navigation) and validateCalculusTree all walk
   // this one list, so a new slot added here is immediately reachable by the
   // cursor and by undo -- a slot missing from it would be invisible to both.
-  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','dvar','point'];
+  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','point'];
 
   function insertToken(tok) {
     pushUndoState();
-    // The dx-variable part takes exactly ONE variable letter: on the real
-    // calculator it is a single symbol, so a digit, an operator, a constant or
-    // a second character is refused rather than silently truncated.
-    const _dp = getParent();
-    if (_dp && _dp.par && _dp.par.type === 'integral' && _dp.slotName === 'dvar') {
-      const t = String(tok == null ? '' : tok);
-      if (!/^[A-Za-z]$/.test(t)) return;
-      cursor.slot.items.length = 0;
-      cursor.slot.items.push(t);
-      cursor.index = 1;
-      renderLCD();
-      return;
-    }
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
     if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
@@ -4267,11 +4246,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     syncBackendExpression();
   }
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
-  // The integral has FOUR editable parts: the lower bound, the upper bound, the
-  // integrand and the variable of integration (printed after `d`). The cursor
-  // enters in the integrand, as on the fx-991EX; `dvar` holds a single variable
-  // letter and is rewritten onto the engine's own dummy at serialization.
-  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot(), dvar:createSlot() }, 'body'); }
+  // The integral has exactly three editable parts. ClassWiz fixes the
+  // differential token to `dx`; there is no editable slot between d and x.
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
   // SHIFT + x is the summation template on the fx-991EX. It needs three
   // editable boxes -- upper bound above the operator, lower bound beneath it,
   // and the summand as `x = [term]` in front -- so it is a real template, not
@@ -4434,7 +4411,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (prev.type === 'rnd') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
         else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
         else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
-        else if (prev.type === 'integral') { cursor.slot = prev.dvar; cursor.index = prev.dvar.items.length; }
+        else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
         else if (prev.type === 'sigma') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
         else if (prev.type === 'derivative') { cursor.slot = prev.point; cursor.index = prev.point.items.length; }
       } else { cursor.index--; }
@@ -4447,7 +4424,6 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'arg' && t.type === 'log') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.lower; cursor.index = t.lower.items.length; }
         else if (p.slotName === 'body' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.upper; cursor.index = t.upper.items.length; }
-        else if (p.slotName === 'dvar' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'point' && t.type === 'derivative') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'arg') { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
         else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
@@ -4485,7 +4461,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
         else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.body; cursor.index = 0; }
-        else if (p.slotName === 'body' && t.type === 'integral') { cursor.slot = t.dvar; cursor.index = 0; }
+        else if (p.slotName === 'body' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'body' && t.type === 'derivative') { cursor.slot = t.point; cursor.index = 0; }
         else { cursor.slot = ps; cursor.index = ps.items.indexOf(t) + 1; }
       }
@@ -4689,7 +4665,7 @@ function itemLatex(item, ph) {
       case 'rnd': return '\\operatorname{Rnd}\\left(' + S(item.arg) + '\\right)';
       // Natural display: \int puts the limits above and below a full-height sign.
       case 'integral': return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
-                          + '}' + S(item.body) + '\\,\\mathrm{d}' + S(item.dvar);
+                          + '}' + S(item.body) + '\\,\\mathrm{d}x';
       case 'sigma': return '\\sum_{' + S(item.lower) + '}^{' + S(item.upper)
                        + '}x=' + S(item.body);
       // \mathrm{d} for the differential: the `d` is an operator, not a variable,
@@ -4829,9 +4805,9 @@ function itemLatex(item, ph) {
           col.append(up, sym, lo); ig.appendChild(col);
           const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
           ig.appendChild(bd);
-          const dx = el('span','math-int-dx');
-          dx.appendChild(document.createTextNode('d'));
-          dx.appendChild(renderSlotDOM(item.dvar));
+           const dx = el('span','math-int-dx');
+           dx.textContent = 'dx';
+           dx.setAttribute('data-fixed-token', 'true');
           ig.appendChild(dx);
           wrap.appendChild(ig);
         } else if (item.type === 'sigma') {
@@ -6292,8 +6268,16 @@ function itemLatex(item, ph) {
     const view = el('div','eq-view');
     if (eq.phase === 'typeMenu' || eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
       const title = el('div','eq-title'); title.textContent = eq.phase === 'typeMenu' ? 'Equation/Func' : eq.phase === 'simultaneousCount' ? 'Number of Equations' : 'Polynomial Degree'; view.appendChild(title);
-      const options = eq.phase === 'typeMenu' ? ['Simultaneous Equation','Polynomial'] : ['2','3','4'];
-      options.forEach((label,i) => { const row = el('div','eq-option' + (eq.selectedMenuItem === i ? ' selected' : '')); row.textContent = `${i+1}: ${label}`; view.appendChild(row); });
+      if (eq.phase === 'polynomialDegree') {
+        const prompt = el('div', 'eq-degree-prompt');
+        prompt.textContent = 'Degree?';
+        const range = el('div', 'eq-degree-range');
+        range.textContent = '2~4';
+        view.append(prompt, range);
+      } else {
+        const options = eq.phase === 'typeMenu' ? ['Simultaneous Equation','Polynomial'] : ['2','3','4'];
+        options.forEach((label,i) => { const row = el('div','eq-option' + (eq.selectedMenuItem === i ? ' selected' : '')); row.textContent = `${i+1}: ${label}`; view.appendChild(row); });
+      }
     } else if (eq.phase === 'simultaneousInput') {
       const title = el('div','eq-title'); title.textContent = `${eq.numberOfEquations} equations`; view.appendChild(title);
       const vars = ['x','y','z','w'].slice(0,eq.numberOfEquations), count = eq.numberOfEquations + 1;
@@ -8027,8 +8011,9 @@ function itemLatex(item, ph) {
       if (eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
         if (rawKey === 'dpad_up') eq.selectedMenuItem = (eq.selectedMenuItem + 2) % 3;
         else if (rawKey === 'dpad_down') eq.selectedMenuItem = (eq.selectedMenuItem + 1) % 3;
-        else if (rawKey >= '1' && rawKey <= '3') eq.selectedMenuItem = Number(rawKey)-1;
-        else if (rawKey === 'equals') { const n=eq.selectedMenuItem+2; if(eq.phase==='simultaneousCount'){eq.numberOfEquations=n;eq.coefficientValues=Array.from({length:n},()=>Array(n+1).fill(''));eq.phase='simultaneousInput';}else{eq.polynomialDegree=n;eq.coefficientValues=[Array(n+1).fill('')];eq.phase='polynomialInput';} eq.currentEquation=0;eq.currentCoefficient=0;eq.inputBuffer=''; }
+        else if (eq.phase === 'polynomialDegree' && rawKey >= '2' && rawKey <= '4') eq.selectedMenuItem = Number(rawKey)-2;
+        else if (eq.phase !== 'polynomialDegree' && rawKey >= '1' && rawKey <= '3') eq.selectedMenuItem = Number(rawKey)-1;
+        else if (rawKey === 'equals') { const n=eq.phase==='polynomialDegree' ? eq.selectedMenuItem+2 : eq.selectedMenuItem+2; if(eq.phase==='simultaneousCount'){eq.numberOfEquations=n;eq.coefficientValues=Array.from({length:n},()=>Array(n+1).fill(''));eq.phase='simultaneousInput';}else{eq.polynomialDegree=n;eq.coefficientValues=[Array(n+1).fill('')];eq.phase='polynomialInput';} eq.currentEquation=0;eq.currentCoefficient=0;eq.inputBuffer=''; }
         renderLCD(); return;
       }
       if (eq.phase === 'simultaneousInput' || eq.phase === 'polynomialInput') {

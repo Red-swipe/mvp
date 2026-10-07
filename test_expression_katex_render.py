@@ -9,7 +9,7 @@ Covered:
          area, with the proper glyph (.mop/.mop-op integrals, .mfrac, .mroot)
   KX-2   the integral is TALL with its limits stacked (msupsub over the sign),
          i.e. natural display rather than CSS boxes
-  KX-3   all four integral slots are present, each a real element carrying a
+  KX-3   all three editable integral slots are present, each a real element carrying a
          slot id
   KX-4   typing into each slot still produces the correct numeric result
   KX-5   the cursor survives KaTeX rendering, and slot entry still works
@@ -257,13 +257,14 @@ class TestIntegralIsKatex(ExprKatexBrowserCase):
     def test_all_four_integral_slots_are_real_elements(self):
         self.press("integral")
         st = self.state()
-        # body + lower + upper + dvar
-        self.assertEqual(len(st["slotIds"]), 4, st["slotIds"])
-        self.assertEqual(len(set(st["slotIds"])), 4,
+        # body + lower + upper; dx is a fixed token
+        self.assertEqual(len(st["slotIds"]), 3, st["slotIds"])
+        self.assertEqual(len(set(st["slotIds"])), 3,
                          f"slot ids are not unique: {st['slotIds']}")
         html = self.expr()
-        for attr in ("data-slot-id",):
-            self.assertEqual(html.count(attr), 4, html[:400])
+        self.assertEqual(html.count("data-slot-id"), 3, html[:400])
+        self.assertIn('data-fixed-token="true"', html)
+        self.assertIn('>dx<', html)
 
 
 class TestSlotsStillWork(ExprKatexBrowserCase):
@@ -271,16 +272,10 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
 
     def test_typing_into_each_integral_slot_yields_the_right_number(self):
         self.press("integral")
-        # The integrand must use the SAME variable as the dx slot: a free `x`
-        # alongside a `t` differential is the documented collision -> Syntax ERROR.
-        self.page.evaluate("() => { insertToken('t'); }")
+        self.page.evaluate("() => { insertToken('x'); }")
         self.page.evaluate("() => { insertPower('2'); }")
         self.assertEqual(self.slot_items("body")[0]["type"], "power")
-        self.press("dpad_right")
-        self.page.evaluate("() => { insertToken('t'); }")
-        self.assertEqual(self.slot_items("dvar"), ["t"])
-        # back to the integrand, then the two bounds
-        self.press("dpad_left"); self.press("dpad_left")
+        # navigate to the two bounds; dx is not focusable
         self.press("dpad_up"); self.types("3")
         self.assertEqual(self.slot_items("upper"), ["3"])
         self.press("dpad_down"); self.types("0")
@@ -289,7 +284,7 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
         self.assertIsNone(out["error"], out)
         self.assertAlmostEqual(float(out["result"]), 9.0, places=6)
 
-    def test_the_four_slots_are_each_reachable_and_editable(self):
+    def test_the_three_editable_slots_are_reachable(self):
         for name, digit in (("body", "7"), ("upper", "3"), ("lower", "0")):
             with self.subTest(slot=name):
                 self.setUp()
@@ -336,7 +331,7 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
         self.assertTrue(st["hasKatex"])
         self.assertIn("kx-cursor-slot", self.expr())
         # ...and it must not have been mistaken for a real slot.
-        self.assertEqual(len(st["slotIds"]), 4,
+        self.assertEqual(len(st["slotIds"]), 3,
                          f"only the four fraction parts are real slots: {st['slotIds']}")
 
     def test_nested_templates_still_serialize(self):
