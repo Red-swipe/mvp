@@ -7063,26 +7063,28 @@ function itemLatex(item, ph) {
     }
     const expr = getExpr();
     const prepared = prepareExpressionForEvaluation(expr);
+    const variableMatch = prepared.match(/[A-FMXY]/i);
+    const solveVariable = variableMatch ? variableMatch[0].toUpperCase() : 'X';
     const guess = guessOverride === undefined
       ? Number(appState.solvePrompt.value || 0)
       : Number(guessOverride);
     appState.solvePrompt.active = false;
     if (FILE_MODE) {
       try {
-        const v = _localNewtonSolve(prepared, 'X', guess);
+        const v = _localNewtonSolve(prepared, solveVariable, guess);
         const r = exactSolveFormat(v);
         // SOLVE always yields a scalar; storeCalcAnswer keeps the
         // MatAns/VctAns registers provably untouched.
         storeCalcAnswer(r, prepared);
-        appState.result = 'X=' + r;
+        appState.result = solveVariable + '=' + r;
         appState.isFractionMode = r.includes('/');
-        appState.variables.X = v;
+        appState.variables[solveVariable] = v;
       } catch (e) { showMathError('Math ERROR'); }
       renderLCD(); return;
     }
     try {
       const r = await fetch('/api/solve', { method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ expression: prepared, variable: 'X', guess }) });
+        body: JSON.stringify({ expression: prepared, variable: solveVariable, guess }) });
       const s = await r.json();
       if (s.result !== undefined && (s.ok || s.success)) {
         // Display keeps the physical 'X=value' form; the scalar register
@@ -7091,7 +7093,7 @@ function itemLatex(item, ph) {
         if (isMatVecResultString(s.result)) {
           storeCalcAnswer(s.result, prepared);
         } else {
-          appState.result = 'X=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+          appState.result = solveVariable + '=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
         }
         if (s.variable) appState.variables[s.variable] = s.value;
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
@@ -7108,7 +7110,7 @@ function itemLatex(item, ph) {
       appState.variables[varName] = x;
       let v;
       const evalPart = (part) => {
-        const variable = new RegExp('(?<![A-Za-z])' + varName + '(?![A-Za-z])', 'g');
+        const variable = new RegExp('(?<![A-Za-z])' + varName + '(?![A-Za-z])', 'gi');
         return _evalStr(String(part).replace(variable, '(' + x + ')'));
       };
       try {

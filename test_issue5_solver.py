@@ -92,3 +92,16 @@ class TestIssue5Solve(BrowserCase):
 
         self.assertIsNone(self.page.evaluate("() => appState.result"))
         self.assertEqual(self.page.evaluate("() => appState.error"), "Math ERROR")
+
+    def test_solve_supports_alpha_y_variable(self):
+        self.types("2")
+        self.press("variable", alpha=True)
+        self.types("+4")
+        self.press("calc", alpha=True)
+        self.types("0")
+        self.press("calc", shift=True)
+        self.press("equals")
+        self.page.wait_for_timeout(100)
+
+        self.assertEqual(self.page.evaluate("() => getExpr()"), "2y+4=0")
+        self.assertEqual(self.page.evaluate("() => appState.result"), "Y=-2")
