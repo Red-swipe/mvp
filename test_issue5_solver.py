@@ -64,3 +64,16 @@ class TestIssue5Solve(BrowserCase):
         self.page.wait_for_timeout(100)
 
         self.assertEqual(self.page.evaluate("() => appState.result"), "X=-1/2")
+
+    def test_solve_fraction_s_to_d_shows_decimal_assignment(self):
+        self.types("2")
+        self.press("variable")
+        self.types("+1")
+        self.press("calc", alpha=True)
+        self.types("0")
+        self.press("calc", shift=True)
+        self.press("equals")
+        self.press("s_to_d")
+        self.page.wait_for_timeout(100)
+
+        self.assertEqual(self.page.evaluate("() => appState.result"), "X=-0.5")

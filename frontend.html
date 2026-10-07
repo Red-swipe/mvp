@@ -6935,12 +6935,17 @@ function itemLatex(item, ph) {
   async function toggleAnswerFormat(mixed = false) {
     if (!appState.resultDisplayed || appState.result === null) return;
     const current = String(appState.result);
-    const numeric = answerAsNumber(current);
+    const assignment = current.match(/^([A-Za-z])=(.*)$/);
+    const prefix = assignment ? assignment[1] + '=' : '';
+    const numericText = assignment ? assignment[2] : current;
+    const numeric = answerAsNumber(numericText);
     if (!Number.isFinite(numeric)) return;
     try {
       if (mixed || !appState.isFractionMode) {
         if (FILE_MODE) {
-          appState.result = fractionString(numeric, mixed);
+          const formatted = fractionString(numeric, mixed);
+          appState.result = prefix + formatted;
+          appState.lastAnswer = formatted;
         } else {
           const response = await fetch('/api/fraction', {
             method: 'POST', headers: {'Content-Type':'application/json'},
@@ -6949,23 +6954,24 @@ function itemLatex(item, ph) {
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
           if (!data.success) throw new Error(data.error || 'Math ERROR');
-        appState.result = data.result;
+        appState.result = prefix + data.result;
         appState.lastAnswer = data.result;
         }
         appState.resultDisplayed = true;
         appState.isFractionMode = true;
       } else {
         if (FILE_MODE) {
-          appState.result = localEvaluate(current);
+          appState.result = prefix + localFormat(numeric);
+          appState.lastAnswer = localFormat(numeric);
         } else {
           const response = await fetch('/api/evaluate', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ expression: current })
+            body: JSON.stringify({ expression: numericText })
           });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
           if (data.result === undefined || data.result === null) throw new Error(data.error || 'Math ERROR');
-          appState.result = data.result;
+          appState.result = prefix + data.result;
           appState.lastAnswer = data.result;
         }
         appState.resultDisplayed = true;
@@ -7069,6 +7075,7 @@ function itemLatex(item, ph) {
         // MatAns/VctAns registers provably untouched.
         storeCalcAnswer(r, prepared);
         appState.result = 'X=' + r;
+        appState.isFractionMode = r.includes('/');
         appState.variables.X = v;
       } catch (e) { showMathError('Math ERROR'); }
       renderLCD(); return;
