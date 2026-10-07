@@ -2754,7 +2754,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     equation: {
       selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
       currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '',
-      selectedMenuItem: 0, resultState: null
+      selectedMenuItem: 0, resultState: null, extremum: null
     },
     solvePrompt: { active: false, value: '0' },
   };
@@ -6165,6 +6165,7 @@ function itemLatex(item, ph) {
         if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
         console.debug('[EQUATION-TRACE-NORMALIZE]', JSON.stringify({input:data.result, type:Array.isArray(data.result) ? 'array' : typeof data.result}));
         eq.resultState = data.result;
+        eq.extremum = data.extremum || null;
         eq.phase='result'; renderLCD();
       })
       .catch(error => {
@@ -6270,7 +6271,7 @@ function itemLatex(item, ph) {
 
   function resetEquationState() {
     appState.equation = { selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
-      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null };
+      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null, extremum: null };
   }
   function equationTemplate(eq) {
     if (eq.selectedType === 'simultaneous') {
@@ -6307,7 +6308,13 @@ function itemLatex(item, ph) {
       const solution=el('div','eq-solution');
       try { solution.textContent=formatEquationResult(eq); }
       catch (error) { console.error('[EQUATION] render failed', error); solution.textContent='Math ERROR'; }
-      result.append(expression, title, solution); view.appendChild(result);
+      result.append(expression, title, solution);
+      if (eq.selectedType === 'polynomial' && eq.extremum) {
+        const extremum = el('div', 'eq-extremum');
+        extremum.textContent = `Extremum: x = ${exactSolveFormat(Number(eq.extremum.x))}, y = ${exactSolveFormat(Number(eq.extremum.y))}`;
+        result.appendChild(extremum);
+      }
+      view.appendChild(result);
     }
     body.appendChild(view);
   }

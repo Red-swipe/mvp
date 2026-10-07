@@ -2420,6 +2420,7 @@ class CalculatorController:
                 elif n == 3: result = self.engine.equation_solve_cubic(*vals)
                 elif n == 4: result = self.engine.equation_solve_quartic(*vals)
                 else: raise ValueError("degree must be 2-4")
+            extremum = self.engine.equation_quadratic_extremum(*vals) if kind != "simultaneous" and n == 2 else None
             def json_safe(value):
                 if isinstance(value, complex):
                     return {"real": value.real, "imag": value.imag}
@@ -2431,6 +2432,8 @@ class CalculatorController:
                     return {key: json_safe(item) for key, item in value.items()}
                 return value
             response = {"ok": True, "success": True, "result": json_safe(result)}
+            if extremum is not None:
+                response["extremum"] = json_safe(extremum)
             print(f"[EQUATION] parsed={vals!r} result={response['result']!r}", flush=True)
             return response
         except Exception as exc:

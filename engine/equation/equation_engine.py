@@ -44,6 +44,13 @@ class EquationEngine:
 
         return [x1, x2]
 
+    def quadratic_extremum(self, a: float, b: float, c: float) -> dict:
+        """Return the vertex coordinates of a non-degenerate quadratic."""
+        if abs(a) < 1e-15:
+            raise EquationEngineError("Not a quadratic (a=0)")
+        x = -b / (2.0 * a)
+        return {"x": x, "y": a * x * x + b * x + c}
+
     # ------------------------------------------------------------------
     # METHOD 2: Cubic solver
     # ------------------------------------------------------------------
@@ -307,4 +314,3 @@ class EquationEngine:
                 result.append((round(r.real, 10), round(r.imag, 10)))
 
         return result
-
