@@ -2223,7 +2223,7 @@ class CalculatorController:
             if normalized in {"value", "Value"}:
                 return "Value" if key == "showCell" else "value"
             raise ValueError
-        if key in {"engineeringSymbols", "engineering_symbols", "statisticsFrequency", "stat_frequency", "autoCalc", "spreadsheet_auto_calc"}:
+        if key in {"engineeringSymbols", "engineering_symbols", "statisticsFrequency", "statistics_frequency", "stat_frequency", "autoCalc", "spreadsheet_auto_calc"}:
             if not isinstance(value, bool):
                 raise ValueError
             return value
