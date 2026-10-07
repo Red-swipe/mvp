@@ -2756,6 +2756,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '',
       selectedMenuItem: 0, resultState: null
     },
+    solvePrompt: { active: false, value: '0' },
   };
 
   // Sync initial loaded settings with backend
@@ -4323,6 +4324,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
     appState.insertMode = false;
+    appState.solvePrompt = { active: false, value: '0' };
   }
 
   function hardResetExpr() {
@@ -6533,6 +6535,7 @@ function itemLatex(item, ph) {
     // text node instead: `.lcd-result-line` is already right-aligned and is
     // covered by the `.lcd *` font rule, so it needs no extra styling.
     if (appState.error) { resultEl.textContent = String(appState.error); }
+    else if (appState.solvePrompt.active) { resultEl.textContent = 'X=' + appState.solvePrompt.value; }
     else if (appState.resultDisplayed && appState.result !== null) renderMatrixResult(String(appState.result));
     else renderMath('', 'lcdResultLine', false);
 
@@ -7023,13 +7026,21 @@ function itemLatex(item, ph) {
       renderLCD();
     } catch (e) { showMathError(); }
   }
-  async function doSolve() {
+  async function doSolve(guessOverride) {
     // No valid calculation context (EMPTY/RESULT/ERROR) → no-op, never an
     // error cascade from an empty or erroneous expression.
     if (!shouldEvaluateNow()) return;
+    if (guessOverride === undefined && !appState.solvePrompt.active) {
+      appState.solvePrompt = { active: true, value: '0' };
+      renderLCD();
+      return;
+    }
     const expr = getExpr();
     const prepared = prepareExpressionForEvaluation(expr);
-    const guess = (appState.variables && Number.isFinite(Number(appState.variables.X))) ? Number(appState.variables.X) : 0;
+    const guess = guessOverride === undefined
+      ? Number(appState.solvePrompt.value || 0)
+      : Number(guessOverride);
+    appState.solvePrompt.active = false;
     if (FILE_MODE) {
       try {
         const v = _localNewtonSolve(prepared, 'X', guess);
@@ -7209,6 +7220,32 @@ function itemLatex(item, ph) {
     if (appState.menuOpen && rawKey === 'ac') return;
     if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); return; }
     if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); return; }
+    if (appState.solvePrompt.active) {
+      if (rawKey === 'ac') { resetExpr(); renderLCD(); return; }
+      if (/^[0-9]$/.test(rawKey)) {
+        appState.solvePrompt.value = appState.solvePrompt.value === '0'
+          ? rawKey : appState.solvePrompt.value + rawKey;
+        renderLCD(); return;
+      }
+      if (rawKey === 'decimal' && !appState.solvePrompt.value.includes('.')) {
+        appState.solvePrompt.value += '.';
+        renderLCD(); return;
+      }
+      if (rawKey === 'negate') {
+        appState.solvePrompt.value = appState.solvePrompt.value.startsWith('-')
+          ? appState.solvePrompt.value.slice(1) : '-' + appState.solvePrompt.value;
+        renderLCD(); return;
+      }
+      if (rawKey === 'del') {
+        appState.solvePrompt.value = appState.solvePrompt.value.slice(0, -1) || '0';
+        renderLCD(); return;
+      }
+      if (rawKey === 'equals') {
+        doSolve(Number(appState.solvePrompt.value || 0));
+        return;
+      }
+      return;
+    }
     if (!isShift && !isAlpha && handleOptnKey(rawKey)) return;
 
     // SHIFT + 7 -> CONSTANTS

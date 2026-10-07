@@ -16,6 +16,8 @@ class TestIssue5Solve(BrowserCase):
         self.assertEqual(self.page.evaluate("() => getExpr()"), "9X+3=30")
 
         self.press("calc", shift=True)
+        self.assertTrue(self.page.evaluate("() => appState.solvePrompt.active"))
+        self.press("equals")
         self.page.wait_for_timeout(100)
 
         self.assertIsNone(self.page.evaluate("() => appState.error"))
@@ -29,6 +31,24 @@ class TestIssue5Solve(BrowserCase):
         self.press("calc", alpha=True)
         self.types("30")
         self.press("calc", shift=True)
+        self.press("equals")
         self.page.wait_for_timeout(100)
 
         self.assertEqual(self.page.evaluate("() => appState.result"), "X=3")
+
+    def test_shift_calc_opens_default_zero_guess_prompt(self):
+        self.types("9")
+        self.press("variable")
+        self.types("+3")
+        self.press("calc", alpha=True)
+        self.types("30")
+        self.press("calc", shift=True)
+
+        prompt = self.page.evaluate("""() => ({
+            active: !!appState.solvePrompt && appState.solvePrompt.active,
+            value: appState.solvePrompt && appState.solvePrompt.value,
+            text: document.querySelector('#lcdResultLine').textContent
+        })""")
+        self.assertEqual(prompt["active"], True)
+        self.assertEqual(prompt["value"], "0")
+        self.assertIn("0", prompt["text"])

@@ -371,7 +371,7 @@ class TestCalcSolveWiring(unittest.TestCase):
                       "doCalc must be EDITING-gated like evaluate()")
 
     def test_do_solve_guards_editing_state(self):
-        body = self._body("async function doSolve()")
+        body = self._body("async function doSolve(guessOverride)")
         self.assertIn("shouldEvaluateNow", body,
                       "doSolve must be EDITING-gated like evaluate()")
 
@@ -382,7 +382,7 @@ class TestCalcSolveWiring(unittest.TestCase):
                       "matrix expression must reach MatAns, not scalar Ans)")
 
     def test_do_solve_routes_registers(self):
-        body = self._body("async function doSolve()")
+        body = self._body("async function doSolve(guessOverride)")
         self.assertIn("storeCalcAnswer", body,
                       "doSolve must share the register store")
         self.assertIn("isMatVecResultString", body,
