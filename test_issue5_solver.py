@@ -21,3 +21,14 @@ class TestIssue5Solve(BrowserCase):
         self.assertIsNone(self.page.evaluate("() => appState.error"))
         self.assertTrue(self.page.evaluate("() => appState.resultDisplayed"))
         self.assertEqual(self.page.evaluate("() => appState.variables.X"), 3)
+
+    def test_solve_displays_variable_assignment(self):
+        self.types("9")
+        self.press("variable")
+        self.types("+3")
+        self.press("calc", alpha=True)
+        self.types("30")
+        self.press("calc", shift=True)
+        self.page.wait_for_timeout(100)
+
+        self.assertEqual(self.page.evaluate("() => appState.result"), "X=3")

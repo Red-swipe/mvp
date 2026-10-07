@@ -7037,6 +7037,7 @@ function itemLatex(item, ph) {
         // SOLVE always yields a scalar; storeCalcAnswer keeps the
         // MatAns/VctAns registers provably untouched.
         storeCalcAnswer(r, prepared);
+        appState.result = 'X=' + r;
         appState.variables.X = v;
       } catch (e) { showMathError('Math ERROR'); }
       renderLCD(); return;
