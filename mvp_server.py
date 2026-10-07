@@ -2794,12 +2794,14 @@ class CalculatorController:
                     fx = f(x)
                 except Exception:
                     return {"ok": False, "error": "Math ERROR"}
-                if abs(fx) < 1e-10:
-                    break
                 try:
                     dfx = (f(x + h) - f(x - h)) / (2 * h)
                 except Exception:
                     return {"ok": False, "error": "Math ERROR"}
+                if abs(fx) < 1e-10:
+                    if "=" in expr and "__BASE_SWITCH__" not in expr and abs(dfx) < 1e-12:
+                        return {"ok": False, "error": "Math ERROR"}
+                    break
                 if abs(dfx) < 1e-12:
                     # nudge and retry (Newton needs nonzero derivative)
                     x = x + 0.5 if x >= 0 else x - 0.5

@@ -7121,8 +7121,11 @@ function itemLatex(item, ph) {
     let x = x0;
     for (let i = 0; i < 100; i++) {
       const fx = f(x);
-      if (Math.abs(fx) < 1e-10) return x;
       const dfx = (f(x + h) - f(x - h)) / (2 * h);
+      if (Math.abs(fx) < 1e-10) {
+        if (equals >= 0 && Math.abs(dfx) < 1e-12) throw new Error('Math ERROR');
+        return x;
+      }
       if (Math.abs(dfx) < 1e-12) { x = x + (x >= 0 ? 0.5 : -0.5); continue; }
       const nx = x - fx / dfx;
       if (Math.abs(nx - x) < 1e-9) return nx;

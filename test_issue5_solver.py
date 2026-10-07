@@ -77,3 +77,18 @@ class TestIssue5Solve(BrowserCase):
         self.page.wait_for_timeout(100)
 
         self.assertEqual(self.page.evaluate("() => appState.result"), "X=-0.5")
+
+    def test_solve_identity_does_not_return_arbitrary_zero(self):
+        self.types("2")
+        self.press("variable")
+        self.types("+2")
+        self.press("calc", alpha=True)
+        self.types("2")
+        self.press("variable")
+        self.types("+2")
+        self.press("calc", shift=True)
+        self.press("equals")
+        self.page.wait_for_timeout(100)
+
+        self.assertIsNone(self.page.evaluate("() => appState.result"))
+        self.assertEqual(self.page.evaluate("() => appState.error"), "Math ERROR")
