@@ -7060,11 +7060,21 @@ function itemLatex(item, ph) {
     } catch (e) { showMathError(); }
   }
   function _localNewtonSolve(expr, varName, x0) {
+    const source = String(expr);
+    const equals = source.indexOf('=');
+    const lhs = equals >= 0 ? source.slice(0, equals) : null;
+    const rhs = equals >= 0 ? source.slice(equals + 1) : null;
     const f = (x) => {
       const saved = appState.variables[varName];
       appState.variables[varName] = x;
       let v;
-      try { v = _evalStr(expr); } finally { appState.variables[varName] = saved; }
+      const evalPart = (part) => {
+        const variable = new RegExp('(?<![A-Za-z])' + varName + '(?![A-Za-z])', 'g');
+        return _evalStr(String(part).replace(variable, '(' + x + ')'));
+      };
+      try {
+        v = equals >= 0 ? evalPart(lhs) - evalPart(rhs) : evalPart(source);
+      } finally { appState.variables[varName] = saved; }
       if (typeof v !== 'number' || !isFinite(v)) throw new Error('Math ERROR');
       return v;
     };
