@@ -14,3 +14,13 @@ class TestIssue4Editing(BrowserCase):
         self.press("del")
 
         self.assertEqual(self.page.evaluate("() => getExpr()"), "1")
+
+    def test_del_at_expression_beginning_is_a_noop(self):
+        self.types("123")
+        self.press("dpad_left")
+        self.press("dpad_left")
+        self.press("dpad_left")
+        self.press("del")
+
+        self.assertEqual(self.page.evaluate("() => getExpr()"), "123")
+        self.assertEqual(self.cursor_state()["index"], 0)

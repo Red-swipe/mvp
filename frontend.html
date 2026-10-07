@@ -4530,6 +4530,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // preserved in all cases.
     if (appState.error) { resetExpr(); renderLCD(); return; }
     if (appState.resultDisplayed) { resetExpr(); renderLCD(); return; }
+    if (cursor.slot === rootSlot && cursor.index === 0) {
+      renderLCD();
+      return;
+    }
     if (cursor.index < cursor.slot.items.length) {
       cursor.slot.items.splice(cursor.index, 1);
     } else if (cursor.index > 0) {
