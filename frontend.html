@@ -4540,8 +4540,14 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       if (p && p.par) {
         const t = p.par; const ps = t.parentSlot || rootSlot;
         const ti = ps.items.indexOf(t);
-        ps.items.splice(ti, 1);
-        cursor.slot = ps; cursor.index = Math.max(0, ti);
+        if (t.type === 'fraction' && p.slotName === 'den' && !slotHasContent(t.den)) {
+          const numerator = t.num.items.slice();
+          ps.items.splice(ti, 1, ...numerator);
+          cursor.slot = ps; cursor.index = ti + numerator.length;
+        } else {
+          ps.items.splice(ti, 1);
+          cursor.slot = ps; cursor.index = Math.max(0, ti);
+        }
       }
     }
     renderLCD();
