@@ -4314,10 +4314,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   }
 
   function resetExpr() {
-    // Clear the current entry only. Scalar Ans (lastAnswer) and the separate
-    // MatAns/VctAns registers survive: AC/RESULT/ERROR transitions must never
-    // destroy the answer memory. Use hardResetExpr() for power-on and
-    // Initialize-All, the only flows that clear answer registers.
+    // Clear entry state; answer registers survive. hardResetExpr clears them.
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
     appState.result = null; appState.resultDisplayed = false; appState.error = null;
