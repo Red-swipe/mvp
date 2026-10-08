@@ -27,6 +27,73 @@ from engine.evaluator import evaluate
 from engine.parser import parse
 from engine.tokenizer import tokenize
 
+# Offline assets the frontend requests by relative URL. Kept here so the startup
+# self-test can prove a fresh build can actually serve them, rather than leaving
+# a developer to discover a 404 from a blank LCD in the browser.
+REQUIRED_ASSETS = (
+    "frontend.html",
+    "katex/katex.min.css",
+    "katex/katex.min.js",
+    "katex/contrib/auto-render.min.js",
+    "ClassWizFontSet/ClassWizCWDisplay-Regular.woff2",
+    "ClassWizFontSet/CASIOClassWizCW01.ttf",
+)
+
+
+def run_startup_selftest() -> bool:
+    """Report the Python runtime, the real engine and the offline assets.
+
+    The portable build ships the embeddable CPython distribution, which starts
+    in isolated mode: ``python312._pth`` alone decides ``sys.path``, and the
+    application directory is not added automatically. Reaching this function at
+    all already proves the engine imported (the module-level imports above are
+    unguarded), but a developer staring at a blank calculator needs to see that
+    in one glance instead of guessing, so print it loudly and return the verdict.
+    """
+    print("[SELFTEST] Python executable: " + sys.executable)
+    print("[SELFTEST] Python version: " + sys.version.split()[0])
+    print("[SELFTEST] App directory: " + str(PROJECT_ROOT))
+    # In isolated mode the embeddable distribution skips site.main(), so `site`
+    # never lands in sys.modules. That is the tell-tale for a _pth-managed path.
+    print("[SELFTEST] Isolated mode (site not loaded): "
+          + ("YES" if "site" not in sys.modules else "NO"))
+    print("[SELFTEST] sys.path:")
+    for entry in sys.path:
+        print("[SELFTEST]   " + entry)
+
+    engine_pkg = sys.modules.get("engine")
+    engine_file = getattr(engine_pkg, "__file__", "<unknown>")
+    print("[SELFTEST] Engine import: OK")
+    print("[SELFTEST] Engine module: " + str(engine_file))
+
+    # The evaluator used for every calculation must come from THIS app directory,
+    # not from a stray copy elsewhere on sys.path. Cheap and catches a mis-built
+    # portable folder that happens to import successfully.
+    evaluator_file = getattr(getattr(evaluate, "__code__", None), "co_filename", "<unknown>")
+    print("[SELFTEST] Evaluator source: " + str(evaluator_file))
+    engine_root = (PROJECT_ROOT / "engine").resolve()
+    try:
+        evaluator_path = Path(evaluator_file).resolve()
+    except (OSError, ValueError):
+        evaluator_path = None
+    if evaluator_path is not None and engine_root in evaluator_path.parents:
+        print("[SELFTEST] Engine wiring: OK")
+    else:
+        print("[SELFTEST] Engine wiring: FAILED (evaluator is not inside "
+              + str(engine_root) + ")")
+
+    missing = []
+    for rel in REQUIRED_ASSETS:
+        candidate = PROJECT_ROOT / rel
+        if not candidate.is_file():
+            missing.append(rel)
+    if missing:
+        print("[SELFTEST] Static assets: FAILED (missing " + ", ".join(missing) + ")")
+    else:
+        print("[SELFTEST] Static assets: OK (" + str(len(REQUIRED_ASSETS))
+              + " files present, served locally, no CDN required)")
+    return not missing
+
 MODE_MAP = {
     "Calculate": "CALC",
     "Complex": "COMPLEX",
@@ -3793,6 +3860,8 @@ class MvpHandler(BaseHTTPRequestHandler):
 
 
 def main():
+    run_startup_selftest()
+    print("")
     parser = argparse.ArgumentParser(description="Run the local ClassWiz browser MVP")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
