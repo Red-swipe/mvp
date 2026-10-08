@@ -864,8 +864,18 @@
   .lcd-expr-viewport{
     position:relative;
     width:100%;
-    height:50px;
-    /* The expression owns the upper region and must keep its 50px box even when
+    /* 58px, not 50px. The expression line is typeset by KaTeX in DISPLAY mode
+     * so that the sigma template gets its ClassWiz arrangement with the limits
+     * stacked above and below the operator. Measured in the browser, that
+     * `\sum_{i=1}^{3}` vlist is 50.8px tall and sits 3px down (padding-top +
+     * baseline alignment), so the bottom 3.8px -- the LOWER LIMIT -- was cut
+     * off by `overflow-y:hidden`. 58px clears it with ~4px of slack.
+     *
+     * Item 1's layout is preserved: the status bar is 12px, so the upper region
+     * is now 12 + 58 = 70px, still clear of the result band which begins at
+     * 103 - 2 - 20 = 81px. Expression and result still cannot collide. */
+    height:58px;
+    /* The expression owns the upper region and must keep its box even when
      * the result is long, so it can never be compressed into the result band. */
     flex:0 0 auto;
     overflow-x:hidden;
