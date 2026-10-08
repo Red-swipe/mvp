@@ -519,6 +519,26 @@ class TestFrontendWiring(unittest.TestCase):
         self.assertIn("insertMixedFraction", self.html)
         self.assertIn("type === 'mixed'", self.html)
 
+    def test_scientific_notation_is_typeset_as_a_superscript(self):
+        # displayFormat() emits plain text such as "1.5×10^8". KaTeX typesets a
+        # bare `^` and the exponent digits on the baseline, so the MathO result
+        # line read as literal "1.5×10^8". scientificToLatex() converts exactly
+        # that one shape into 10^{8} so the exponent is a real superscript.
+        self.assertIn("function scientificToLatex(text)", self.html)
+        self.assertIn("10^{'", self.html)
+        renderer = self.html[self.html.index("function renderMatrixResult"):]
+        renderer = renderer[:renderer.index("function syncQrOverlay")]
+        self.assertIn("const sci = scientificToLatex(shown);", renderer)
+        # The converted latex must be what reaches the result line, and the
+        # plain-text fallback must survive for the no-KaTeX case.
+        self.assertIn("renderMath(sci, 'lcdResultLine', false, shown)", renderer)
+        self.assertIn("renderMath(shown, 'lcdResultLine', false, shown)", renderer)
+        # The exact-fraction promotion must still be checked first, and
+        # exprToLatex must remain confined to that branch -- routing scientific
+        # notation through it is what left the caret on the baseline.
+        self.assertLess(renderer.index("exactFractionToLatex(shown)"),
+                        renderer.index("scientificToLatex(shown)"))
+
     def test_katex_mappings(self):
         self.assertIn("sum_{", self.html)
         # \mathrm{d}: the differential is an upright operator, not math-italic.

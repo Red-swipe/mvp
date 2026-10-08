@@ -6679,6 +6679,26 @@ function itemLatex(item, ph) {
     if (/^-?\d+\s+\d+\/\d+$/.test(s) || /^-?\d+\/\d+$/.test(s)) return s;
     return null;
   }
+  // Scientific / standard form, e.g. the "1.5×10^8" that displayFormat() builds
+  // in its Sci and Norm branches (and the ASCII "1.5x10^8" emitted by the
+  // SI-prefix and ENG branches). The exponent has to become a REAL superscript.
+  //
+  // This could not be routed through exprToLatex(): that helper rewrites `*`
+  // into `\cdot ` and leaves `^` untouched (`s.replace(/\^/g, '^')` is a
+  // no-op), so KaTeX typeset the caret and the exponent digits on the baseline
+  // and the result read as literal "1.5×10^8". That is also why
+  // renderMatrixResult promoted only exact fractions.
+  //
+  // So convert this ONE shape directly, as a sibling of matrixToLatex and
+  // exactFractionToLatex. Every other result shape is untouched, and the plain
+  // text is still handed to renderMath as the fallback so the LCD stays
+  // readable when KaTeX is unavailable (offline / file://).
+  function scientificToLatex(text) {
+    const s = String(text == null ? '' : text).trim();
+    const m = s.match(/^(-?(?:\d+\.?\d*|\.\d+))\s*[×x]\s*10\s*\^\s*(-?\d+)$/);
+    if (!m) return null;
+    return m[1] + '\\times 10^{' + m[2] + '}';
+  }
   function renderMatrixResult(canonical) {
     const shown = displayFormat(canonical);
     const latex = matrixToLatex(String(canonical));
@@ -6688,6 +6708,10 @@ function itemLatex(item, ph) {
     // engineering notation (1.234x10^3 became "1.234\cdot 10^3"), so only the
     // exact-fraction shapes are promoted.
     if (exactFractionToLatex(shown)) { renderMath(exprToLatex(shown), 'lcdResultLine', false, shown); return; }
+    // Scientific / standard form: promote the exponent to a true superscript.
+    // Checked after the fraction shape because the two can never both match.
+    const sci = scientificToLatex(shown);
+    if (sci && typeof katex !== 'undefined') { renderMath(sci, 'lcdResultLine', false, shown); return; }
     renderMath(shown, 'lcdResultLine', false, shown);
   }
   function syncQrOverlay() {
