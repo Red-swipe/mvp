@@ -6726,18 +6726,70 @@ function itemLatex(item, ph) {
     const s = String(r == null ? '' : r).trim();
     return s.charAt(0) === '[';
   }
-  function storeCalcAnswer(r, rawExpr) {
-    appState.result = r;
-    appState.resultDisplayed = true;
-    appState.error = null;
-    if (isMatVecResultString(r)) {
-      const e = String(rawExpr || '');
-      if (/Vct[ABCD]/.test(e) && !/Mat[ABCD]/.test(e)) appState.vctAns = r;
-      else appState.matAns = r;
-    } else {
-      appState.lastAnswer = r;
-    }
+// ── MathI/MathO exact output ────────────────────────────────────────────
+// In MathI/MathO the fx-991EX shows the EXACT value: 5/2, not 2.5. The engine
+// only ever returns a decimal (input_output is stored in setup but does not
+// change the numeric result), so the exact form is produced here.
+//
+// exactSolveFormat() is the continued-fraction helper this project already
+// uses for SOLVE and EQN, and it is the right tool rather than fractionString(),
+// which pins the denominator at 1000 and would render 1/3 as the misleading
+// 333/1000.
+//
+// A value is promoted ONLY when the rational is genuinely exact and simple.
+// Repeating decimals have no short exact form (1/3 arrives as 0.3333333333), so
+// they stay decimal instead of becoming a fabricated 3333333333/10000000000.
+function exactFractionResult(value, mixed) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || Number.isInteger(n)) return null;
+  const m = String(exactSolveFormat(n)).match(/^(-?\d+)\/(\d+)$/);
+  if (!m) return null;
+  const num = Number(m[1]), den = Number(m[2]);
+  if (den <= 0 || den > 10000) return null;
+  if (Math.abs(num / den - n) > 1e-12) return null;
+  if (mixed && Math.abs(num) >= den) {
+    const whole = Math.trunc(num / den);
+    const rem = Math.abs(num) % den;
+    return rem === 0 ? String(whole) : `${whole} ${rem}/${den}`;
   }
+  return `${num}/${den}`;
+}
+
+function storeCalcAnswer(r, rawExpr) {
+     const scalar = String(r == null ? '' : r).trim();
+     // `appState.settings` is read defensively: storeCalcAnswer is also driven
+     // by test harnesses that supply a minimal appState stub without settings.
+     const ioMode = appState.settings ? appState.settings.inputOutput : null;
+     const fracMode = appState.settings ? appState.settings.fractionResult : null;
+     if (!isMatVecResultString(scalar) && /^-?\d+(?:\.\d+)?$/.test(scalar)
+         && ioMode === 'MathI/MathO') {
+       // `fractionResult` is the ab/c vs d/c setup option; ab/c shows an
+       // improper result as a mixed number, d/c keeps it improper.
+       const exact = exactFractionResult(scalar, fracMode === 'ab/c');
+       if (exact) {
+         appState.result = exact;
+         appState.resultDisplayed = true;
+         appState.error = null;
+         appState.isFractionMode = true;   // so S<->D converts back to decimal
+         appState.lastAnswer = exact;
+         return;
+       }
+     }
+     appState.result = r;
+     appState.resultDisplayed = true;
+     appState.error = null;
+     if (isMatVecResultString(scalar)) {
+       const e = String(rawExpr || '');
+       if (/Vct[ABCD]/.test(e) && !/Mat[ABCD]/.test(e)) appState.vctAns = r;
+       else appState.matAns = r;
+     } else {
+       appState.lastAnswer = r;
+       // A plain scalar result decides whether S<->D starts from the exact or
+       // the decimal side; leaving a stale flag from a previous calculation in
+       // DecimalO/LineO mode would make the first S<->D press a no-op.
+       appState.isFractionMode = scalar.includes('/');
+     }
+   }
   async function evaluate() {
     // State-gated evaluation: only EDITING with a non-blank expression may
     // evaluate. EMPTY/RESULT/ERROR are no-ops and never reach
