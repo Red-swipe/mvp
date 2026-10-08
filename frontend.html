@@ -2856,11 +2856,17 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     for (const item of slot.items) {
       if (typeof item === 'string') continue;
       if (item.type === 'integral') {
-        const dvar = 'x';
+        // The dx variable is a real slot. `x` is the physical default and is
+        // what the engine binds as its dummy; any other single letter is a
+        // display-only choice that gets rewritten onto the dummy on the way out.
+        // validDvar() used to be dead code and the dummy was hardcoded, so a
+        // chosen variable could neither be entered nor be honoured.
+        const dvar = validDvar(item.dvar);
         const body = serializeSlot(item.body);
         if (!body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
           return CALCULUS_SYNTAX_ERROR;
         }
+        if (!dvar) return CALCULUS_SYNTAX_ERROR;
         if (integralCollides(body, dvar)) return CALCULUS_SYNTAX_ERROR;
       } else if (item.type === 'derivative') {
         if (!slotHasContent(item.body) || !slotHasContent(item.point)) {
@@ -2914,8 +2920,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       } else if (item.type === 'rnd') {
         out += 'Rnd(' + (serializeSlot(item.arg)||'0') + ')';
       } else if (item.type === 'integral') {
-        // The display token is fixed to dx; the engine uses x as its dummy.
-        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', 'x')
+        // The engine binds `x` as its dummy, so the chosen dx variable is
+        // rewritten onto it here. It is a display choice only -- the bound the
+        // user picked must never reach the evaluator as a free identifier.
+        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', validDvar(item.dvar)||'x')
              + ',' + (serializeSlot(item.lower)||'0')
              + ',' + (serializeSlot(item.upper)||'0') + ')';
       } else if (item.type === 'sigma') {
@@ -4206,9 +4214,24 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   // restore), findParent (cursor navigation) and validateCalculusTree all walk
   // this one list, so a new slot added here is immediately reachable by the
   // cursor and by undo -- a slot missing from it would be invisible to both.
-  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','point'];
+  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','point','dvar'];
 
   function insertToken(tok) {
+    // The dx variable holds exactly ONE variable letter. Rejecting everything
+    // else here keeps an operator, a digit or a stray bracket from turning the
+    // differential into nonsense; a second letter REPLACES the first, which is
+    // how the fx-991EX swaps one differential symbol for another.
+    {
+      const parent = getParent();
+      if (parent && parent.par && parent.par.type === 'integral' && parent.slotName === 'dvar') {
+        pushUndoState();
+        const letter = (typeof tok === 'string' && tok.length === 1 && /[A-Za-z]/.test(tok)) ? tok : '';
+        parent.par.dvar.items = letter ? [letter] : [];
+        renderLCD();
+        syncBackendExpression();
+        return;
+      }
+    }
     pushUndoState();
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
@@ -4274,7 +4297,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
   // The integral has exactly three editable parts. ClassWiz fixes the
   // differential token to `dx`; there is no editable slot between d and x.
-  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot() }, 'body'); }
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot(), dvar:createSlot(['x']) }, 'body'); }
   // SHIFT + x is the summation template on the fx-991EX. It needs three
   // editable boxes -- upper bound above the operator, lower bound beneath it,
   // and the summand as `x = [term]` in front -- so it is a real template, not
@@ -4449,6 +4472,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.whole; cursor.index = t.whole.items.length; }
         else if (p.slotName === 'arg' && t.type === 'log') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.lower; cursor.index = t.lower.items.length; }
+        else if (p.slotName === 'dvar' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'body' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.upper; cursor.index = t.upper.items.length; }
         else if (p.slotName === 'point' && t.type === 'derivative') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'arg') { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
@@ -4487,7 +4511,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'index') { cursor.slot = t.radicand; cursor.index = 0; }
         else if (p.slotName === 'lower') { cursor.slot = t.upper; cursor.index = 0; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.body; cursor.index = 0; }
-        else if (p.slotName === 'body' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
+        else if (p.slotName === 'body' && t.type === 'integral') { cursor.slot = t.dvar; cursor.index = 0; }
         else if (p.slotName === 'body' && t.type === 'derivative') { cursor.slot = t.point; cursor.index = 0; }
         else { cursor.slot = ps; cursor.index = ps.items.indexOf(t) + 1; }
       }
@@ -4690,8 +4714,12 @@ function itemLatex(item, ph) {
       case 'log': return '\\log_{' + S(item.base) + '}{' + S(item.arg) + '}';
       case 'rnd': return '\\operatorname{Rnd}\\left(' + S(item.arg) + '\\right)';
       // Natural display: \int puts the limits above and below a full-height sign.
-      case 'integral': return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
-                          + '}' + S(item.body) + '\\,\\mathrm{d}x';
+      // The differential follows the chosen dx variable, and the variable is
+      // emitted through S() so it stays a hydrated, editable slot (four
+      // editable parts in total) rather than baked-in text.
+      case 'integral':
+        return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
+            + '}' + S(item.body) + '\\,\\mathrm{d}' + S(item.dvar);
       case 'sigma': return '\\sum_{' + S(item.lower) + '}^{' + S(item.upper)
                        + '}x=' + S(item.body);
       // \mathrm{d} for the differential: the `d` is an operator, not a variable,
@@ -4832,7 +4860,7 @@ function itemLatex(item, ph) {
           const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
           ig.appendChild(bd);
            const dx = el('span','math-int-dx');
-           dx.textContent = 'dx';
+           dx.textContent = 'd' + (validDvar(item.dvar) || 'x');
            dx.setAttribute('data-fixed-token', 'true');
           ig.appendChild(dx);
           wrap.appendChild(ig);
