@@ -766,11 +766,30 @@
     margin-top: 4px;
   }
 
-  /* CALC SCREEN */
+  /* CALC SCREEN
+   *
+   * The column stacks: status bar, then the expression viewport. The result is
+   * NOT one of these children -- `.lcd-result-line` is absolutely positioned at
+   * `right:4px; bottom:2px`, so it is out of flow and reserves no space here.
+   *
+   * That is why this used to read `justify-content:space-between`: with only
+   * TWO in-flow children, `space-between` pushed the status bar to the very top
+   * and the expression viewport all the way to the BOTTOM of the 103px LCD --
+   * straight into the result line. Measured on the real build, the expression
+   * sat at y=55..79 and the result at y=74..101, so they overlapped by ~4px
+   * while the top ~40% of the screen stayed empty. That is the "expression
+   * beside the result" symptom: on the fx-991EX the input line owns the UPPER
+   * region and the evaluated value owns the LOWER-RIGHT result area.
+   *
+   * Pinning the stack to the top (`flex-start`) restores exactly that split:
+   * status bar 12px + expression 50px = 62px of upper region, and the result
+   * band begins at 103-2-20 = 81px, so the two can never collide and a long
+   * result can never displace or overwrite the expression.
+   */
   #lcdCalc{
     display:flex;
     flex-direction:column;
-    justify-content:space-between;
+    justify-content:flex-start;
     height:100%;
     position:relative;
   }
@@ -781,6 +800,10 @@
     justify-content:space-between;
     align-items:center;
     height:12px;
+    /* Never let the status bar or the expression line be squeezed by the
+     * overflow of a long result: both keep their intrinsic height so the
+     * upper region stays the upper region. */
+    flex:0 0 auto;
     font-size:9px;
     font-weight:700;
     line-height:1;
@@ -837,6 +860,9 @@
     position:relative;
     width:100%;
     height:50px;
+    /* The expression owns the upper region and must keep its 50px box even when
+     * the result is long, so it can never be compressed into the result band. */
+    flex:0 0 auto;
     overflow-x:hidden;
     overflow-y:hidden;
     white-space:nowrap;
