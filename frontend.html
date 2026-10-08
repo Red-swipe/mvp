@@ -9014,7 +9014,19 @@ function itemLatex(item, ph) {
       insertToken(isShift ? 'tan\u207b\u00b9(' : 'tan('); return;
     }
 
-    if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
+    if (rawKey === 'scientific') {
+      // ×10^x -- and its SHIFT π / ALPHA e overlays -- are disabled in BASE-N on
+      // the physical unit; raw/buttons.md lists only the four SHIFT base
+      // switches (x²→DEC, x^→HEX, log→BIN, ln→OCT) for Base-N.
+      //
+      // Inserting "×10^" here spliced scientific notation into a fixed-radix
+      // expression. It did not even surface as an error: evaluate_base_n()
+      // rewrites digit runs through the ACTIVE BASE and then evaluates, so
+      // "5×10^3" silently produced 5000 in DEC and 5000 in HEX -- a plausible
+      // looking but semantically meaningless answer instead of an ignored key.
+      if (appState.mode === 'Base-N') return;
+      insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return;
+    }
     if (rawKey === 'ans') {
       if (isShift || action === 'percent') { insertToken('%'); return; }
       insertToken('Ans'); return;

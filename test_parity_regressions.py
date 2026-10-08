@@ -225,6 +225,34 @@ class TestBaseN(unittest.TestCase):
         tok2 = c._token_for("square")
         self.assertIn("BASE_SWITCH", tok2)
 
+    def test_scientific_key_is_inert_in_base_n(self):
+        # ×10^x (SHIFT π / ALPHA e) must not splice scientific notation into a
+        # fixed-radix entry. evaluate_base_n() rewrites digit runs through the
+        # active base and then evaluates normally, so "5×10^3" used to yield a
+        # plausible-looking but meaningless 5000 in DEC (and 5000 in HEX)
+        # instead of the key being ignored. The router therefore has to bail
+        # out before insertToken() in BASE-N.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        router = html[html.index("if (rawKey === 'scientific')"):]
+        guard = router[:router.index("insertToken(isShift")]
+        self.assertIn("if (appState.mode === 'Base-N') return;", guard)
+        # The guard must come BEFORE the insert, not after it.
+        self.assertLess(router.index("if (appState.mode === 'Base-N') return;"),
+                        router.index("insertToken(isShift"))
+
+    def test_base_n_still_rejects_digits_above_the_base(self):
+        # Digits are validated against the ACTIVE base, not against a fixed 10.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        self.assertIn(
+            "appState.mode === 'Base-N' && /^[0-9]$/.test(tok) "
+            "&& parseInt(tok) >= appState.baseNBase", html)
+
+    def test_base_switch_keys_match_buttons_md(self):
+        # raw/buttons.md: SHIFT x²→DEC, SHIFT x^→HEX, SHIFT log→BIN, SHIFT ln→OCT.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        self.assertIn("const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };",
+                      html)
+
 
 class TestMatrixVector(unittest.TestCase):
     def setUp(self):
