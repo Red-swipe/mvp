@@ -717,6 +717,11 @@
   .eq-coeff-row.active { background:var(--ink); color:#dce6c2; }
   .eq-result { padding:5px 4px; font-size:11px; font-weight:700; line-height:16px; }
   .eq-solution { white-space:pre-line; }
+      /* The current solution is typeset by KaTeX, so it must NOT be pre-line:
+         a KaTeX block is its own layout, and pre-line only existed to honour the
+         newline-joined plain-text blob this replaced. */
+      .eq-solution-math { white-space:normal; }
+      .eq-solution-pos { margin-top:4px; font-size:9px; font-weight:700; color:var(--ink); opacity:.85; }
 
   /* CONSTANTS SCREEN */
   #lcdConstants {
@@ -6227,6 +6232,71 @@ function itemLatex(item, ph) {
     return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${displayFormat(formatEquationRoot(root))}`).join('\n');
   }
 
+  // ── EQN result -> KaTeX ────────────────────────────────────────────────
+  // The EQN solution used to be written straight into a text node, so the
+  // subscripted x, any fraction and any exponent were flat characters. Convert
+  // the SAME numeric structure formatEquationRoot() already parses, so the LCD
+  // gets real math structures instead of plain text.
+  //
+  // `exact` mirrors what S<->D means elsewhere in this emulator (see
+  // toggleAnswerFormat): a rational root is shown as an exact fraction rather
+  // than its decimal expansion. The solver returns floats only, so an
+  // irrational root has NO exact form to switch to -- exactSolveFormat() falls
+  // back to the decimal and that is reported honestly rather than faked with
+  // invented symbolic algebra.
+  function equationNumberToLatex(value, exact) {
+    if (!Number.isFinite(value)) return '\\text{Math ERROR}';
+    // Snap solver rounding dust on a root that is mathematically an integer --
+    // the cubic solver returns 1.0000000000000002 for x^3-6x^2+11x-6, and the
+    // LCD must read 1, not the noise.
+    const snapped = Math.abs(value - Math.round(value)) < 1e-9 * Math.max(1, Math.abs(value))
+      ? Math.round(value) : value;
+    if (exact) {
+      const frac = exactSolveFormat(snapped);
+      const m = String(frac).match(/^(-?\d+)\/(\d+)$/);
+      if (m) {
+        const num = Number(m[1]), den = Number(m[2]);
+        // A continued-fraction hit is NOT evidence of a rational root: every
+        // irrational has arbitrarily good rational approximations, and
+        // 2.618033988749895 "matches" 75025/28657 to 1e-15. So demand a SIMPLE
+        // fraction -- same denominator ceiling /api/fraction already uses via
+        // limit_denominator(10000) -- and an essentially exact match. Anything
+        // else has no exact form, and is shown as the decimal it really is
+        // rather than an invented symbol.
+        if (den <= 10000 && Math.abs(num / den - snapped) < 1e-12) {
+          return (num < 0 ? '-' : '') + '\\frac{' + Math.abs(num) + '}{' + den + '}';
+        }
+      }
+    }
+    return localFormat(snapped);
+  }
+  function equationRootToLatex(root, index, exact) {
+    let real, imag;
+    if (root && typeof root === 'object' && !Array.isArray(root)) {
+      real = Number(root.real); imag = Number(root.imag || 0);
+    } else if (Array.isArray(root)) {
+      real = Number(root[0]); imag = Number(root[1] || 0);
+    } else {
+      real = Number(root); imag = 0;
+    }
+    if (!Number.isFinite(real) || !Number.isFinite(imag)) return '\\text{Math ERROR}';
+    if (Math.abs(real) < 1e-12) real = 0;
+    if (Math.abs(imag) < 1e-12) return equationNumberToLatex(real, exact);
+    const imagLatex = (Math.abs(imag) === 1 ? '' : equationNumberToLatex(Math.abs(imag), exact)) + 'i';
+    if (real === 0) return (imag < 0 ? '-' : '') + imagLatex;
+    return equationNumberToLatex(real, exact) + (imag < 0 ? ' - ' : ' + ') + imagLatex;
+  }
+  // The x-index is part of the displayed math, so it is a KaTeX subscript
+  // (x_1) rather than the precomposed character, which renders inconsistently
+  // across the LCD font.
+  function equationSolutionLatex(eq, index) {
+    const roots = eq.resultState;
+    const subscript = index + 1;
+    if (typeof roots === 'string') return String(roots);
+    if (!Array.isArray(roots) || index >= roots.length) return '\\text{Math ERROR}';
+    return 'x_{' + subscript + '} = ' + equationRootToLatex(roots[index], index, !!eq.exactForm);
+  }
+
   function solveInequalityRemote() {
     const iq = appState.inequality;
     fetch('/api/inequality/solve', {method:'POST', headers:{'Content-Type':'application/json'},
@@ -6301,7 +6371,12 @@ function itemLatex(item, ph) {
 
   function resetEquationState() {
     appState.equation = { selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
-      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null, extremum: null };
+      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null, extremum: null,
+      // fx-991EX EQN shows ONE solution at a time and steps through the rest
+      // with the D-pad; it never dumps every root into a single blob. These two
+      // fields carry that state: which solution is on screen, and whether the
+      // S<->D key is currently showing the exact (fraction) or decimal form.
+      solutionIndex: 0, exactForm: false };
   }
   function equationTemplate(eq) {
     if (eq.selectedType === 'simultaneous') {
@@ -6320,6 +6395,12 @@ function itemLatex(item, ph) {
     const body = document.getElementById('lcdEquationBody'); if (!body) return; body.innerHTML = '';
     const eq = appState.equation; document.getElementById('eqIndShift')?.classList.toggle('active', appState.shift); document.getElementById('eqIndAlpha')?.classList.toggle('active', appState.alpha);
     const view = el('div','eq-view');
+    // Attach the view BEFORE it is populated. renderMath() resolves its target
+    // with document.getElementById(), so a solution host that is still inside a
+    // detached tree is invisible to it and the KaTeX render is silently
+    // dropped -- which is exactly what happened when this only appended at the
+    // end of the function.
+    body.appendChild(view);
     if (eq.phase === 'typeMenu' || eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
       const title = el('div','eq-title'); title.textContent = eq.phase === 'typeMenu' ? 'Equation/Func' : eq.phase === 'simultaneousCount' ? 'Number of Equations' : 'Polynomial Degree'; view.appendChild(title);
       if (eq.phase === 'polynomialDegree') {
@@ -6343,18 +6424,45 @@ function itemLatex(item, ph) {
       const result=el('div','eq-result');
       const expression=el('div'); expression.textContent=eq.selectedType==='polynomial' ? formatPolynomial(eq) : '';
       const title=el('div'); title.textContent='Solution';
+      // One solution at a time, typeset by KaTeX. The previous implementation
+      // assigned `solution.textContent` to every root joined by newlines, which
+      // produced plain text, no maths structures, and no way to reach root #3.
       const solution=el('div','eq-solution');
-      try { solution.textContent=formatEquationResult(eq); }
-      catch (error) { console.error('[EQUATION] render failed', error); solution.textContent='Math ERROR'; }
+      const roots = Array.isArray(eq.resultState) ? eq.resultState : null;
+      const count = roots ? roots.length : 0;
+      if (eq.solutionIndex >= count) eq.solutionIndex = Math.max(0, count - 1);
+      const latexHost = el('div','eq-solution-math'); latexHost.id = 'eqSolutionMath';
+      solution.appendChild(latexHost);
+      // Attach the whole result subtree BEFORE typesetting it. renderMath()
+      // looks its target up with document.getElementById(), which only sees
+      // nodes already in the document; a host still inside a detached parent
+      // resolves to null and the KaTeX render is silently dropped. Verified in
+      // the browser: renderMath was called with the correct LaTeX while
+      // getElementById('eqSolutionMath') returned null.
       result.append(expression, title, solution);
+      view.appendChild(result);
+      try {
+        if (typeof eq.resultState === 'string') {
+          // Error / non-polynomial payload: keep the existing prose behaviour.
+          latexHost.textContent = formatEquationResult(eq);
+        } else {
+          renderMath(equationSolutionLatex(eq, eq.solutionIndex || 0), 'eqSolutionMath', false,
+                     formatEquationRoot(roots ? roots[eq.solutionIndex || 0] : null));
+        }
+      } catch (error) { console.error('[EQUATION] render failed', error); latexHost.textContent='Math ERROR'; }
+      // Position indicator: which of N solutions is on screen, and whether the
+      // S<->D key is showing the exact or decimal form.
+      if (count > 0) {
+        const pos = el('div','eq-solution-pos');
+        pos.textContent = (eq.solutionIndex || 0) + 1 + '/' + count + (eq.exactForm ? '  a b/c' : '  d/c');
+        solution.appendChild(pos);
+      }
       if (eq.selectedType === 'polynomial' && eq.extremum) {
         const extremum = el('div', 'eq-extremum');
         extremum.textContent = `Extremum: x = ${exactSolveFormat(Number(eq.extremum.x))}, y = ${exactSolveFormat(Number(eq.extremum.y))}`;
         result.appendChild(extremum);
       }
-      view.appendChild(result);
     }
-    body.appendChild(view);
   }
 
   function updateScrollIndicators(canUp, canDown, canLeft, canRight, prefix) {
@@ -8119,7 +8227,26 @@ function itemLatex(item, ph) {
         }
         renderLCD(); return;
       }
-      if (eq.phase === 'result') return;
+      if (eq.phase === 'result') {
+        // fx-991EX steps through the solutions with the D-pad instead of
+        // listing them all. Previously every key was swallowed here, so root
+        // #2 and beyond were unreachable however many there were.
+        const roots = Array.isArray(eq.resultState) ? eq.resultState : [];
+        const n = roots.length;
+        if (n > 0) {
+          if (eq.solutionIndex == null) eq.solutionIndex = 0;
+          if (eq.solutionIndex >= n) eq.solutionIndex = n - 1;
+          if (rawKey === 'dpad_down' || rawKey === 'dpad_right' || rawKey === 'equals' || rawKey === 'dpad_center') {
+            eq.solutionIndex = (eq.solutionIndex + 1) % n; renderLCD(); return;
+          }
+          if (rawKey === 'dpad_up' || rawKey === 'dpad_left' || rawKey === 'backspace') {
+            eq.solutionIndex = (eq.solutionIndex - 1 + n) % n; renderLCD(); return;
+          }
+        }
+        // S<->D applies to the solution currently on screen.
+        if (rawKey === 's_to_d') { eq.exactForm = !eq.exactForm; renderLCD(); return; }
+        return;
+      }
     }
 
     // INEQUALITY MODE: local degree/operator/coefficient state machine.
