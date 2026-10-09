@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Casio MX-911 ClassWiz - mockup</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR generator, vendored locally (MIT, Kazuhiko Arase) so the portable
+     build renders its QR screen with no network access. This replaced the
+     cdnjs `qrcodejs` CDN reference, which broke offline and drew modules at a
+     fractional size with no quiet zone. See qrcode/THIRD-PARTY-NOTICES.txt. -->
+<script src="./qrcode/qrcode.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -859,6 +863,33 @@
   .optn-grid button{padding:3px 1px; border:1px solid #353735; background:rgba(255,255,255,.2); color:var(--ink); font:700 9px Arial, sans-serif;}
   .menu-overlay .menu-item{padding:2px 4px; font:700 11px/15px Arial, sans-serif; cursor:pointer;}
   .menu-overlay .menu-item:hover{background:var(--ink); color:#dce6c2;}
+
+  /* QR OVERLAY. The generic .menu-overlay above reserves inset 2px 4px 4px and
+     5px of padding, which left only 75px of content height: the title + the URL
+     caption + a 72px symbol needed 101px, so `.lcd{overflow:hidden}` cropped the
+     bottom of the panel and the caption was never visible at all. The QR panel
+     therefore takes the whole LCD content box and lays itself out as a column,
+     giving #lcdQrBox the leftover height to measure. The QR scale is then
+     computed from that measured box (see renderQrCode), never guessed in CSS.
+     The old "https://mentisai-delta.vercel.app/" caption under the symbol was
+     removed: it duplicated the encoded payload, and because it was the element
+     the overflow cut, it was never actually visible. Reclaiming its 10px is
+     what lets the 29-module symbol reach an integer scale of 2 instead of 1. */
+  #qr-panel{
+    inset:0;
+    padding:2px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+  }
+  #qr-panel .qr-title{font-size:8px; line-height:10px; font-weight:700; margin-bottom:1px;}
+  /* flex:1 + min-height:0 lets the box claim the remaining height even while
+     it is empty, which is what makes the scale calculation possible. */
+  #lcdQrBox{flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  /* pixelated keeps the integer module grid crisp when the canvas is painted
+     at devicePixelRatio>1 or resized by the browser. */
+  #lcdQrBox canvas{display:block; image-rendering:pixelated;}
 
   /* EXPRESSION VIEWPORT */
   .lcd-expr-viewport{
@@ -1936,10 +1967,9 @@
             <div class="lcd-expr-content" id="lcdExprContent"></div>
           </div>
           <div class="lcd-result-line" id="lcdResultLine"></div>
-          <div id="qr-panel" class="menu-overlay" style="display:none; text-align:center;">
-            <div style="font-weight:700; font-size:10px; margin-bottom:2px;">Mentis QR</div>
-            <div id="lcdQrBox" style="display:flex; justify-content:center;"></div>
-            <div style="font-size:8px; margin-top:2px; word-break:break-all;">https://mentisai-delta.vercel.app/</div>
+          <div id="qr-panel" class="menu-overlay" style="display:none;">
+            <div class="qr-title">Mentis QR</div>
+            <div id="lcdQrBox"></div>
           </div>
           <div id="optn-panel" class="menu-overlay" style="display:none;">
             <div id="optn-main-menu">
@@ -5561,7 +5591,14 @@ function itemLatex(item, ph) {
       rows(['Contrast', '█'.repeat(Number(setupSettings.contrast))+'░'.repeat(10-Number(setupSettings.contrast)), '◄ − − − − − − − ►']);
     } else if (st.level === 99) {
       const q=el('div','setup-prompt-box'); q.innerHTML='<div id="qr-tmp"></div><div>mentisai-delta.vercel.app</div>'; body.appendChild(q);
-      if (window.QRCode) new QRCode(document.getElementById('qr-tmp'), {text:'https://mentisai-delta.vercel.app/',width:120,height:120,colorDark:'#000000',colorLight:'#ffffff'});
+      // Same renderer and the same integer-scale/quiet-zone rules as the LCD QR
+      // screen; the setup box is wider, so it simply picks a larger scale.
+      {
+        const tmp = document.getElementById('qr-tmp');
+        if (tmp) { tmp.style.cssText = 'flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                   const bx = tmp.getBoundingClientRect();
+                   renderQrCode(tmp, QR_DEST_URL, bx.width, bx.height); }
+      }
     }
     const angle = document.getElementById('setupIndAngle'); if(angle) angle.textContent=setupSettings.angle_unit==='Degree'?'D':setupSettings.angle_unit==='Radian'?'R':'G';
     const math = document.getElementById('setupIndMath'); if(math) math.textContent=setupSettings.input_output.startsWith('Math')?'Math':'Line';
@@ -6967,9 +7004,15 @@ function storeCalcAnswer(r, rawExpr) {
       if (!qr) return;
       if (appState.qrOpen) {
         if (optn) optn.style.display = 'none';
-        qr.style.display = 'block';
-        const host = document.getElementById('lcdQrBox');
-        if (host && host.childElementCount === 0) showQRinLCD();
+        // 'flex', not 'block': #qr-panel is a column flexbox so #lcdQrBox can
+        // absorb the leftover height and be measured. An inline display:block
+        // overrode the stylesheet, leaving the QR box zero-height and forcing
+        // the scale down to 1px per module.
+        qr.style.display = 'flex';
+        // The QR itself is drawn by showQRinLCD() once this has laid the panel
+        // out. Calling back into showQRinLCD() from here re-entered
+        // renderLCD() -> syncQrOverlay() with the host still empty, recursing
+        // until the stack overflowed and the error was swallowed by the catch.
       } else {
         qr.style.display = 'none';
       }
@@ -7437,20 +7480,95 @@ function storeCalcAnswer(r, rawExpr) {
       renderLCD();
     }
   }
-  function showQRinLCD() {
-    appState.qrOpen = true;
-    renderLCD();
+  // ── QR RENDERING ────────────────────────────────────────────────────────────
+  // The quiet zone the specification requires: four modules of white on every
+  // side. It is part of the symbol, NOT surrounding LCD background, so it is
+  // drawn into the canvas rather than left to whatever is behind the element.
+  const QR_QUIET_MODULES = 4;
+  // Error correction: M was the level the previous cdnjs call asked for.
+  const QR_ECC_M = 'M';
+
+  // Smallest QR version whose byte-mode capacity holds `text` at the given level.
+  function qrTypeNumberFor(text, level) {
+    // qrcode-generator's own table, indexed by level, in BYTES for the byte mode.
+    const CAP = { L: [17,32,53,78,106,134,154,192,230,271,321,367,425,458,520,586,644,718,792,858,929,1003,1091,1171,1273,1367,1465,1528,1628,1732,1840,1952,2068,2188,2303,2431,2563,2699,2809,2953], M: [14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,779,857,911,997,1059,1125,1190,1264,1370,1452,1538,1624,1722,1809,1911,1989,2099,2213], Q: [11,20,32,46,60,74,86,108,130,151,177,203,241,277,310,345,384,427,458,520,586,644,698,742,790,864,902,982,1030,1112,1200,1258,1314,1426,1501,1580,1677,1789,1898], H: [7,14,24,34,44,58,64,84,98,119,137,155,177,194,220,250,280,310,338,382,403,439,461,511,535,593,625,658,698,742,790,852,894,1022,1090,1162,1226,1318,1422,1546] };
+    const cap = CAP[level] || CAP.M;
+    const len = String(text == null ? '' : text).length;
+    for (let t = 1; t <= cap.length; t++) if (len <= cap[t - 1]) return t;
+    return cap.length;
+  }
+
+  // Largest INTEGER module size whose full symbol -- matrix plus the quiet zone,
+  // (moduleCount + 2 * QR_QUIET_MODULES) modules -- fits the measured box. Integer
+  // scaling is the point: a fractional module size lands module edges on
+  // non-integer pixel boundaries, which anti-aliases the symbol and blurs the
+  // finder patterns. Returns at least 1 so a symbol is never cropped in order to
+  // satisfy a viewport that is too small.
+  function qrModuleScale(moduleCount, availW, availH) {
+    const total = moduleCount + QR_QUIET_MODULES * 2;
+    const byW = Math.floor((availW || 0) / total);
+    const byH = Math.floor((availH || 0) / total);
+    return Math.max(1, Math.min(byW, byH));
+  }
+
+  // Draw `text` into `host`, sized to `availW` x `availH` CSS px.
+  // Returns {moduleCount, scale, size, quietPx} or null when it cannot render.
+  function renderQrCode(host, text, availW, availH) {
+    if (!host) return null;
+    host.textContent = '';
+    if (typeof qrcode !== 'function') {
+      // Offline / missing-library fallback: show the destination in words.
+      host.textContent = String(text == null ? '' : text);
+      return null;
+    }
     try {
-      const host = document.getElementById('lcdQrBox');
-      if (host) {
-        host.textContent = '';
-        if (typeof QRCode !== 'undefined') {
-          new QRCode(host, { text: QR_DEST_URL, width: 72, height: 72, correctLevel: QRCode.CorrectLevel.M });
-        } else {
-          host.textContent = QR_DEST_URL;
+      const qr = qrcode(qrTypeNumberFor(text, QR_ECC_M), QR_ECC_M);
+      qr.addData(String(text == null ? '' : text));
+      qr.make();
+      const moduleCount = qr.getModuleCount();
+      const scale = qrModuleScale(moduleCount, availW, availH);
+      const total = moduleCount + QR_QUIET_MODULES * 2;
+      const size = total * scale;                 // whole pixels, no cropping
+
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      const ctx = canvas.getContext('2d');
+      // Opaque white first, so the quiet zone is real white pixels inside the
+      // symbol and not whatever the LCD gradient happens to be behind it.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000000';
+      for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+          if (!qr.isDark(row, col)) continue;
+          ctx.fillRect((col + QR_QUIET_MODULES) * scale,
+                       (row + QR_QUIET_MODULES) * scale, scale, scale);
         }
       }
-    } catch (e) {}
+      host.appendChild(canvas);
+      return { moduleCount, scale, size, quietPx: QR_QUIET_MODULES * scale };
+    } catch (e) {
+      host.textContent = String(text == null ? '' : text);
+      return null;
+    }
+  }
+
+function showQRinLCD() {
+    appState.qrOpen = true;
+    renderLCD();
+    const host = document.getElementById('lcdQrBox');
+    if (!host) return;
+    // The box only has a measurable size once the overlay is displayed, so the
+    // panel has to be laid out first. This used to be done by syncQrOverlay()
+    // calling back into showQRinLCD() whenever the host was still empty, which
+    // recursed until the stack blew (~1100 nested calls) with the resulting
+    // RangeError silently swallowed by syncQrOverlay's catch. Rendering here,
+    // after renderLCD() has already shown the panel, removes that cycle.
+    const box = host.getBoundingClientRect();
+    renderQrCode(host, QR_DEST_URL, box.width, box.height);
   }
   function cycleEngNotation() {
     if (!appState.resultDisplayed || appState.result === null) {

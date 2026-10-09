@@ -37,6 +37,11 @@ REQUIRED_ASSETS = (
     "katex/contrib/auto-render.min.js",
     "ClassWizFontSet/ClassWizCWDisplay-Regular.woff2",
     "ClassWizFontSet/CASIOClassWizCW01.ttf",
+    # The QR screen's generator. It used to be fetched from the cdnjs CDN at
+    # runtime, so a build that failed to copy it only showed a blank LCD on the
+    # QR screen and nothing else looked wrong -- exactly the kind of failure this
+    # list exists to catch before a developer discovers it in the browser.
+    "qrcode/qrcode.js",
 )
 
 
@@ -3692,6 +3697,33 @@ class MvpHandler(BaseHTTPRequestHandler):
             inside = (target is not None and target != root
                       and root in target.parents)
             ctype = content_types.get(target.suffix.lower()) if inside else None
+            if not inside or ctype is None or not target.is_file():
+                self._send_json({"ok": False, "error": "not found"}, 404)
+                return
+            body = target.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        # Vendored QR generator. frontend.html loads it with the relative url
+        # ./qrcode/qrcode.js, so a browser served over http asks for
+        # /qrcode/qrcode.js. This used to come from the cdnjs CDN; without this
+        # route the portable build 404'd and the QR screen fell back to showing
+        # the destination as plain text. Same containment rules as /katex/.
+        if path.startswith("/qrcode/"):
+            rel = path[len("/qrcode/"):]
+            root = (PROJECT_ROOT / "qrcode").resolve()
+            try:
+                target = (root / rel).resolve()
+            except (OSError, ValueError):
+                target = None
+            inside = (target is not None and target != root
+                      and root in target.parents)
+            ctype = "application/javascript" if (inside and target.suffix.lower() == ".js") else None
             if not inside or ctype is None or not target.is_file():
                 self._send_json({"ok": False, "error": "not found"}, 404)
                 return

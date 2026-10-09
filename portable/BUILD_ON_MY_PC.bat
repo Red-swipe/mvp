@@ -35,6 +35,11 @@ copy "%~dp0RUN_CALCULATOR.bat" "%OUT%\" >nul || goto fail
 copy "%~dp0README_FOR_TEACHER.txt" "%OUT%\" >nul || goto fail
 xcopy "%SRC%\engine" "%OUT%\engine\" /E /I /Q /Y >nul || goto fail
 xcopy "%SRC%\katex" "%OUT%\katex\" /E /I /Q /Y >nul || goto fail
+rem qrcode\ holds the vendored MIT QR generator that frontend.html loads from
+rem ./qrcode/qrcode.js. It used to come from the cdnjs CDN, which meant the QR
+rem screen needed an internet connection. Without this copy the shipped build
+rem has no QR library at all and only shows the fallback URL as text.
+xcopy "%SRC%\qrcode" "%OUT%\qrcode\" /E /I /Q /Y >nul || goto fail
 xcopy "%SRC%\ClassWizFontSet" "%OUT%\ClassWizFontSet\" /E /I /Q /Y >nul || goto fail
 if exist "%SRC%\raw" xcopy "%SRC%\raw" "%OUT%\raw\" /E /I /Q /Y >nul
 for /d /r "%OUT%" %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
