@@ -2954,6 +2954,51 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   }
   const getExpr = () => serializeSlot(rootSlot);
 
+  // Unbalanced '(' on EXE. The fx-991EX closes what the user left open before
+  // it evaluates -- `(2+3` + EXE shows (2+3) and answers 5 -- so the closers are
+  // appended to the MODEL, not to the outgoing string. Mutating the tree (rather
+  // than only the serialized expression handed to the evaluator) is what keeps
+  // the LCD and the evaluated expression the same thing: the expression line is
+  // re-rendered from rootSlot, so a string-only fix would leave the screen
+  // showing `(2+3` while the engine answered for `(2+3)`.
+  //
+  // Only LITERAL string items are counted. serializeSlot() emits every template
+  // node's own parentheses in balanced pairs (fraction -> `((n)/(d))`, power ->
+  // `((b)^(e))`, log_base/Rnd/sqrt/xroot/integral/sigma/diff -> `name(...)`), so
+  // the only unbalanced parentheses in the tree are the ones typed on the `(` key
+  // or arriving inside a raw function token such as `sin(`. Counting the model
+  // keeps that invariant explicit and stays correct if a template is ever given
+  // asymmetric parentheses -- counting the serialized string blindly would not.
+  //
+  // Each entry left on the stack is the slot holding one still-open '('; popping
+  // on ')' means an over-closed expression (`2+3)`) leaves the stack empty and
+  // keeps its Math ERROR, which is the established contract.
+  function unclosedParenSlots(slot, stack) {
+    if (!slot || !slot.items) return;
+    for (const item of slot.items) {
+      if (typeof item === 'string') {
+        for (const ch of item) {
+          if (ch === '(') stack.push(slot);
+          else if (ch === ')') stack.pop();
+        }
+      } else if (item) {
+        for (const k of SLOT_KEYS) unclosedParenSlots(item[k], stack);
+      }
+    }
+  }
+
+  function closeUnbalancedParens() {
+    const stack = [];
+    unclosedParenSlots(rootSlot, stack);
+    if (!stack.length) return 0;
+    for (const slot of stack) slot.items.push(')');
+    // Keep the caret behind the parentheses just written, so a second EXE (or
+    // an operator) continues from the completed expression rather than from a
+    // stale index that would overwrite a closer.
+    if (stack.indexOf(cursor.slot) >= 0) cursor.index = cursor.slot.items.length;
+    return stack.length;
+  }
+
   function prepareExpressionForEvaluation(expression) {
     let prepared = String(expression || '');
     prepared = prepared.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
@@ -6805,6 +6850,9 @@ function storeCalcAnswer(r, rawExpr) {
       renderLCD();
       return;
     }
+    // EXE closes the parentheses the user left open before evaluating, and it
+    // does so on the model so the LCD shows exactly what was evaluated.
+    closeUnbalancedParens();
     const expr = getExpr();
     const evalExpr = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
