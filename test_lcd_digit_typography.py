@@ -13,10 +13,17 @@ Measured before the fix (Chrome, `getComputedStyle`):
     result      digit run -> font-family: KaTeX_Main, "Times New Roman", serif
     both                   -> font-variant-numeric: normal
 
-The fix marks digit-only leaf `.mord` runs with `.lcd-digit-run` after each
-KaTeX render and re-faces only those. Structural `.mord`s that carry a
-vlist (fractions, radicals, big operators) are never marked, so KaTeX's
-own em-based metrics for those constructs are untouched.
+The CURRENT CONTRACT (commit abbc280, "unify KaTeX LCD typography and
+integral dx") replaced the per-run marker with one broad rule: every KaTeX
+math atom under `.lcd` (`.mord .mbin .mrel .mop .mopen .mclose .mpunct
+.mpunc`) is re-faced to `--lcd-font`. `tagLcdDigitRuns()` is now a no-op and
+nothing carries `.lcd-digit-run`, so the tests below locate digit runs the
+way the implementation actually faces them -- digit-bearing `.mord` leaves --
+and assert their REAL computed style.
+
+KaTeX's structural wrappers (`.mfrac`, `.msqrt`, `.vlist`, `.msupsub`) are
+still deliberately absent from that selector list, so their em-based metrics
+stay untouched and no fraction bar can desync from its contents.
 
 Covered:
   DIG-1  every digit run on the expression line uses the LCD stack
@@ -27,7 +34,7 @@ Covered:
   DIG-6  the LCD stack is identical in the input and the result line
   DIG-7  digit ink height agrees between input and result (same cap ratio)
   DIG-8  fraction / radical / big-operator wrappers are NOT re-faced
-  DIG-9  the `.lcd-digit-run` rule cannot escape the LCD wrapper
+  DIG-9  the LCD-stack rule cannot escape the LCD wrapper
   DIG-10 no `monospace`-only override on the LCD expression/result elements
   DIG-11 no browser console error is introduced
 """
@@ -42,8 +49,16 @@ URL = FRONTEND_PATH.as_uri()
 
 # The genuine ClassWiz CW Display face (SIL OFL 1.1) that the screen must use.
 SCREEN_TEXT_FACE = "CWDisplay"
-DIGIT_RUN_CLASS = "lcd-digit-run"
 EXPECTED_DIGITS = "1234567890"
+
+# KaTeX exposes no "this run is nothing but digits" hook, so the implementation
+# re-faces every math atom instead of tagging digit runs. A digit run is
+# therefore located here as a `.mord` leaf whose text is entirely digits.
+# The marker class `.lcd-digit-run` is dead (`tagLcdDigitRuns` is a no-op) and
+# must NOT be used to find anything.
+DIGIT_LEAF_CLASS = "mord"
+# Structural wrappers deliberately left on KaTeX's own faces; DIG-8.
+KATEX_STRUCTURAL_CLASSES = ("mfrac", "msqrt", "vlist", "msupsub")
 
 try:
     from playwright.sync_api import sync_playwright
@@ -65,21 +80,28 @@ CSS_NO_COMMENTS = strip_comments(FRONTEND)
 # Static: the rule that re-faces digits
 # --------------------------------------------------------------------------
 class TestDigitRunRule(unittest.TestCase):
-    """DIG-9 / DIG-10."""
+    """DIG-8 / DIG-9 / DIG-10."""
 
-    def _digit_rule(self):
+    def _lcd_stack_rule(self):
+        """The selector list + body of the rule that re-faces KaTeX atoms.
+
+        This targets the LIVE rule (`.lcd .katex .mord, ...`) rather than the
+        dead `.lcd-digit-run` rule that `abbc280` superseded -- asserting on the
+        dead one would keep passing while proving nothing.
+        """
         m = re.search(
-            r"([^{}]*\.lcd-digit-run[^{}]*)\{([^}]*)\}", CSS_NO_COMMENTS)
-        self.assertIsNotNone(m, f"no CSS rule targets .{DIGIT_RUN_CLASS}")
+            r"([^{}]*\.katex\s+\.mord[^{}]*)\{([^}]*)\}", CSS_NO_COMMENTS)
+        self.assertIsNotNone(m, "no CSS rule re-faces KaTeX math atoms")
         return m.group(1), m.group(2)
 
     def test_the_digit_rule_is_scoped_to_the_lcd_wrapper(self):
-        selectors, body = self._digit_rule()
-        self.assertIn(".katex-lcd-wrap", selectors, selectors)
-        self.assertIn("#lcdDisplay", selectors, selectors)
+        # `.lcd` in the selector is what stops this reaching a KaTeX instance
+        # rendered outside the calculator screen.
+        selectors, _ = self._lcd_stack_rule()
+        self.assertRegex(selectors, r"\.lcd\b", selectors)
 
     def test_the_digit_rule_uses_the_lcd_stack_and_numeric_variants(self):
-        selectors, body = self._digit_rule()
+        _, body = self._lcd_stack_rule()
         self.assertIn("var(--lcd-font)", body, body)
         variant = re.search(r"font-variant-numeric\s*:\s*([^;]+);", body)
         self.assertIsNotNone(variant, "the digit rule sets no font-variant-numeric")
@@ -87,8 +109,22 @@ class TestDigitRunRule(unittest.TestCase):
         self.assertIn("tabular-nums", variant.group(1), variant.group(1))
 
     def test_the_digit_rule_names_no_katex_face(self):
-        selectors, body = self._digit_rule()
+        _, body = self._lcd_stack_rule()
         self.assertNotIn("KaTeX_", body, body)
+
+    def test_structural_wrappers_are_absent_from_the_digit_rule(self):
+        """DIG-8: KaTeX must keep its own faces for vlist constructs.
+
+        A `.mfrac` given the LCD face would be measured with CW Display's em
+        while its contents are sized by KaTeX, which is what desyncs the
+        fraction bar from its numerator and denominator.
+        """
+        selectors, _ = self._lcd_stack_rule()
+        for cls in KATEX_STRUCTURAL_CLASSES:
+            self.assertNotRegex(
+                selectors, r"\." + cls + r"\b",
+                f".{cls} is in the re-face selector list, which would break "
+                f"KaTeX's own vlist metrics: {selectors}")
 
     def test_no_monospace_only_override_on_the_lcd_elements(self):
         # A previously fixed bug was a bare `font-family: monospace` on these
@@ -158,14 +194,26 @@ class LcdDigitsBrowserCase(unittest.TestCase):
         self.page.wait_for_timeout(400)
 
     def runs_in(self, host):
-        """Computed style of every marked digit run inside `host`."""
+        """Computed style of every digit-bearing `.mord` leaf inside `host`.
+
+        Located by content, not by a marker class: `abbc280` re-faces every
+        KaTeX math atom under `.lcd` and left `tagLcdDigitRuns` a no-op, so no
+        node carries `.lcd-digit-run` any more. Digits always land in a `.mord`
+        whose text is entirely digits once KaTeX's zero-width joiners are
+        stripped.
+        """
         return self.page.evaluate(
             """([h, cls]) => [...document.querySelectorAll(h + ' .' + cls)]
+                 .filter(e => { const t = e.textContent
+                                  .replace(/[\\u200b\\u200c\\u200d]/g, '').trim();
+                                return t.length > 0 && /^[0-9.,]+$/.test(t); })
                  .map(e => { const cs = getComputedStyle(e);
-                             return { text: e.textContent, family: cs.fontFamily,
+                             return { text: e.textContent
+                                        .replace(/[\\u200b\\u200c\\u200d]/g, '').trim(),
+                                      family: cs.fontFamily,
                                       variant: cs.fontVariantNumeric,
                                       size: parseFloat(cs.fontSize) }; })""",
-            [host, DIGIT_RUN_CLASS])
+            [host, DIGIT_LEAF_CLASS])
 
 
 class TestDigitsRendered(LcdDigitsBrowserCase):
@@ -261,7 +309,9 @@ class TestDigitsRendered(LcdDigitsBrowserCase):
                  const REF = 100;                    // px, big enough to avoid
                  const measure = (host) => {         // rasterisation rounding
                    const el = [...document.querySelectorAll(host + ' .' + cls)]
-                     .find(e => e.textContent.trim() === DIGITS);
+                     .find(e => e.textContent
+                                 .replace(/[\\u200b\\u200c\\u200d]/g, '').trim()
+                             === DIGITS);
                    if (!el) return null;
                    const cs = getComputedStyle(el);
                    const ctx = document.createElement('canvas').getContext('2d');
@@ -277,7 +327,7 @@ class TestDigitsRendered(LcdDigitsBrowserCase):
                  return { expr: measure('#lcdExprContent'),
                           result: measure('#lcdResultLine') };
                }""".replace("DIGITS", repr(EXPECTED_DIGITS)),
-            [DIGIT_RUN_CLASS])
+            [DIGIT_LEAF_CLASS])
         self.assertIsNotNone(metrics["expr"], "no expression digit run measured")
         self.assertIsNotNone(metrics["result"], "no result digit run measured")
         for label, m in metrics.items():
@@ -320,15 +370,20 @@ class TestKaTeXStructuresUntouched(LcdDigitsBrowserCase):
         self.page.wait_for_timeout(400)
         self.assertTrue(self.page.query_selector("#lcdExprContent .mfrac"),
                         "the fraction was not typeset, so nothing was proved")
-        marked = self.page.evaluate(
-            """(cls) => [...document.querySelectorAll('#lcdExprContent')]
-                 .filter(e => e.classList.contains('mfrac') && e.classList.contains(cls))
-                 .map(e => e.className)""",
-            DIGIT_RUN_CLASS)
-        self.assertEqual(
-            marked, [],
-            "a .mfrac wrapper was re-faced; that desyncs the fraction bar from "
-            f"its contents: {marked}")
+        # DIG-8: the wrapper keeps KaTeX's own face class. `abbc280` re-faces
+        # math ATOMS; the `.mfrac` element itself must not be turned into a
+        # leaf that KaTeX then re-measures against the LCD em.
+        self.assertFalse(
+            self.page.query_selector("#lcdExprContent .mfrac.mord"),
+            "a .mfrac wrapper was re-faced as an atom; that desyncs the fraction "
+            "bar from its contents")
+        # ...and it still renders as a real KaTeX fraction with a live bar
+        # (1px), not a collapsed one.
+        bar = self.page.evaluate(
+            """() => { const e = document.querySelector('#lcdExprContent .mfrac .frac-line');
+                 return e ? getComputedStyle(e).borderBottomWidth : null; }""")
+        self.assertIsNotNone(bar, "the fraction bar vanished")
+        self.assertNotEqual(bar, "0px", "the fraction bar collapsed to nothing")
 
     def test_the_numerator_and_denominator_digits_are_still_re_faced(self):
         self.page.evaluate(

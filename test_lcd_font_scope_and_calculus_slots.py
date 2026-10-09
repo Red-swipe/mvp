@@ -284,9 +284,17 @@ class TestCalculusSlotSource(unittest.TestCase):
         m = re.search(r"function insertIntegral\(\)\s*\{[^\n]*", FRONTEND)
         self.assertIsNotNone(m, "insertIntegral not found")
         line = m.group(0)
-        for slot in ("body", "lower", "upper", "dvar"):
+        for slot in ("body", "lower", "upper"):
             self.assertIn(f"{slot}:createSlot()", line,
                           f"the integral template has no {slot} slot: {line}")
+        # 5860ac3 made the differential variable a real slot rather than a fixed
+        # "dx" glyph, and it is SEEDED with the default variable so a freshly
+        # inserted integral already reads dx instead of a blank.
+        self.assertIn("dvar:createSlot(['x'])", line,
+                      f"the integral's dvar is not a slot seeded with 'x': {line}")
+        # The cursor must land in the integrand, not in the dx variable.
+        self.assertIn(", 'body')", line,
+                      f"insertIntegral should open the cursor on the body: {line}")
 
     def test_derivative_template_creates_two_slots(self):
         m = re.search(r"function insertDerivative\(\)\s*\{[^\n]*", FRONTEND)
@@ -445,10 +453,10 @@ class TestIntegralSlots(CalcSlotBrowserCase):
         self.assertEqual(self.cursor_state()["slot"], "dvar")
         self.token("t")
         self.assertEqual(self.slot_items("dvar"), ["t"])
-        # 2. the upper bound, reached from the integrand. Left first steps back over
-        # the letter already typed in the dx variable, then leaves the part.
-        self.press("dpad_left")
-        self.assertEqual(self.cursor_state()["slot"], "dvar")
+        # 2. the upper bound. dvar is a REAL slot now, so it is reached and
+        # left exactly like any other slot: one LEFT from the dx variable goes
+        # to the slot on its left (the integrand) rather than stepping inside
+        # the letter -- the same rule every other slot follows.
         self.press("dpad_left")
         self.assertEqual(self.cursor_state()["slot"], "body")
         self.press("dpad_up")

@@ -9,7 +9,7 @@ Covered:
          area, with the proper glyph (.mop/.mop-op integrals, .mfrac, .mroot)
   KX-2   the integral is TALL with its limits stacked (msupsub over the sign),
          i.e. natural display rather than CSS boxes
-  KX-3   all three editable integral slots are present, each a real element carrying a
+  KX-3   all four editable integral slots are present, each a real element carrying a
          slot id
   KX-4   typing into each slot still produces the correct numeric result
   KX-5   the cursor survives KaTeX rendering, and slot entry still works
@@ -32,6 +32,11 @@ except ImportError:                                     # pragma: no cover
     HAVE_PLAYWRIGHT = False
 
 URL = (PROJECT / "frontend.html").as_uri()
+
+# The genuine ClassWiz CW Display face. Since abbc280 every KaTeX math atom
+# under `.lcd` is re-faced to the LCD stack, so this is what a typeset glyph
+# resolves to here -- KaTeX still owns the LAYOUT, not the typeface.
+SCREEN_TEXT_FACE = "CWDisplay"
 
 
 class TestExpressionKatexSource(unittest.TestCase):
@@ -170,8 +175,16 @@ class TestIntegralIsKatex(ExprKatexBrowserCase):
                           font: getComputedStyle(op).fontFamily }; }""")
         self.assertIsNotNone(where, "no .op-symbol operator span")
         self.assertIn("\u222b", where["text"], where)
-        self.assertIn("KaTeX", where["font"],
-                      f"the integral is not drawn in a KaTeX face: {where['font']}")
+        # The glyph is KaTeX's own operator span, so it is positioned as a
+        # stretchy big operator. Its FACE, however, is the LCD stack: commit
+        # abbc280 ("unify KaTeX LCD typography") re-faced every KaTeX math atom
+        # under `.lcd` to `--lcd-font`, so asserting a "KaTeX" family here
+        # would now assert the defect this file exists to prevent.
+        self.assertIn(SCREEN_TEXT_FACE, where["font"],
+                      f"the integral is not drawn in the LCD face: {where['font']}")
+        self.assertNotIn("KaTeX_", where["font"],
+                         f"the integral still resolves to a KaTeX face: "
+                         f"{where['font']}")
 
     def boxes_in_order(self, sel):
         """Slot elements under `sel`, sorted TOP TO BOTTOM (visual order).
@@ -257,14 +270,27 @@ class TestIntegralIsKatex(ExprKatexBrowserCase):
     def test_all_four_integral_slots_are_real_elements(self):
         self.press("integral")
         st = self.state()
-        # body + lower + upper; dx is a fixed token
-        self.assertEqual(len(st["slotIds"]), 3, st["slotIds"])
-        self.assertEqual(len(set(st["slotIds"])), 3,
+        # body + lower + upper + dvar. Commit 5860ac3 made the differential
+        # variable a REAL, editable slot seeded with 'x'; it used to be a
+        # `data-fixed-token` "dx" glyph that could not be selected or edited.
+        self.assertEqual(len(st["slotIds"]), 4, st["slotIds"])
+        self.assertEqual(len(set(st["slotIds"])), 4,
                          f"slot ids are not unique: {st['slotIds']}")
         html = self.expr()
-        self.assertEqual(html.count("data-slot-id"), 3, html[:400])
-        self.assertIn('data-fixed-token="true"', html)
-        self.assertIn('>dx<', html)
+        self.assertEqual(html.count("data-slot-id"), 4, html[:400])
+        # ...and there is no fixed dx token left anywhere.
+        self.assertNotIn('data-fixed-token', html,
+                         "the dx variable is still a fixed token, not a slot")
+        # The dvar slot is the fourth one and carries the default variable.
+        slots = self.page.evaluate(
+            """() => [...document.querySelectorAll('#lcdExprContent [data-slot-id]')]
+                 .map(e => ({ id: e.dataset.slotId, text: e.textContent.trim() }))""")
+        self.assertEqual([s["text"] for s in slots].count("x"), 1, slots)
+        # The rendered integral still reads ...d<var>.
+        self.assertRegex(self.page.inner_text("#lcdExprContent"), r"d\s*x",
+                         "the differential did not render as d<x>")
+        # ...and the model agrees: the slot is a real one, not an empty string.
+        self.assertEqual(self.slot_items("dvar"), ["x"])
 
 
 class TestSlotsStillWork(ExprKatexBrowserCase):
@@ -275,7 +301,7 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
         self.page.evaluate("() => { insertToken('x'); }")
         self.page.evaluate("() => { insertPower('2'); }")
         self.assertEqual(self.slot_items("body")[0]["type"], "power")
-        # navigate to the two bounds; dx is not focusable
+        # navigate to the two bounds; the integrand is where we started
         self.press("dpad_up"); self.types("3")
         self.assertEqual(self.slot_items("upper"), ["3"])
         self.press("dpad_down"); self.types("0")
@@ -284,17 +310,23 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
         self.assertIsNone(out["error"], out)
         self.assertAlmostEqual(float(out["result"]), 9.0, places=6)
 
-    def test_the_three_editable_slots_are_reachable(self):
-        for name, digit in (("body", "7"), ("upper", "3"), ("lower", "0")):
+    def test_the_four_editable_slots_are_reachable(self):
+        # 5860ac3 made the differential variable a real editable slot, so there
+        # are now four reachable parts, not three. Each is entered with a digit
+        # (or, for dvar, a letter) and lands in that part's model.
+        for name, key, token in (("body", None, "7"), ("upper", "dpad_up", "3"),
+                                 ("lower", "dpad_down", "0"),
+                                 ("dvar", "dpad_right", "t")):
             with self.subTest(slot=name):
                 self.setUp()
                 self.press("integral")
-                if name == "upper":
-                    self.press("dpad_up")
-                elif name == "lower":
-                    self.press("dpad_down")
-                self.types(digit)
-                self.assertEqual(self.slot_items(name), [digit])
+                if key:
+                    self.press(key)
+                if name == "dvar":
+                    self.page.evaluate("(t) => { insertToken(t); }", token)
+                else:
+                    self.types(token)
+                self.assertEqual(self.slot_items(name), [token])
 
     def test_the_cursor_survives_katex_rendering(self):
         self.press("integral")
@@ -330,8 +362,10 @@ class TestSlotsStillWork(ExprKatexBrowserCase):
         self.assertEqual(st["cursor"], 1, "no cursor in the non-leaf slot")
         self.assertTrue(st["hasKatex"])
         self.assertIn("kx-cursor-slot", self.expr())
-        # ...and it must not have been mistaken for a real slot.
-        self.assertEqual(len(st["slotIds"]), 3,
+        # ...and it must not have been mistaken for a real slot. Two fractions
+        # expose four real slots (num/den each); the root-slot cursor is the
+        # fifth position but carries no data-slot-id.
+        self.assertEqual(len(st["slotIds"]), 4,
                          f"only the four fraction parts are real slots: {st['slotIds']}")
 
     def test_nested_templates_still_serialize(self):
