@@ -6280,23 +6280,19 @@ function itemLatex(item, ph) {
     const kind = eq.selectedType;
     const coefficients = kind === 'simultaneous' ? eq.coefficientValues : (eq.coefficientValues[0] || []);
     const request = {kind, coefficients, count:kind === 'simultaneous' ? eq.numberOfEquations : eq.polynomialDegree};
-    console.debug('[EQUATION-TRACE-REQUEST]', JSON.stringify({url:'/api/equation/solve', method:'POST', body:request}));
     fetch('/api/equation/solve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(request)})
       .then(async response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        console.debug('[EQUATION-TRACE-RESPONSE]', JSON.stringify({status:response.status, body:data}));
         return {response, data};
       })
       .then(({response, data}) => {
         if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
-        console.debug('[EQUATION-TRACE-NORMALIZE]', JSON.stringify({input:data.result, type:Array.isArray(data.result) ? 'array' : typeof data.result}));
         eq.resultState = data.result;
         eq.extremum = data.extremum || null;
         eq.phase='result'; renderLCD();
       })
-      .catch(error => {
-        console.error('[EQUATION-TRACE-ERROR]', error);
+      .catch(() => {
         eq.resultState='Math ERROR'; eq.phase='result'; renderLCD();
       });
   }
@@ -6320,8 +6316,13 @@ function itemLatex(item, ph) {
 
   function formatEquationResult(eq) {
     if (typeof eq.resultState === 'string') return displayFormat(eq.resultState);
-    if (eq.selectedType !== 'polynomial' || !Array.isArray(eq.resultState)) return displayFormat(JSON.stringify(eq.resultState ?? ''));
-    return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${displayFormat(formatEquationRoot(root))}`).join('\n');
+    if (!Array.isArray(eq.resultState)) return displayFormat(String(eq.resultState ?? ''));
+    // Was `displayFormat(JSON.stringify(eq.resultState))` for every non-polynomial
+    // kind, so a solved simultaneous system printed its raw array
+    // ("[2.7142857142857144,1.5714285714285714]") instead of named variables.
+    return eq.resultState.map((root, index) =>
+      equationVariableLabel(eq, index).plain + ' = ' + displayFormat(formatEquationRoot(root))
+    ).join('\n');
   }
 
   // ── EQN result -> KaTeX ────────────────────────────────────────────────
@@ -6378,15 +6379,39 @@ function itemLatex(item, ph) {
     if (real === 0) return (imag < 0 ? '-' : '') + imagLatex;
     return equationNumberToLatex(real, exact) + (imag < 0 ? ' - ' : ' + ') + imagLatex;
   }
+  // The label a solution is introduced by. A POLYNOMIAL's answers are its
+  // ordered roots, so they are indexed x_1, x_2, ... A SIMULTANEOUS system's
+  // answers are the values of the unknowns the user typed coefficients for, so
+  // they are labelled with those same variables (x, y, z, w). Labelling them
+  // x_1, x_2, ... made a 4-unknown system report "x_1 = 10, x_2 = 0, ..."
+  // where the input grid immediately above showed x, y, z, w -- it read like
+  // polynomial roots and contradicted the screen it came from.
+  function equationVariableLabel(eq, index) {
+    if (eq.selectedType === 'simultaneous') {
+      const v = ['x', 'y', 'z', 'w'][index] || ('x' + (index + 1));
+      return { latex: v, plain: v };
+    }
+    return { latex: 'x_{' + (index + 1) + '}', plain: 'x' + (['\u2081', '\u2082', '\u2083', '\u2084'][index] || (index + 1)) };
+  }
   // The x-index is part of the displayed math, so it is a KaTeX subscript
   // (x_1) rather than the precomposed character, which renders inconsistently
   // across the LCD font.
   function equationSolutionLatex(eq, index) {
     const roots = eq.resultState;
-    const subscript = index + 1;
     if (typeof roots === 'string') return String(roots);
     if (!Array.isArray(roots) || index >= roots.length) return '\\text{Math ERROR}';
-    return 'x_{' + subscript + '} = ' + equationRootToLatex(roots[index], index, !!eq.exactForm);
+    return equationVariableLabel(eq, index).latex + ' = ' +
+           equationRootToLatex(roots[index], index, !!eq.exactForm);
+  }
+
+  // Plain-text twin of equationSolutionLatex. This is what the LCD shows when
+  // KaTeX is unavailable, so it has to carry the label too -- it used to pass
+  // the bare value and the screen showed just "1.571428571" with no variable
+  // name at all.
+  function equationSolutionText(eq, index) {
+    const roots = eq.resultState;
+    if (!Array.isArray(roots) || index >= roots.length) return '';
+    return equationVariableLabel(eq, index).plain + ' = ' + formatEquationRoot(roots[index]);
   }
 
   function solveInequalityRemote() {
@@ -6539,7 +6564,7 @@ function itemLatex(item, ph) {
           latexHost.textContent = formatEquationResult(eq);
         } else {
           renderMath(equationSolutionLatex(eq, eq.solutionIndex || 0), 'eqSolutionMath', false,
-                     formatEquationRoot(roots ? roots[eq.solutionIndex || 0] : null));
+                     equationSolutionText(eq, eq.solutionIndex || 0));
         }
       } catch (error) { console.error('[EQUATION] render failed', error); latexHost.textContent='Math ERROR'; }
       // Position indicator: which of N solutions is on screen, and whether the
@@ -8437,7 +8462,6 @@ function showQRinLCD() {
         else if (rawKey === 'decimal' && !eq.inputBuffer.includes('.')) eq.inputBuffer=(eq.inputBuffer||'0')+'.';
         else if (rawKey === 'negate' || rawKey === 'minus') {
           eq.inputBuffer=eq.inputBuffer.startsWith('-')?eq.inputBuffer.slice(1):'-'+eq.inputBuffer;
-          console.debug('[EQUATION-TRACE-MINUS]', JSON.stringify({rawKey, inputBuffer:eq.inputBuffer, type:typeof eq.inputBuffer}));
         }
         else if (rawKey === 'del') eq.inputBuffer=eq.inputBuffer.slice(0,-1);
         else if (rawKey === 'dpad_up') {commit(); eq.currentEquation=Math.max(0,eq.currentEquation-1);}
@@ -8449,7 +8473,6 @@ function showQRinLCD() {
           if (eq.currentCoefficient<cols-1) eq.currentCoefficient++;
           else if (eq.currentEquation<rows-1) { eq.currentEquation++; eq.currentCoefficient=0; }
           else {
-            console.debug('[EQUATION-TRACE-STATE]', JSON.stringify({degree:eq.polynomialDegree, coefficients:eq.coefficientValues, types:eq.coefficientValues.map(row=>row.map(value=>typeof value))}));
             solveEquationRemote(); return;
           }
         }

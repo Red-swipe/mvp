@@ -2477,7 +2477,6 @@ class CalculatorController:
 
     def solve_equation(self, kind: str, coefficients, count_or_degree: int) -> dict:
         try:
-            print(f"[EQUATION] request kind={kind!r} count_or_degree={count_or_degree!r} coefficients={coefficients!r}", flush=True)
             self.engine.set_mode("EQUATION")
             if kind == "simultaneous":
                 n = int(count_or_degree)
@@ -2506,10 +2505,8 @@ class CalculatorController:
             response = {"ok": True, "success": True, "result": json_safe(result)}
             if extremum is not None:
                 response["extremum"] = json_safe(extremum)
-            print(f"[EQUATION] parsed={vals!r} result={response['result']!r}", flush=True)
             return response
         except Exception as exc:
-            print(f"[EQUATION] error={exc!r}", flush=True)
             return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def solve_inequality(self, degree: int, operator: str, coefficients: list) -> dict:
