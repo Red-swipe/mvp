@@ -264,10 +264,21 @@ CASES_OK = [
     "50%", "sigma(x,1,5)", "d/dx(x^2,3)", "Rnd(10/3)", "RanInt(1,1)",
     "Pol(2,2)", "Rec(2,45)", "5P2", "5C2", "10^(2)", "Abs(0-7)",
     "FACT(12)", "2+2:3*3", "A*2", "i*i", "Abs(3+4*i)", "(1+i)^2",
+    # Issue 2: constants juxtaposed with an operand (implicit multiplication).
+    # `2pi` reaches the parser as `2(3.14159...)` because SHIFT+pi inserts the
+    # constant with no operator.
+    "pi", "e", "2pi", "pi^2", "pi/2", "sqrt(pi)", "2pi^2", "pi*pi",
+    "1+pi", "2(3)", "3 4 5",
 ]
+# Group-adjacent-to-group is deliberately NOT juxtaposition: it is the shape
+# the postfix-% rewrite produces for `10%10%`, which must stay an error on both
+# sides (see test_percent_contextual).
+# `2e` is also an error on both sides: the backend rewrites `e` only when it is
+# not preceded by an alphanumeric, which is what keeps `1e10` scientific
+# notation working.
 CASES_ERR = [
     "sqrt((-1))", "xroot(0,5)", "log_base(0,5)", "asin(2)",
-    "integral(1/x,(-1),1)", "171!", "((2))(", "abc",
+    "integral(1/x,(-1),1)", "171!", "((2))(", "abc", "(2)(3)", "2e",
 ]
 # 1/0 is special: both sides must show the custom div-zero message.
 DIV_ZERO = "To infinity and beyonddd"

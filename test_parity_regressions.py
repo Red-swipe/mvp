@@ -225,6 +225,34 @@ class TestBaseN(unittest.TestCase):
         tok2 = c._token_for("square")
         self.assertIn("BASE_SWITCH", tok2)
 
+    def test_scientific_key_is_inert_in_base_n(self):
+        # ×10^x (SHIFT π / ALPHA e) must not splice scientific notation into a
+        # fixed-radix entry. evaluate_base_n() rewrites digit runs through the
+        # active base and then evaluates normally, so "5×10^3" used to yield a
+        # plausible-looking but meaningless 5000 in DEC (and 5000 in HEX)
+        # instead of the key being ignored. The router therefore has to bail
+        # out before insertToken() in BASE-N.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        router = html[html.index("if (rawKey === 'scientific')"):]
+        guard = router[:router.index("insertToken(isShift")]
+        self.assertIn("if (appState.mode === 'Base-N') return;", guard)
+        # The guard must come BEFORE the insert, not after it.
+        self.assertLess(router.index("if (appState.mode === 'Base-N') return;"),
+                        router.index("insertToken(isShift"))
+
+    def test_base_n_still_rejects_digits_above_the_base(self):
+        # Digits are validated against the ACTIVE base, not against a fixed 10.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        self.assertIn(
+            "appState.mode === 'Base-N' && /^[0-9]$/.test(tok) "
+            "&& parseInt(tok) >= appState.baseNBase", html)
+
+    def test_base_switch_keys_match_buttons_md(self):
+        # raw/buttons.md: SHIFT x²→DEC, SHIFT x^→HEX, SHIFT log→BIN, SHIFT ln→OCT.
+        html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
+        self.assertIn("const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };",
+                      html)
+
 
 class TestMatrixVector(unittest.TestCase):
     def setUp(self):
@@ -490,6 +518,26 @@ class TestFrontendWiring(unittest.TestCase):
     def test_mixed_fraction(self):
         self.assertIn("insertMixedFraction", self.html)
         self.assertIn("type === 'mixed'", self.html)
+
+    def test_scientific_notation_is_typeset_as_a_superscript(self):
+        # displayFormat() emits plain text such as "1.5×10^8". KaTeX typesets a
+        # bare `^` and the exponent digits on the baseline, so the MathO result
+        # line read as literal "1.5×10^8". scientificToLatex() converts exactly
+        # that one shape into 10^{8} so the exponent is a real superscript.
+        self.assertIn("function scientificToLatex(text)", self.html)
+        self.assertIn("10^{'", self.html)
+        renderer = self.html[self.html.index("function renderMatrixResult"):]
+        renderer = renderer[:renderer.index("function syncQrOverlay")]
+        self.assertIn("const sci = scientificToLatex(shown);", renderer)
+        # The converted latex must be what reaches the result line, and the
+        # plain-text fallback must survive for the no-KaTeX case.
+        self.assertIn("renderMath(sci, 'lcdResultLine', false, shown)", renderer)
+        self.assertIn("renderMath(shown, 'lcdResultLine', false, shown)", renderer)
+        # The exact-fraction promotion must still be checked first, and
+        # exprToLatex must remain confined to that branch -- routing scientific
+        # notation through it is what left the caret on the baseline.
+        self.assertLess(renderer.index("exactFractionToLatex(shown)"),
+                        renderer.index("scientificToLatex(shown)"))
 
     def test_katex_mappings(self):
         self.assertIn("sum_{", self.html)

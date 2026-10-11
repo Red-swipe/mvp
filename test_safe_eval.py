@@ -1,5 +1,9 @@
+import pathlib
 import sys
-sys.path.insert(0, r'E:\A.G\casio_mvp')
+
+# Derive the repository root from this file rather than hardcoding one
+# machine's checkout path (same fix as test_safe_eval_regressions.py).
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from mvp_server import safe_evaluate_expression
 

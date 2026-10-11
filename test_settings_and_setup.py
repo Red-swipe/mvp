@@ -55,6 +55,20 @@ class TestSettingsAndSetup(unittest.TestCase):
         res3 = self.ctrl.set_settings({"numberFormatPrecision": 15})
         self.assertFalse(res3["ok"])
 
+    def test_frontend_settings_sync_accepts_statistics_frequency(self):
+        """The browser's /api/settings payload must be accepted unchanged."""
+        result = self.ctrl.set_settings({
+            "input_output": "MathI/MathO",
+            "angle_unit": "Degree",
+            "number_format": "Norm",
+            "number_format_precision": 2,
+            "engineering_symbols": False,
+            "fraction_result": "ab/c",
+            "statistics_frequency": True,
+        })
+        self.assertTrue(result["ok"], result)
+        self.assertTrue(result["settings"]["statisticsFrequency"])
+
     def test_angle_unit_evaluation(self):
         # Degree (default)
         r_deg = safe_evaluate_expression("sin(90)", angle_unit="Degree")

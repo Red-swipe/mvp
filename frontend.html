@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Casio MX-911 ClassWiz - mockup</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR generator, vendored locally (MIT, Kazuhiko Arase) so the portable
+     build renders its QR screen with no network access. This replaced the
+     cdnjs `qrcodejs` CDN reference, which broke offline and drew modules at a
+     fractional size with no quiet zone. See qrcode/THIRD-PARTY-NOTICES.txt. -->
+<script src="./qrcode/qrcode.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -717,6 +721,11 @@
   .eq-coeff-row.active { background:var(--ink); color:#dce6c2; }
   .eq-result { padding:5px 4px; font-size:11px; font-weight:700; line-height:16px; }
   .eq-solution { white-space:pre-line; }
+      /* The current solution is typeset by KaTeX, so it must NOT be pre-line:
+         a KaTeX block is its own layout, and pre-line only existed to honour the
+         newline-joined plain-text blob this replaced. */
+      .eq-solution-math { white-space:normal; }
+      .eq-solution-pos { margin-top:4px; font-size:9px; font-weight:700; color:var(--ink); opacity:.85; }
 
   /* CONSTANTS SCREEN */
   #lcdConstants {
@@ -766,11 +775,30 @@
     margin-top: 4px;
   }
 
-  /* CALC SCREEN */
+  /* CALC SCREEN
+   *
+   * The column stacks: status bar, then the expression viewport. The result is
+   * NOT one of these children -- `.lcd-result-line` is absolutely positioned at
+   * `right:4px; bottom:2px`, so it is out of flow and reserves no space here.
+   *
+   * That is why this used to read `justify-content:space-between`: with only
+   * TWO in-flow children, `space-between` pushed the status bar to the very top
+   * and the expression viewport all the way to the BOTTOM of the 103px LCD --
+   * straight into the result line. Measured on the real build, the expression
+   * sat at y=55..79 and the result at y=74..101, so they overlapped by ~4px
+   * while the top ~40% of the screen stayed empty. That is the "expression
+   * beside the result" symptom: on the fx-991EX the input line owns the UPPER
+   * region and the evaluated value owns the LOWER-RIGHT result area.
+   *
+   * Pinning the stack to the top (`flex-start`) restores exactly that split:
+   * status bar 12px + expression 50px = 62px of upper region, and the result
+   * band begins at 103-2-20 = 81px, so the two can never collide and a long
+   * result can never displace or overwrite the expression.
+   */
   #lcdCalc{
     display:flex;
     flex-direction:column;
-    justify-content:space-between;
+    justify-content:flex-start;
     height:100%;
     position:relative;
   }
@@ -781,6 +809,10 @@
     justify-content:space-between;
     align-items:center;
     height:12px;
+    /* Never let the status bar or the expression line be squeezed by the
+     * overflow of a long result: both keep their intrinsic height so the
+     * upper region stays the upper region. */
+    flex:0 0 auto;
     font-size:9px;
     font-weight:700;
     line-height:1;
@@ -832,11 +864,51 @@
   .menu-overlay .menu-item{padding:2px 4px; font:700 11px/15px Arial, sans-serif; cursor:pointer;}
   .menu-overlay .menu-item:hover{background:var(--ink); color:#dce6c2;}
 
+  /* QR OVERLAY. The generic .menu-overlay above reserves inset 2px 4px 4px and
+     5px of padding, which left only 75px of content height: the title + the URL
+     caption + a 72px symbol needed 101px, so `.lcd{overflow:hidden}` cropped the
+     bottom of the panel and the caption was never visible at all. The QR panel
+     therefore takes the whole LCD content box and lays itself out as a column,
+     giving #lcdQrBox the leftover height to measure. The QR scale is then
+     computed from that measured box (see renderQrCode), never guessed in CSS.
+     The old "https://mentisai-delta.vercel.app/" caption under the symbol was
+     removed: it duplicated the encoded payload, and because it was the element
+     the overflow cut, it was never actually visible. Reclaiming its 10px is
+     what lets the 29-module symbol reach an integer scale of 2 instead of 1. */
+  #qr-panel{
+    inset:0;
+    padding:2px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+  }
+  #qr-panel .qr-title{font-size:8px; line-height:10px; font-weight:700; margin-bottom:1px;}
+  /* flex:1 + min-height:0 lets the box claim the remaining height even while
+     it is empty, which is what makes the scale calculation possible. */
+  #lcdQrBox{flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  /* pixelated keeps the integer module grid crisp when the canvas is painted
+     at devicePixelRatio>1 or resized by the browser. */
+  #lcdQrBox canvas{display:block; image-rendering:pixelated;}
+
   /* EXPRESSION VIEWPORT */
   .lcd-expr-viewport{
     position:relative;
     width:100%;
-    height:50px;
+    /* 58px, not 50px. The expression line is typeset by KaTeX in DISPLAY mode
+     * so that the sigma template gets its ClassWiz arrangement with the limits
+     * stacked above and below the operator. Measured in the browser, that
+     * `\sum_{i=1}^{3}` vlist is 50.8px tall and sits 3px down (padding-top +
+     * baseline alignment), so the bottom 3.8px -- the LOWER LIMIT -- was cut
+     * off by `overflow-y:hidden`. 58px clears it with ~4px of slack.
+     *
+     * Item 1's layout is preserved: the status bar is 12px, so the upper region
+     * is now 12 + 58 = 70px, still clear of the result band which begins at
+     * 103 - 2 - 20 = 81px. Expression and result still cannot collide. */
+    height:58px;
+    /* The expression owns the upper region and must keep its box even when
+     * the result is long, so it can never be compressed into the result band. */
+    flex:0 0 auto;
     overflow-x:hidden;
     overflow-y:hidden;
     white-space:nowrap;
@@ -860,7 +932,19 @@
   .lcd-result-line{
     position:absolute;
     right:4px;
-    bottom:2px;
+    /* 8px, not 2px. KaTeX renders a stacked \frac as a vlist whose ink is
+     * ~37px tall while `line-height:1` keeps the LINE BOX at ~20px, so the
+     * glyphs spill below the box by ~9px. With bottom:2px that put the ink at
+     * y=329.97..367.17 while `.lcd` ends at 365: `.lcd` is overflow:hidden, so
+     * the denominator of an exact result was silently clipped at the bottom
+     * edge of the screen. Measured across 5/8, 7/3, 7*8 and a 20-term sum, 8px
+     * is the smallest offset that brings the tallest result ink fully inside
+     * the LCD (clearance 3.83px) without lifting the result out of the lower
+     * band. The expression viewport ends at y=337 and its tallest ink (a Sigma
+     * vlist) reaches 335.86, but the two never meet horizontally: the
+     * expression is left-aligned and the result right-aligned, a gap of ~105px
+     * in the worst case (test_lcd_expression_result_geometry). */
+    bottom:8px;
     font-size:20px;
     font-weight:bold;
     line-height:1;
@@ -1746,10 +1830,48 @@
     font-variant-numeric:lining-nums tabular-nums;
   }
 
-  /* KaTeX is scoped to the LCD's own wrapper: the KaTeX_* faces apply inside
-     .katex-lcd-wrap only. No rule above forces a family over `.katex`, so the
-     typeset results keep their own glyphs while the surrounding screen text
-     uses the ClassWiz display stack from `.lcd`. */
+  /* ── DIGITS INSIDE KaTeX ────────────────────────────────────────────────
+     The rule above deliberately stops at `.katex`, so every digit on a typeset
+     line was painted in KaTeX_Main/KaTeX_AMS -- a Times-style serif face --
+     while the plain LCD text used the ClassWiz CW Display face. That mismatch
+     is what made the digits read as "tacky": two unrelated numeral designs on
+     one screen.
+
+     KaTeX gives no CSS hook that identifies "this run is nothing but digits",
+     so `tagLcdDigitRuns()` marks those leaf runs after each render and this
+     rule re-faces exactly them. Nothing that takes part in a vlist (fractions,
+     radicals, stacked limits, big operators, delimiters) is ever marked, so
+     KaTeX's own em-based metrics for those constructs are untouched.
+     `.katex-lcd-wrap` is the LCD's own wrapper, so this can never reach a
+     KaTeX instance outside the calculator screen. */
+  #lcdDisplay .katex-lcd-wrap .lcd-digit-run{
+    font-family:var(--lcd-font);
+    font-variant-numeric:lining-nums tabular-nums;
+    /* `.lcd-result-line` is bold and CW Display ships a single normal weight,
+       so the browser fakes a bold by smearing the outline. The fake bold is
+       ~3% taller and wider than the real glyph, which is precisely the
+       input-vs-result mismatch this rule exists to remove. `font-synthesis:
+       none` (the shorthand) drops the fake weight instead of inventing one:
+       the result line keeps its larger size to read as the result, and its
+       digits are then metrically identical to the input line's. */
+    font-synthesis-weight:none;
+    font-synthesis-style:none;
+  }
+
+  /* KaTeX is scoped to the LCD's own wrapper. Ordinary math atoms inherit the
+     same LCD face as the rest of the screen; KaTeX still owns size/stretchy
+     glyph geometry for radicals and integral signs. */
+  .lcd .katex .mord,
+  .lcd .katex .mbin,
+  .lcd .katex .mrel,
+  .lcd .katex .mop,
+  .lcd .katex .mopen,
+  .lcd .katex .mclose,
+  .lcd .katex .mpunct,
+  .lcd .katex .mpunc {
+    font-family:var(--lcd-font) !important;
+    font-variant-numeric:lining-nums tabular-nums;
+  }
   #lcdDisplay .expr-katex-wrap{ padding:1px 0; }
   /* A hydrated slot: KaTeX typesets the skeleton and every editable box inside
      it is a real element again, so it must lay out inline like the plain text
@@ -1772,7 +1894,8 @@
     opacity:.45;
     vertical-align:-.05em;
   }
-  #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+  /* Stacked fractions and limits extend above the inline line box. */
+  #lcdDisplay .katex-lcd-wrap { display: inline-block; max-width: 100%; overflow: visible; }
   #lcdDisplay .katex-lcd-wrap.katex-block { display: block; text-align: center; }
   #lcdDisplay .katex { color: inherit; background: transparent; font-size: 1.02em; white-space: nowrap; }
   #lcdDisplay .katex-display { margin: 0; padding: 0; }
@@ -1856,10 +1979,9 @@
             <div class="lcd-expr-content" id="lcdExprContent"></div>
           </div>
           <div class="lcd-result-line" id="lcdResultLine"></div>
-          <div id="qr-panel" class="menu-overlay" style="display:none; text-align:center;">
-            <div style="font-weight:700; font-size:10px; margin-bottom:2px;">Mentis QR</div>
-            <div id="lcdQrBox" style="display:flex; justify-content:center;"></div>
-            <div style="font-size:8px; margin-top:2px; word-break:break-all;">https://mentisai-delta.vercel.app/</div>
+          <div id="qr-panel" class="menu-overlay" style="display:none;">
+            <div class="qr-title">Mentis QR</div>
+            <div id="lcdQrBox"></div>
           </div>
           <div id="optn-panel" class="menu-overlay" style="display:none;">
             <div id="optn-main-menu">
@@ -2212,8 +2334,8 @@
       <div class="row numeric-row">
         <div class="bw"><span class="lbl"><span class="shift-mark">Rnd</span></span><button class="b bn" data-shift="Rnd" data-key="0">0</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">Ran#</span> <span class="alpha-mark">RanInt</span></span><button class="b bn" data-shift="Ran#" data-alpha="RanInt" data-key="decimal">.</button></div>
-        <div class="bw"><span class="lbl"><span class="shift-mark">π</span></span><button class="b bop scientific-wide" data-shift="pi" data-alpha="e" data-key="scientific">×10<sup>x</sup></button></div>
-        <div class="bw"><span class="lbl"><span class="alpha-mark">e</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-shift="percent" data-key="ans">Ans</button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">π</span> <span class="alpha-mark">e</span></span><button class="b bop scientific-wide" data-shift="pi" data-alpha="e" data-key="scientific">×10<sup>x</sup></button></div>
+        <div class="bw"><span class="lbl"><span class="shift-mark">%</span></span><button class="b bop" style="font-size:14px;font-weight:600" data-shift="percent" data-key="ans">Ans</button></div>
         <div class="bw"><span class="lbl"><span class="shift-mark">≈</span></span><button class="b bop" data-shift="approx" data-key="equals">=</button></div>
       </div>
 
@@ -2223,6 +2345,10 @@
 </div>
 
 <script>
+  // Kept as a compatibility hook for older render paths. Typography is now
+  // applied to all normal KaTeX atom classes at the LCD container level.
+  function tagLcdDigitRuns(_) {}
+
   // KaTeX Integration — Mentis ClassWiz — Sept 2026
   // Scoped math typesetting: KaTeX renders ONLY inside #lcdDisplay (the LCD
   // container). Never auto-render the whole page. The outer LCD keeps its own
@@ -2286,6 +2412,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       host.appendChild(wrap);
       try {
         katex.render(raw, wrap, { displayMode: !!displayMode, throwOnError: false, strict: false, trust: false });
+        tagLcdDigitRuns(wrap);
       } catch (inner) {
         wrap.textContent = plain;
       }
@@ -2705,8 +2832,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     equation: {
       selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
       currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '',
-      selectedMenuItem: 0, resultState: null
+      selectedMenuItem: 0, resultState: null, extremum: null
     },
+    solvePrompt: { active: false, value: '0' },
   };
 
   // Sync initial loaded settings with backend
@@ -2785,11 +2913,17 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     for (const item of slot.items) {
       if (typeof item === 'string') continue;
       if (item.type === 'integral') {
+        // The dx variable is a real slot. `x` is the physical default and is
+        // what the engine binds as its dummy; any other single letter is a
+        // display-only choice that gets rewritten onto the dummy on the way out.
+        // validDvar() used to be dead code and the dummy was hardcoded, so a
+        // chosen variable could neither be entered nor be honoured.
         const dvar = validDvar(item.dvar);
         const body = serializeSlot(item.body);
-        if (!dvar || !body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
+        if (!body || !slotHasContent(item.lower) || !slotHasContent(item.upper)) {
           return CALCULUS_SYNTAX_ERROR;
         }
+        if (!dvar) return CALCULUS_SYNTAX_ERROR;
         if (integralCollides(body, dvar)) return CALCULUS_SYNTAX_ERROR;
       } else if (item.type === 'derivative') {
         if (!slotHasContent(item.body) || !slotHasContent(item.point)) {
@@ -2843,11 +2977,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       } else if (item.type === 'rnd') {
         out += 'Rnd(' + (serializeSlot(item.arg)||'0') + ')';
       } else if (item.type === 'integral') {
-        // Four editable parts on screen (lower, upper, integrand, dx variable)
-        // but the engine's contract is integral(expr, lower, upper): the chosen
-        // variable exists only as the engine's own dummy `x`, rewritten here at
-        // serialization so the screen never has to show it.
-        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', validDvar(item.dvar))
+        // The engine binds `x` as its dummy, so the chosen dx variable is
+        // rewritten onto it here. It is a display choice only -- the bound the
+        // user picked must never reach the evaluator as a free identifier.
+        out += 'integral(' + integralBody(serializeSlot(item.body)||'0', validDvar(item.dvar)||'x')
              + ',' + (serializeSlot(item.lower)||'0')
              + ',' + (serializeSlot(item.upper)||'0') + ')';
       } else if (item.type === 'sigma') {
@@ -2862,6 +2995,51 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     return out;
   }
   const getExpr = () => serializeSlot(rootSlot);
+
+  // Unbalanced '(' on EXE. The fx-991EX closes what the user left open before
+  // it evaluates -- `(2+3` + EXE shows (2+3) and answers 5 -- so the closers are
+  // appended to the MODEL, not to the outgoing string. Mutating the tree (rather
+  // than only the serialized expression handed to the evaluator) is what keeps
+  // the LCD and the evaluated expression the same thing: the expression line is
+  // re-rendered from rootSlot, so a string-only fix would leave the screen
+  // showing `(2+3` while the engine answered for `(2+3)`.
+  //
+  // Only LITERAL string items are counted. serializeSlot() emits every template
+  // node's own parentheses in balanced pairs (fraction -> `((n)/(d))`, power ->
+  // `((b)^(e))`, log_base/Rnd/sqrt/xroot/integral/sigma/diff -> `name(...)`), so
+  // the only unbalanced parentheses in the tree are the ones typed on the `(` key
+  // or arriving inside a raw function token such as `sin(`. Counting the model
+  // keeps that invariant explicit and stays correct if a template is ever given
+  // asymmetric parentheses -- counting the serialized string blindly would not.
+  //
+  // Each entry left on the stack is the slot holding one still-open '('; popping
+  // on ')' means an over-closed expression (`2+3)`) leaves the stack empty and
+  // keeps its Math ERROR, which is the established contract.
+  function unclosedParenSlots(slot, stack) {
+    if (!slot || !slot.items) return;
+    for (const item of slot.items) {
+      if (typeof item === 'string') {
+        for (const ch of item) {
+          if (ch === '(') stack.push(slot);
+          else if (ch === ')') stack.pop();
+        }
+      } else if (item) {
+        for (const k of SLOT_KEYS) unclosedParenSlots(item[k], stack);
+      }
+    }
+  }
+
+  function closeUnbalancedParens() {
+    const stack = [];
+    unclosedParenSlots(rootSlot, stack);
+    if (!stack.length) return 0;
+    for (const slot of stack) slot.items.push(')');
+    // Keep the caret behind the parentheses just written, so a second EXE (or
+    // an operator) continues from the completed expression rather than from a
+    // stale index that would overwrite a closer.
+    if (stack.indexOf(cursor.slot) >= 0) cursor.index = cursor.slot.items.length;
+    return stack.length;
+  }
 
   function prepareExpressionForEvaluation(expression) {
     let prepared = String(expression || '');
@@ -3846,21 +4024,57 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       if (peekOp(['+'])) { p++; return unary(); }
       return power();
     }
+    // True when the current token can begin a factor, i.e. an operand was
+    // omitted and implicit multiplication applies. Mirrors the engine parser's
+    // _starts_factor exactly.
+    //
+    // A bare identifier is deliberately NOT a factor start. The backend only
+    // rewrites `e` to `(2.718...)` when it is not preceded by an alphanumeric
+    // character, which is what keeps scientific notation (`1e10`) working; it
+    // therefore rejects `2e`. Accepting it here would make the two evaluators
+    // disagree. Constants that CAN be juxtaposed (pi, Ans) are already
+    // parenthesised by the substitution above and arrive as `(`.
+    const startsFactor = () => tokens[p] && (tokens[p][0] === 'n' || tokens[p][0] === '(');
+
+    // IMPLICIT MULTIPLICATION. Mirrors engine/parser.py exactly (the two
+    // evaluators must agree or file:// and the server disagree). SHIFT+pi
+    // inserts the constant with no operator, so `2pi` reaches here already
+    // rewritten as `2(3.14159...)` by the pi/Ans substitution above, and the
+    // same holds for `Ans2` -> `(5)2`.
+    //
+    // A group directly followed by another group is refused: that is the shape
+    // the postfix-% rewrite produces for `10%10%` -> `((10)/100)((10)/100)`,
+    // which must stay Math ERROR. Every real juxtaposition form (`2pi`,
+    // `2(3)`, `Ans2`, `3 4`) ends its left operand in something other than a
+    // closing paren, so this one exclusion keeps the error contract.
+    const implicitAllowed = () => {
+      const prev = p > 0 ? tokens[p - 1] : null;
+      if (prev && prev.length === 1 && prev[0] === ')') return tokens[p][0] !== '(';
+      return true;
+    };
     function mulDiv() {
       let l = unary();
-      while (peekOp(['*', '/'])) {
-        const op = tokens[p][0]; p++;
-        const r = unary();
-        if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
-        if (_cIsC(l) || _cIsC(r)) {
-          if (_cIsZero(r)) throw new Error('Math ERROR');
-          l = _cDiv(l, r);
+      for (;;) {
+        if (peekOp(['*', '/'])) {
+          const op = tokens[p][0]; p++;
+          const r = unary();
+          if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
+          if (_cIsC(l) || _cIsC(r)) {
+            if (_cIsZero(r)) throw new Error('Math ERROR');
+            l = _cDiv(l, r);
+            continue;
+          }
+          if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
+          l = l / r;
           continue;
         }
-        if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
-        l = l / r;
+        if (startsFactor() && implicitAllowed()) {
+          const r = unary();
+          l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
+          continue;
+        }
+        return l;
       }
-      return l;
     }
     function addSub() {
       let l = mulDiv();
@@ -4102,23 +4316,25 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   // restore), findParent (cursor navigation) and validateCalculusTree all walk
   // this one list, so a new slot added here is immediately reachable by the
   // cursor and by undo -- a slot missing from it would be invisible to both.
-  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','dvar','point'];
+  const SLOT_KEYS = ['num','den','whole','base','exp','arg','radicand','index','body','lower','upper','point','dvar'];
 
   function insertToken(tok) {
-    pushUndoState();
-    // The dx-variable part takes exactly ONE variable letter: on the real
-    // calculator it is a single symbol, so a digit, an operator, a constant or
-    // a second character is refused rather than silently truncated.
-    const _dp = getParent();
-    if (_dp && _dp.par && _dp.par.type === 'integral' && _dp.slotName === 'dvar') {
-      const t = String(tok == null ? '' : tok);
-      if (!/^[A-Za-z]$/.test(t)) return;
-      cursor.slot.items.length = 0;
-      cursor.slot.items.push(t);
-      cursor.index = 1;
-      renderLCD();
-      return;
+    // The dx variable holds exactly ONE variable letter. Rejecting everything
+    // else here keeps an operator, a digit or a stray bracket from turning the
+    // differential into nonsense; a second letter REPLACES the first, which is
+    // how the fx-991EX swaps one differential symbol for another.
+    {
+      const parent = getParent();
+      if (parent && parent.par && parent.par.type === 'integral' && parent.slotName === 'dvar') {
+        pushUndoState();
+        const letter = (typeof tok === 'string' && tok.length === 1 && /[A-Za-z]/.test(tok)) ? tok : '';
+        parent.par.dvar.items = letter ? [letter] : [];
+        renderLCD();
+        syncBackendExpression();
+        return;
+      }
     }
+    pushUndoState();
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
     if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
@@ -4181,11 +4397,9 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     syncBackendExpression();
   }
   function insertLog() { insertTemplate({ type:'log', id:nextId(), base:createSlot(), arg:createSlot() }, 'base'); }
-  // The integral has FOUR editable parts: the lower bound, the upper bound, the
-  // integrand and the variable of integration (printed after `d`). The cursor
-  // enters in the integrand, as on the fx-991EX; `dvar` holds a single variable
-  // letter and is rewritten onto the engine's own dummy at serialization.
-  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot(), dvar:createSlot() }, 'body'); }
+  // The integral has exactly three editable parts. ClassWiz fixes the
+  // differential token to `dx`; there is no editable slot between d and x.
+  function insertIntegral() { insertTemplate({ type:'integral', id:nextId(), body:createSlot(), lower:createSlot(), upper:createSlot(), dvar:createSlot(['x']) }, 'body'); }
   // SHIFT + x is the summation template on the fx-991EX. It needs three
   // editable boxes -- upper bound above the operator, lower bound beneath it,
   // and the summand as `x = [term]` in front -- so it is a real template, not
@@ -4228,15 +4442,14 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   }
 
   function resetExpr() {
-    // Clear the current entry only. Scalar Ans (lastAnswer) and the separate
-    // MatAns/VctAns registers survive: AC/RESULT/ERROR transitions must never
-    // destroy the answer memory. Use hardResetExpr() for power-on and
-    // Initialize-All, the only flows that clear answer registers.
+    // Clear entry state; answer registers survive. hardResetExpr clears them.
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
     appState.result = null; appState.resultDisplayed = false; appState.error = null;
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
+    appState.insertMode = false;
+    appState.solvePrompt = { active: false, value: '0' };
   }
 
   function hardResetExpr() {
@@ -4349,7 +4562,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (prev.type === 'rnd') { cursor.slot = prev.arg; cursor.index = prev.arg.items.length; }
         else if (prev.type === 'radical') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
         else if (prev.type === 'cbrt') { cursor.slot = prev.radicand; cursor.index = prev.radicand.items.length; }
-        else if (prev.type === 'integral') { cursor.slot = prev.dvar; cursor.index = prev.dvar.items.length; }
+        else if (prev.type === 'integral') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
         else if (prev.type === 'sigma') { cursor.slot = prev.body; cursor.index = prev.body.items.length; }
         else if (prev.type === 'derivative') { cursor.slot = prev.point; cursor.index = prev.point.items.length; }
       } else { cursor.index--; }
@@ -4361,8 +4574,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         else if (p.slotName === 'num' && t.type === 'mixed') { cursor.slot = t.whole; cursor.index = t.whole.items.length; }
         else if (p.slotName === 'arg' && t.type === 'log') { cursor.slot = t.base; cursor.index = t.base.items.length; }
         else if (p.slotName === 'upper' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.lower; cursor.index = t.lower.items.length; }
-        else if (p.slotName === 'body' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.upper; cursor.index = t.upper.items.length; }
         else if (p.slotName === 'dvar' && t.type === 'integral') { cursor.slot = t.body; cursor.index = t.body.items.length; }
+        else if (p.slotName === 'body' && (t.type === 'integral' || t.type === 'sigma')) { cursor.slot = t.upper; cursor.index = t.upper.items.length; }
         else if (p.slotName === 'point' && t.type === 'derivative') { cursor.slot = t.body; cursor.index = t.body.items.length; }
         else if (p.slotName === 'arg') { cursor.slot = ps; cursor.index = Math.max(0, ps.items.indexOf(t)); }
         else if (p.slotName === 'exp') { cursor.slot = t.base; cursor.index = t.base.items.length; }
@@ -4445,6 +4658,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // preserved in all cases.
     if (appState.error) { resetExpr(); renderLCD(); return; }
     if (appState.resultDisplayed) { resetExpr(); renderLCD(); return; }
+    if (cursor.slot === rootSlot && cursor.index === 0) {
+      renderLCD();
+      return;
+    }
     if (cursor.index < cursor.slot.items.length) {
       cursor.slot.items.splice(cursor.index, 1);
     } else if (cursor.index > 0) {
@@ -4455,8 +4672,14 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       if (p && p.par) {
         const t = p.par; const ps = t.parentSlot || rootSlot;
         const ti = ps.items.indexOf(t);
-        ps.items.splice(ti, 1);
-        cursor.slot = ps; cursor.index = Math.max(0, ti);
+        if (t.type === 'fraction' && p.slotName === 'den' && !slotHasContent(t.den)) {
+          const numerator = t.num.items.slice();
+          ps.items.splice(ti, 1, ...numerator);
+          cursor.slot = ps; cursor.index = ti + numerator.length;
+        } else {
+          ps.items.splice(ti, 1);
+          cursor.slot = ps; cursor.index = Math.max(0, ti);
+        }
       }
     }
     renderLCD();
@@ -4593,8 +4816,12 @@ function itemLatex(item, ph) {
       case 'log': return '\\log_{' + S(item.base) + '}{' + S(item.arg) + '}';
       case 'rnd': return '\\operatorname{Rnd}\\left(' + S(item.arg) + '\\right)';
       // Natural display: \int puts the limits above and below a full-height sign.
-      case 'integral': return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
-                          + '}' + S(item.body) + '\\,\\mathrm{d}' + S(item.dvar);
+      // The differential follows the chosen dx variable, and the variable is
+      // emitted through S() so it stays a hydrated, editable slot (four
+      // editable parts in total) rather than baked-in text.
+      case 'integral':
+        return '\\int_{' + S(item.lower) + '}^{' + S(item.upper)
+            + '}' + S(item.body) + '\\,\\mathrm{d}' + S(item.dvar);
       case 'sigma': return '\\sum_{' + S(item.lower) + '}^{' + S(item.upper)
                        + '}x=' + S(item.body);
       // \mathrm{d} for the differential: the `d` is an operator, not a variable,
@@ -4654,7 +4881,11 @@ function itemLatex(item, ph) {
       // Placeholder/slot count disagreed -- never render a half-editable line.
       host.textContent = '';
       host.appendChild(renderSlotDOM(rootSlot));
+      return;
     }
+    // Mark digit runs only AFTER hydration, so each editable box is classified
+    // by the digits it actually holds rather than by its placeholder glyph.
+    tagLcdDigitRuns(wrap);
   }
 
   function renderSlotDOM(slot) {
@@ -4730,9 +4961,9 @@ function itemLatex(item, ph) {
           col.append(up, sym, lo); ig.appendChild(col);
           const bd = el('span','math-int-body'); bd.appendChild(renderSlotDOM(item.body));
           ig.appendChild(bd);
-          const dx = el('span','math-int-dx');
-          dx.appendChild(document.createTextNode('d'));
-          dx.appendChild(renderSlotDOM(item.dvar));
+           const dx = el('span','math-int-dx');
+           dx.textContent = 'd' + (validDvar(item.dvar) || 'x');
+           dx.setAttribute('data-fixed-token', 'true');
           ig.appendChild(dx);
           wrap.appendChild(ig);
         } else if (item.type === 'sigma') {
@@ -5372,7 +5603,14 @@ function itemLatex(item, ph) {
       rows(['Contrast', '█'.repeat(Number(setupSettings.contrast))+'░'.repeat(10-Number(setupSettings.contrast)), '◄ − − − − − − − ►']);
     } else if (st.level === 99) {
       const q=el('div','setup-prompt-box'); q.innerHTML='<div id="qr-tmp"></div><div>mentisai-delta.vercel.app</div>'; body.appendChild(q);
-      if (window.QRCode) new QRCode(document.getElementById('qr-tmp'), {text:'https://mentisai-delta.vercel.app/',width:120,height:120,colorDark:'#000000',colorLight:'#ffffff'});
+      // Same renderer and the same integer-scale/quiet-zone rules as the LCD QR
+      // screen; the setup box is wider, so it simply picks a larger scale.
+      {
+        const tmp = document.getElementById('qr-tmp');
+        if (tmp) { tmp.style.cssText = 'flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                   const bx = tmp.getBoundingClientRect();
+                   renderQrCode(tmp, QR_DEST_URL, bx.width, bx.height); }
+      }
     }
     const angle = document.getElementById('setupIndAngle'); if(angle) angle.textContent=setupSettings.angle_unit==='Degree'?'D':setupSettings.angle_unit==='Radian'?'R':'G';
     const math = document.getElementById('setupIndMath'); if(math) math.textContent=setupSettings.input_output.startsWith('Math')?'Math':'Line';
@@ -6054,22 +6292,19 @@ function itemLatex(item, ph) {
     const kind = eq.selectedType;
     const coefficients = kind === 'simultaneous' ? eq.coefficientValues : (eq.coefficientValues[0] || []);
     const request = {kind, coefficients, count:kind === 'simultaneous' ? eq.numberOfEquations : eq.polynomialDegree};
-    console.debug('[EQUATION-TRACE-REQUEST]', JSON.stringify({url:'/api/equation/solve', method:'POST', body:request}));
     fetch('/api/equation/solve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(request)})
       .then(async response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        console.debug('[EQUATION-TRACE-RESPONSE]', JSON.stringify({status:response.status, body:data}));
         return {response, data};
       })
       .then(({response, data}) => {
         if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
-        console.debug('[EQUATION-TRACE-NORMALIZE]', JSON.stringify({input:data.result, type:Array.isArray(data.result) ? 'array' : typeof data.result}));
         eq.resultState = data.result;
+        eq.extremum = data.extremum || null;
         eq.phase='result'; renderLCD();
       })
-      .catch(error => {
-        console.error('[EQUATION-TRACE-ERROR]', error);
+      .catch(() => {
         eq.resultState='Math ERROR'; eq.phase='result'; renderLCD();
       });
   }
@@ -6093,8 +6328,102 @@ function itemLatex(item, ph) {
 
   function formatEquationResult(eq) {
     if (typeof eq.resultState === 'string') return displayFormat(eq.resultState);
-    if (eq.selectedType !== 'polynomial' || !Array.isArray(eq.resultState)) return displayFormat(JSON.stringify(eq.resultState ?? ''));
-    return eq.resultState.map((root, index) => `x${['₁','₂','₃','₄'][index] || index + 1} = ${displayFormat(formatEquationRoot(root))}`).join('\n');
+    if (!Array.isArray(eq.resultState)) return displayFormat(String(eq.resultState ?? ''));
+    // Was `displayFormat(JSON.stringify(eq.resultState))` for every non-polynomial
+    // kind, so a solved simultaneous system printed its raw array
+    // ("[2.7142857142857144,1.5714285714285714]") instead of named variables.
+    return eq.resultState.map((root, index) =>
+      equationVariableLabel(eq, index).plain + ' = ' + displayFormat(formatEquationRoot(root))
+    ).join('\n');
+  }
+
+  // ── EQN result -> KaTeX ────────────────────────────────────────────────
+  // The EQN solution used to be written straight into a text node, so the
+  // subscripted x, any fraction and any exponent were flat characters. Convert
+  // the SAME numeric structure formatEquationRoot() already parses, so the LCD
+  // gets real math structures instead of plain text.
+  //
+  // `exact` mirrors what S<->D means elsewhere in this emulator (see
+  // toggleAnswerFormat): a rational root is shown as an exact fraction rather
+  // than its decimal expansion. The solver returns floats only, so an
+  // irrational root has NO exact form to switch to -- exactSolveFormat() falls
+  // back to the decimal and that is reported honestly rather than faked with
+  // invented symbolic algebra.
+  function equationNumberToLatex(value, exact) {
+    if (!Number.isFinite(value)) return '\\text{Math ERROR}';
+    // Snap solver rounding dust on a root that is mathematically an integer --
+    // the cubic solver returns 1.0000000000000002 for x^3-6x^2+11x-6, and the
+    // LCD must read 1, not the noise.
+    const snapped = Math.abs(value - Math.round(value)) < 1e-9 * Math.max(1, Math.abs(value))
+      ? Math.round(value) : value;
+    if (exact) {
+      const frac = exactSolveFormat(snapped);
+      const m = String(frac).match(/^(-?\d+)\/(\d+)$/);
+      if (m) {
+        const num = Number(m[1]), den = Number(m[2]);
+        // A continued-fraction hit is NOT evidence of a rational root: every
+        // irrational has arbitrarily good rational approximations, and
+        // 2.618033988749895 "matches" 75025/28657 to 1e-15. So demand a SIMPLE
+        // fraction -- same denominator ceiling /api/fraction already uses via
+        // limit_denominator(10000) -- and an essentially exact match. Anything
+        // else has no exact form, and is shown as the decimal it really is
+        // rather than an invented symbol.
+        if (den <= 10000 && Math.abs(num / den - snapped) < 1e-12) {
+          return (num < 0 ? '-' : '') + '\\frac{' + Math.abs(num) + '}{' + den + '}';
+        }
+      }
+    }
+    return localFormat(snapped);
+  }
+  function equationRootToLatex(root, index, exact) {
+    let real, imag;
+    if (root && typeof root === 'object' && !Array.isArray(root)) {
+      real = Number(root.real); imag = Number(root.imag || 0);
+    } else if (Array.isArray(root)) {
+      real = Number(root[0]); imag = Number(root[1] || 0);
+    } else {
+      real = Number(root); imag = 0;
+    }
+    if (!Number.isFinite(real) || !Number.isFinite(imag)) return '\\text{Math ERROR}';
+    if (Math.abs(real) < 1e-12) real = 0;
+    if (Math.abs(imag) < 1e-12) return equationNumberToLatex(real, exact);
+    const imagLatex = (Math.abs(imag) === 1 ? '' : equationNumberToLatex(Math.abs(imag), exact)) + 'i';
+    if (real === 0) return (imag < 0 ? '-' : '') + imagLatex;
+    return equationNumberToLatex(real, exact) + (imag < 0 ? ' - ' : ' + ') + imagLatex;
+  }
+  // The label a solution is introduced by. A POLYNOMIAL's answers are its
+  // ordered roots, so they are indexed x_1, x_2, ... A SIMULTANEOUS system's
+  // answers are the values of the unknowns the user typed coefficients for, so
+  // they are labelled with those same variables (x, y, z, w). Labelling them
+  // x_1, x_2, ... made a 4-unknown system report "x_1 = 10, x_2 = 0, ..."
+  // where the input grid immediately above showed x, y, z, w -- it read like
+  // polynomial roots and contradicted the screen it came from.
+  function equationVariableLabel(eq, index) {
+    if (eq.selectedType === 'simultaneous') {
+      const v = ['x', 'y', 'z', 'w'][index] || ('x' + (index + 1));
+      return { latex: v, plain: v };
+    }
+    return { latex: 'x_{' + (index + 1) + '}', plain: 'x' + (['\u2081', '\u2082', '\u2083', '\u2084'][index] || (index + 1)) };
+  }
+  // The x-index is part of the displayed math, so it is a KaTeX subscript
+  // (x_1) rather than the precomposed character, which renders inconsistently
+  // across the LCD font.
+  function equationSolutionLatex(eq, index) {
+    const roots = eq.resultState;
+    if (typeof roots === 'string') return String(roots);
+    if (!Array.isArray(roots) || index >= roots.length) return '\\text{Math ERROR}';
+    return equationVariableLabel(eq, index).latex + ' = ' +
+           equationRootToLatex(roots[index], index, !!eq.exactForm);
+  }
+
+  // Plain-text twin of equationSolutionLatex. This is what the LCD shows when
+  // KaTeX is unavailable, so it has to carry the label too -- it used to pass
+  // the bare value and the screen showed just "1.571428571" with no variable
+  // name at all.
+  function equationSolutionText(eq, index) {
+    const roots = eq.resultState;
+    if (!Array.isArray(roots) || index >= roots.length) return '';
+    return equationVariableLabel(eq, index).plain + ' = ' + formatEquationRoot(roots[index]);
   }
 
   function solveInequalityRemote() {
@@ -6171,7 +6500,12 @@ function itemLatex(item, ph) {
 
   function resetEquationState() {
     appState.equation = { selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
-      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null };
+      currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '', selectedMenuItem: 0, resultState: null, extremum: null,
+      // fx-991EX EQN shows ONE solution at a time and steps through the rest
+      // with the D-pad; it never dumps every root into a single blob. These two
+      // fields carry that state: which solution is on screen, and whether the
+      // S<->D key is currently showing the exact (fraction) or decimal form.
+      solutionIndex: 0, exactForm: false };
   }
   function equationTemplate(eq) {
     if (eq.selectedType === 'simultaneous') {
@@ -6190,10 +6524,24 @@ function itemLatex(item, ph) {
     const body = document.getElementById('lcdEquationBody'); if (!body) return; body.innerHTML = '';
     const eq = appState.equation; document.getElementById('eqIndShift')?.classList.toggle('active', appState.shift); document.getElementById('eqIndAlpha')?.classList.toggle('active', appState.alpha);
     const view = el('div','eq-view');
+    // Attach the view BEFORE it is populated. renderMath() resolves its target
+    // with document.getElementById(), so a solution host that is still inside a
+    // detached tree is invisible to it and the KaTeX render is silently
+    // dropped -- which is exactly what happened when this only appended at the
+    // end of the function.
+    body.appendChild(view);
     if (eq.phase === 'typeMenu' || eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
       const title = el('div','eq-title'); title.textContent = eq.phase === 'typeMenu' ? 'Equation/Func' : eq.phase === 'simultaneousCount' ? 'Number of Equations' : 'Polynomial Degree'; view.appendChild(title);
-      const options = eq.phase === 'typeMenu' ? ['Simultaneous Equation','Polynomial'] : ['2','3','4'];
-      options.forEach((label,i) => { const row = el('div','eq-option' + (eq.selectedMenuItem === i ? ' selected' : '')); row.textContent = `${i+1}: ${label}`; view.appendChild(row); });
+      if (eq.phase === 'polynomialDegree') {
+        const prompt = el('div', 'eq-degree-prompt');
+        prompt.textContent = 'Degree?';
+        const range = el('div', 'eq-degree-range');
+        range.textContent = '2~4';
+        view.append(prompt, range);
+      } else {
+        const options = eq.phase === 'typeMenu' ? ['Simultaneous Equation','Polynomial'] : ['2','3','4'];
+        options.forEach((label,i) => { const row = el('div','eq-option' + (eq.selectedMenuItem === i ? ' selected' : '')); row.textContent = `${i+1}: ${label}`; view.appendChild(row); });
+      }
     } else if (eq.phase === 'simultaneousInput') {
       const title = el('div','eq-title'); title.textContent = `${eq.numberOfEquations} equations`; view.appendChild(title);
       const vars = ['x','y','z','w'].slice(0,eq.numberOfEquations), count = eq.numberOfEquations + 1;
@@ -6205,12 +6553,45 @@ function itemLatex(item, ph) {
       const result=el('div','eq-result');
       const expression=el('div'); expression.textContent=eq.selectedType==='polynomial' ? formatPolynomial(eq) : '';
       const title=el('div'); title.textContent='Solution';
+      // One solution at a time, typeset by KaTeX. The previous implementation
+      // assigned `solution.textContent` to every root joined by newlines, which
+      // produced plain text, no maths structures, and no way to reach root #3.
       const solution=el('div','eq-solution');
-      try { solution.textContent=formatEquationResult(eq); }
-      catch (error) { console.error('[EQUATION] render failed', error); solution.textContent='Math ERROR'; }
-      result.append(expression, title, solution); view.appendChild(result);
+      const roots = Array.isArray(eq.resultState) ? eq.resultState : null;
+      const count = roots ? roots.length : 0;
+      if (eq.solutionIndex >= count) eq.solutionIndex = Math.max(0, count - 1);
+      const latexHost = el('div','eq-solution-math'); latexHost.id = 'eqSolutionMath';
+      solution.appendChild(latexHost);
+      // Attach the whole result subtree BEFORE typesetting it. renderMath()
+      // looks its target up with document.getElementById(), which only sees
+      // nodes already in the document; a host still inside a detached parent
+      // resolves to null and the KaTeX render is silently dropped. Verified in
+      // the browser: renderMath was called with the correct LaTeX while
+      // getElementById('eqSolutionMath') returned null.
+      result.append(expression, title, solution);
+      view.appendChild(result);
+      try {
+        if (typeof eq.resultState === 'string') {
+          // Error / non-polynomial payload: keep the existing prose behaviour.
+          latexHost.textContent = formatEquationResult(eq);
+        } else {
+          renderMath(equationSolutionLatex(eq, eq.solutionIndex || 0), 'eqSolutionMath', false,
+                     equationSolutionText(eq, eq.solutionIndex || 0));
+        }
+      } catch (error) { console.error('[EQUATION] render failed', error); latexHost.textContent='Math ERROR'; }
+      // Position indicator: which of N solutions is on screen, and whether the
+      // S<->D key is showing the exact or decimal form.
+      if (count > 0) {
+        const pos = el('div','eq-solution-pos');
+        pos.textContent = (eq.solutionIndex || 0) + 1 + '/' + count + (eq.exactForm ? '  a b/c' : '  d/c');
+        solution.appendChild(pos);
+      }
+      if (eq.selectedType === 'polynomial' && eq.extremum) {
+        const extremum = el('div', 'eq-extremum');
+        extremum.textContent = `Extremum: x = ${exactSolveFormat(Number(eq.extremum.x))}, y = ${exactSolveFormat(Number(eq.extremum.y))}`;
+        result.appendChild(extremum);
+      }
     }
-    body.appendChild(view);
   }
 
   function updateScrollIndicators(canUp, canDown, canLeft, canRight, prefix) {
@@ -6426,7 +6807,14 @@ function itemLatex(item, ph) {
 
     // Result — display layer (Decimal Mark / Digit Separator), then KaTeX.
     const resultEl = document.getElementById('lcdResultLine');
-    if (appState.error) renderMath(appState.error, 'lcdResultLine', false);
+    // An error is PROSE, not mathematics. Sending it through renderMath made
+    // KaTeX typeset every letter as a math-italic `<mi>` in KaTeX_Math, which
+    // dropped the space ("MathERROR") and painted the message in a serif
+    // italic face instead of the calculator's LCD font. Write it as a plain
+    // text node instead: `.lcd-result-line` is already right-aligned and is
+    // covered by the `.lcd *` font rule, so it needs no extra styling.
+    if (appState.error) { resultEl.textContent = String(appState.error); }
+    else if (appState.solvePrompt.active) { resultEl.textContent = 'X=' + appState.solvePrompt.value; }
     else if (appState.resultDisplayed && appState.result !== null) renderMatrixResult(String(appState.result));
     else renderMath('', 'lcdResultLine', false);
 
@@ -6457,18 +6845,70 @@ function itemLatex(item, ph) {
     const s = String(r == null ? '' : r).trim();
     return s.charAt(0) === '[';
   }
-  function storeCalcAnswer(r, rawExpr) {
-    appState.result = r;
-    appState.resultDisplayed = true;
-    appState.error = null;
-    if (isMatVecResultString(r)) {
-      const e = String(rawExpr || '');
-      if (/Vct[ABCD]/.test(e) && !/Mat[ABCD]/.test(e)) appState.vctAns = r;
-      else appState.matAns = r;
-    } else {
-      appState.lastAnswer = r;
-    }
+// ── MathI/MathO exact output ────────────────────────────────────────────
+// In MathI/MathO the fx-991EX shows the EXACT value: 5/2, not 2.5. The engine
+// only ever returns a decimal (input_output is stored in setup but does not
+// change the numeric result), so the exact form is produced here.
+//
+// exactSolveFormat() is the continued-fraction helper this project already
+// uses for SOLVE and EQN, and it is the right tool rather than fractionString(),
+// which pins the denominator at 1000 and would render 1/3 as the misleading
+// 333/1000.
+//
+// A value is promoted ONLY when the rational is genuinely exact and simple.
+// Repeating decimals have no short exact form (1/3 arrives as 0.3333333333), so
+// they stay decimal instead of becoming a fabricated 3333333333/10000000000.
+function exactFractionResult(value, mixed) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || Number.isInteger(n)) return null;
+  const m = String(exactSolveFormat(n)).match(/^(-?\d+)\/(\d+)$/);
+  if (!m) return null;
+  const num = Number(m[1]), den = Number(m[2]);
+  if (den <= 0 || den > 10000) return null;
+  if (Math.abs(num / den - n) > 1e-12) return null;
+  if (mixed && Math.abs(num) >= den) {
+    const whole = Math.trunc(num / den);
+    const rem = Math.abs(num) % den;
+    return rem === 0 ? String(whole) : `${whole} ${rem}/${den}`;
   }
+  return `${num}/${den}`;
+}
+
+function storeCalcAnswer(r, rawExpr) {
+     const scalar = String(r == null ? '' : r).trim();
+     // `appState.settings` is read defensively: storeCalcAnswer is also driven
+     // by test harnesses that supply a minimal appState stub without settings.
+     const ioMode = appState.settings ? appState.settings.inputOutput : null;
+     const fracMode = appState.settings ? appState.settings.fractionResult : null;
+     if (!isMatVecResultString(scalar) && /^-?\d+(?:\.\d+)?$/.test(scalar)
+         && ioMode === 'MathI/MathO') {
+       // `fractionResult` is the ab/c vs d/c setup option; ab/c shows an
+       // improper result as a mixed number, d/c keeps it improper.
+       const exact = exactFractionResult(scalar, fracMode === 'ab/c');
+       if (exact) {
+         appState.result = exact;
+         appState.resultDisplayed = true;
+         appState.error = null;
+         appState.isFractionMode = true;   // so S<->D converts back to decimal
+         appState.lastAnswer = exact;
+         return;
+       }
+     }
+     appState.result = r;
+     appState.resultDisplayed = true;
+     appState.error = null;
+     if (isMatVecResultString(scalar)) {
+       const e = String(rawExpr || '');
+       if (/Vct[ABCD]/.test(e) && !/Mat[ABCD]/.test(e)) appState.vctAns = r;
+       else appState.matAns = r;
+     } else {
+       appState.lastAnswer = r;
+       // A plain scalar result decides whether S<->D starts from the exact or
+       // the decimal side; leaving a stale flag from a previous calculation in
+       // DecimalO/LineO mode would make the first S<->D press a no-op.
+       appState.isFractionMode = scalar.includes('/');
+     }
+   }
   async function evaluate() {
     // State-gated evaluation: only EDITING with a non-blank expression may
     // evaluate. EMPTY/RESULT/ERROR are no-ops and never reach
@@ -6484,6 +6924,9 @@ function itemLatex(item, ph) {
       renderLCD();
       return;
     }
+    // EXE closes the parentheses the user left open before evaluating, and it
+    // does so on the model so the LCD shows exactly what was evaluated.
+    closeUnbalancedParens();
     const expr = getExpr();
     const evalExpr = prepareExpressionForEvaluation(expr);
     if (FILE_MODE) {
@@ -6556,6 +6999,26 @@ function itemLatex(item, ph) {
     if (/^-?\d+\s+\d+\/\d+$/.test(s) || /^-?\d+\/\d+$/.test(s)) return s;
     return null;
   }
+  // Scientific / standard form, e.g. the "1.5×10^8" that displayFormat() builds
+  // in its Sci and Norm branches (and the ASCII "1.5x10^8" emitted by the
+  // SI-prefix and ENG branches). The exponent has to become a REAL superscript.
+  //
+  // This could not be routed through exprToLatex(): that helper rewrites `*`
+  // into `\cdot ` and leaves `^` untouched (`s.replace(/\^/g, '^')` is a
+  // no-op), so KaTeX typeset the caret and the exponent digits on the baseline
+  // and the result read as literal "1.5×10^8". That is also why
+  // renderMatrixResult promoted only exact fractions.
+  //
+  // So convert this ONE shape directly, as a sibling of matrixToLatex and
+  // exactFractionToLatex. Every other result shape is untouched, and the plain
+  // text is still handed to renderMath as the fallback so the LCD stays
+  // readable when KaTeX is unavailable (offline / file://).
+  function scientificToLatex(text) {
+    const s = String(text == null ? '' : text).trim();
+    const m = s.match(/^(-?(?:\d+\.?\d*|\.\d+))\s*[×x]\s*10\s*\^\s*(-?\d+)$/);
+    if (!m) return null;
+    return m[1] + '\\times 10^{' + m[2] + '}';
+  }
   function renderMatrixResult(canonical) {
     const shown = displayFormat(canonical);
     const latex = matrixToLatex(String(canonical));
@@ -6565,6 +7028,10 @@ function itemLatex(item, ph) {
     // engineering notation (1.234x10^3 became "1.234\cdot 10^3"), so only the
     // exact-fraction shapes are promoted.
     if (exactFractionToLatex(shown)) { renderMath(exprToLatex(shown), 'lcdResultLine', false, shown); return; }
+    // Scientific / standard form: promote the exponent to a true superscript.
+    // Checked after the fraction shape because the two can never both match.
+    const sci = scientificToLatex(shown);
+    if (sci && typeof katex !== 'undefined') { renderMath(sci, 'lcdResultLine', false, shown); return; }
     renderMath(shown, 'lcdResultLine', false, shown);
   }
   function syncQrOverlay() {
@@ -6574,9 +7041,15 @@ function itemLatex(item, ph) {
       if (!qr) return;
       if (appState.qrOpen) {
         if (optn) optn.style.display = 'none';
-        qr.style.display = 'block';
-        const host = document.getElementById('lcdQrBox');
-        if (host && host.childElementCount === 0) showQRinLCD();
+        // 'flex', not 'block': #qr-panel is a column flexbox so #lcdQrBox can
+        // absorb the leftover height and be measured. An inline display:block
+        // overrode the stylesheet, leaving the QR box zero-height and forcing
+        // the scale down to 1px per module.
+        qr.style.display = 'flex';
+        // The QR itself is drawn by showQRinLCD() once this has laid the panel
+        // out. Calling back into showQRinLCD() from here re-entered
+        // renderLCD() -> syncQrOverlay() with the host still empty, recursing
+        // until the stack overflowed and the error was swallowed by the catch.
       } else {
         qr.style.display = 'none';
       }
@@ -6602,6 +7075,15 @@ function itemLatex(item, ph) {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const s = await r.json();
       if (requestSequence !== backendKeySequence) {
+        // Deliberate diagnostic, not leftover debug output. This is the
+        // out-of-order response guard: a slow reply from an earlier key press
+        // is dropped so it cannot overwrite newer state. Without a marker that
+        // drop is invisible, which is exactly how "the keypad went dead after a
+        // fast burst" gets misdiagnosed as an input bug rather than a dropped
+        // response. console.debug is suppressed by default in shipped browsers,
+        // so it costs nothing in normal use. Asserted by
+        // test_equation_workflow.test_frontend_uses_the_api_root_contract --
+        // do not remove without updating that test and this note.
         console.debug('[KEY-TRACE-DROP]', JSON.stringify({key, requestSequence, latestSequence:backendKeySequence}));
         return;
       }
@@ -6803,15 +7285,89 @@ function itemLatex(item, ph) {
     return `${numerator}/${denominator}`;
   }
 
+  // Exact rational recovery for the file:// bridge, which has no /api/fraction
+  // endpoint to ask. The served path uses Fraction(value).limit_denominator(10000),
+  // so this has to make the SAME decision: 1/3 must come back as 1/3, never as
+  // the misleading 333/1000 that fractionString() produced by pinning the
+  // denominator at 1000. This is limit_denominator()'s own continued-fraction
+  // search, so the served and file:// paths agree value for value.
+  function limitFraction(value, maxDen = 10000) {
+    if (!Number.isFinite(value)) return null;
+    const sign = value < 0 ? -1 : 1;
+    let n = Math.abs(value), d = 1;
+    let p0 = 0, q0 = 1, p1 = 1, q1 = 0;
+    for (let i = 0; i < 64; i++) {
+      const a = Math.floor(n / d);
+      const q2 = q0 + a * q1;
+      if (q2 > maxDen) break;
+      const p2 = p0 + a * p1;
+      p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+      const remainder = n - a * d;   // must be read before n/d are overwritten
+      n = d; d = remainder;
+      if (d === 0) break;
+    }
+    if (q1 === 0) return null;
+    // Two convergents bracket the answer; keep whichever is closer to the value.
+    const k = Math.floor((maxDen - q0) / q1);
+    const b1n = p0 + k * p1, b1d = q0 + k * q1;
+    const err1 = b1d > 0 ? Math.abs(sign * b1n / b1d - value) : Infinity;
+    const err2 = Math.abs(sign * p1 / q1 - value);
+    return err2 <= err1
+      ? { num: sign * p1, den: q1 }
+      : { num: sign * b1n, den: b1d };
+  }
+
+  // file:// counterpart of the server's /api/fraction handler. Mirrors its
+  // shape: a denominator of 1 prints as a plain integer (str(frac.numerator)),
+  // and mixed mode splits an improper fraction into whole + remainder.
+  function exactFractionString(value, mixed = false) {
+    const parts = limitFraction(value, 10000);
+    if (!parts || !(parts.den > 0)) return localFormat(value);
+    if (parts.den === 1) return String(parts.num);
+    if (mixed && Math.abs(parts.num) >= parts.den) {
+      const whole = Math.trunc(parts.num / parts.den);
+      const remainder = Math.abs(parts.num) % parts.den;
+      return remainder === 0
+        ? String(whole)
+        : `${whole} ${remainder}/${parts.den}`;
+    }
+    return `${parts.num}/${parts.den}`;
+  }
+
+  function exactSolveFormat(value) {
+    if (!Number.isFinite(value) || Number.isInteger(value)) return localFormat(value);
+    const sign = value < 0 ? -1 : 1;
+    let x = Math.abs(value), h0 = 0, h1 = 1, k0 = 1, k1 = 0;
+    for (let i = 0; i < 24; i++) {
+      const a = Math.floor(x);
+      const h2 = a * h1 + h0, k2 = a * k1 + k0;
+      if (k2 > 1000000) break;
+      const candidate = sign * h2 / k2;
+      if (Math.abs(candidate - value) < 1e-9) {
+        return `${sign * h2}/${k2}`;
+      }
+      h0 = h1; h1 = h2; k0 = k1; k1 = k2;
+      const remainder = x - a;
+      if (remainder === 0) break;
+      x = 1 / remainder;
+    }
+    return localFormat(value);
+  }
+
   async function toggleAnswerFormat(mixed = false) {
     if (!appState.resultDisplayed || appState.result === null) return;
     const current = String(appState.result);
-    const numeric = answerAsNumber(current);
+    const assignment = current.match(/^([A-Za-z])=(.*)$/);
+    const prefix = assignment ? assignment[1] + '=' : '';
+    const numericText = assignment ? assignment[2] : current;
+    const numeric = answerAsNumber(numericText);
     if (!Number.isFinite(numeric)) return;
     try {
       if (mixed || !appState.isFractionMode) {
         if (FILE_MODE) {
-          appState.result = fractionString(numeric, mixed);
+          const formatted = exactFractionString(numeric, mixed);
+          appState.result = prefix + formatted;
+          appState.lastAnswer = formatted;
         } else {
           const response = await fetch('/api/fraction', {
             method: 'POST', headers: {'Content-Type':'application/json'},
@@ -6820,23 +7376,24 @@ function itemLatex(item, ph) {
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
           if (!data.success) throw new Error(data.error || 'Math ERROR');
-        appState.result = data.result;
+        appState.result = prefix + data.result;
         appState.lastAnswer = data.result;
         }
         appState.resultDisplayed = true;
         appState.isFractionMode = true;
       } else {
         if (FILE_MODE) {
-          appState.result = localEvaluate(current);
+          appState.result = prefix + localFormat(numeric);
+          appState.lastAnswer = localFormat(numeric);
         } else {
           const response = await fetch('/api/evaluate', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ expression: current })
+            body: JSON.stringify({ expression: numericText })
           });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
           if (data.result === undefined || data.result === null) throw new Error(data.error || 'Math ERROR');
-          appState.result = data.result;
+          appState.result = prefix + data.result;
           appState.lastAnswer = data.result;
         }
         appState.resultDisplayed = true;
@@ -6917,27 +7474,39 @@ function itemLatex(item, ph) {
       renderLCD();
     } catch (e) { showMathError(); }
   }
-  async function doSolve() {
+  async function doSolve(guessOverride) {
     // No valid calculation context (EMPTY/RESULT/ERROR) → no-op, never an
     // error cascade from an empty or erroneous expression.
     if (!shouldEvaluateNow()) return;
+    if (guessOverride === undefined && !appState.solvePrompt.active) {
+      appState.solvePrompt = { active: true, value: '0' };
+      renderLCD();
+      return;
+    }
     const expr = getExpr();
     const prepared = prepareExpressionForEvaluation(expr);
-    const guess = (appState.variables && Number.isFinite(Number(appState.variables.X))) ? Number(appState.variables.X) : 0;
+    const variableMatch = prepared.match(/[A-FMXY]/i);
+    const solveVariable = variableMatch ? variableMatch[0].toUpperCase() : 'X';
+    const guess = guessOverride === undefined
+      ? Number(appState.solvePrompt.value || 0)
+      : Number(guessOverride);
+    appState.solvePrompt.active = false;
     if (FILE_MODE) {
       try {
-        const v = _localNewtonSolve(prepared, 'X', guess);
-        const r = localFormat(v);
+        const v = _localNewtonSolve(prepared, solveVariable, guess);
+        const r = exactSolveFormat(v);
         // SOLVE always yields a scalar; storeCalcAnswer keeps the
         // MatAns/VctAns registers provably untouched.
         storeCalcAnswer(r, prepared);
-        appState.variables.X = v;
+        appState.result = solveVariable + '=' + r;
+        appState.isFractionMode = r.includes('/');
+        appState.variables[solveVariable] = v;
       } catch (e) { showMathError('Math ERROR'); }
       renderLCD(); return;
     }
     try {
       const r = await fetch('/api/solve', { method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ expression: prepared, variable: 'X', guess }) });
+        body: JSON.stringify({ expression: prepared, variable: solveVariable, guess }) });
       const s = await r.json();
       if (s.result !== undefined && (s.ok || s.success)) {
         // Display keeps the physical 'X=value' form; the scalar register
@@ -6946,7 +7515,7 @@ function itemLatex(item, ph) {
         if (isMatVecResultString(s.result)) {
           storeCalcAnswer(s.result, prepared);
         } else {
-          appState.result = 'X=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
+          appState.result = solveVariable + '=' + s.result; appState.lastAnswer = s.result; appState.resultDisplayed = true; appState.error = null;
         }
         if (s.variable) appState.variables[s.variable] = s.value;
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
@@ -6954,11 +7523,21 @@ function itemLatex(item, ph) {
     } catch (e) { showMathError(); }
   }
   function _localNewtonSolve(expr, varName, x0) {
+    const source = String(expr);
+    const equals = source.indexOf('=');
+    const lhs = equals >= 0 ? source.slice(0, equals) : null;
+    const rhs = equals >= 0 ? source.slice(equals + 1) : null;
     const f = (x) => {
       const saved = appState.variables[varName];
       appState.variables[varName] = x;
       let v;
-      try { v = _evalStr(expr); } finally { appState.variables[varName] = saved; }
+      const evalPart = (part) => {
+        const variable = new RegExp('(?<![A-Za-z])' + varName + '(?![A-Za-z])', 'gi');
+        return _evalStr(String(part).replace(variable, '(' + x + ')'));
+      };
+      try {
+        v = equals >= 0 ? evalPart(lhs) - evalPart(rhs) : evalPart(source);
+      } finally { appState.variables[varName] = saved; }
       if (typeof v !== 'number' || !isFinite(v)) throw new Error('Math ERROR');
       return v;
     };
@@ -6966,8 +7545,11 @@ function itemLatex(item, ph) {
     let x = x0;
     for (let i = 0; i < 100; i++) {
       const fx = f(x);
-      if (Math.abs(fx) < 1e-10) return x;
       const dfx = (f(x + h) - f(x - h)) / (2 * h);
+      if (Math.abs(fx) < 1e-10) {
+        if (equals >= 0 && Math.abs(dfx) < 1e-12) throw new Error('Math ERROR');
+        return x;
+      }
       if (Math.abs(dfx) < 1e-12) { x = x + (x >= 0 ? 0.5 : -0.5); continue; }
       const nx = x - fx / dfx;
       if (Math.abs(nx - x) < 1e-9) return nx;
@@ -6993,20 +7575,95 @@ function itemLatex(item, ph) {
       renderLCD();
     }
   }
-  function showQRinLCD() {
-    appState.qrOpen = true;
-    renderLCD();
+  // ── QR RENDERING ────────────────────────────────────────────────────────────
+  // The quiet zone the specification requires: four modules of white on every
+  // side. It is part of the symbol, NOT surrounding LCD background, so it is
+  // drawn into the canvas rather than left to whatever is behind the element.
+  const QR_QUIET_MODULES = 4;
+  // Error correction: M was the level the previous cdnjs call asked for.
+  const QR_ECC_M = 'M';
+
+  // Smallest QR version whose byte-mode capacity holds `text` at the given level.
+  function qrTypeNumberFor(text, level) {
+    // qrcode-generator's own table, indexed by level, in BYTES for the byte mode.
+    const CAP = { L: [17,32,53,78,106,134,154,192,230,271,321,367,425,458,520,586,644,718,792,858,929,1003,1091,1171,1273,1367,1465,1528,1628,1732,1840,1952,2068,2188,2303,2431,2563,2699,2809,2953], M: [14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,779,857,911,997,1059,1125,1190,1264,1370,1452,1538,1624,1722,1809,1911,1989,2099,2213], Q: [11,20,32,46,60,74,86,108,130,151,177,203,241,277,310,345,384,427,458,520,586,644,698,742,790,864,902,982,1030,1112,1200,1258,1314,1426,1501,1580,1677,1789,1898], H: [7,14,24,34,44,58,64,84,98,119,137,155,177,194,220,250,280,310,338,382,403,439,461,511,535,593,625,658,698,742,790,852,894,1022,1090,1162,1226,1318,1422,1546] };
+    const cap = CAP[level] || CAP.M;
+    const len = String(text == null ? '' : text).length;
+    for (let t = 1; t <= cap.length; t++) if (len <= cap[t - 1]) return t;
+    return cap.length;
+  }
+
+  // Largest INTEGER module size whose full symbol -- matrix plus the quiet zone,
+  // (moduleCount + 2 * QR_QUIET_MODULES) modules -- fits the measured box. Integer
+  // scaling is the point: a fractional module size lands module edges on
+  // non-integer pixel boundaries, which anti-aliases the symbol and blurs the
+  // finder patterns. Returns at least 1 so a symbol is never cropped in order to
+  // satisfy a viewport that is too small.
+  function qrModuleScale(moduleCount, availW, availH) {
+    const total = moduleCount + QR_QUIET_MODULES * 2;
+    const byW = Math.floor((availW || 0) / total);
+    const byH = Math.floor((availH || 0) / total);
+    return Math.max(1, Math.min(byW, byH));
+  }
+
+  // Draw `text` into `host`, sized to `availW` x `availH` CSS px.
+  // Returns {moduleCount, scale, size, quietPx} or null when it cannot render.
+  function renderQrCode(host, text, availW, availH) {
+    if (!host) return null;
+    host.textContent = '';
+    if (typeof qrcode !== 'function') {
+      // Offline / missing-library fallback: show the destination in words.
+      host.textContent = String(text == null ? '' : text);
+      return null;
+    }
     try {
-      const host = document.getElementById('lcdQrBox');
-      if (host) {
-        host.textContent = '';
-        if (typeof QRCode !== 'undefined') {
-          new QRCode(host, { text: QR_DEST_URL, width: 72, height: 72, correctLevel: QRCode.CorrectLevel.M });
-        } else {
-          host.textContent = QR_DEST_URL;
+      const qr = qrcode(qrTypeNumberFor(text, QR_ECC_M), QR_ECC_M);
+      qr.addData(String(text == null ? '' : text));
+      qr.make();
+      const moduleCount = qr.getModuleCount();
+      const scale = qrModuleScale(moduleCount, availW, availH);
+      const total = moduleCount + QR_QUIET_MODULES * 2;
+      const size = total * scale;                 // whole pixels, no cropping
+
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      const ctx = canvas.getContext('2d');
+      // Opaque white first, so the quiet zone is real white pixels inside the
+      // symbol and not whatever the LCD gradient happens to be behind it.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000000';
+      for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+          if (!qr.isDark(row, col)) continue;
+          ctx.fillRect((col + QR_QUIET_MODULES) * scale,
+                       (row + QR_QUIET_MODULES) * scale, scale, scale);
         }
       }
-    } catch (e) {}
+      host.appendChild(canvas);
+      return { moduleCount, scale, size, quietPx: QR_QUIET_MODULES * scale };
+    } catch (e) {
+      host.textContent = String(text == null ? '' : text);
+      return null;
+    }
+  }
+
+function showQRinLCD() {
+    appState.qrOpen = true;
+    renderLCD();
+    const host = document.getElementById('lcdQrBox');
+    if (!host) return;
+    // The box only has a measurable size once the overlay is displayed, so the
+    // panel has to be laid out first. This used to be done by syncQrOverlay()
+    // calling back into showQRinLCD() whenever the host was still empty, which
+    // recursed until the stack blew (~1100 nested calls) with the resulting
+    // RangeError silently swallowed by syncQrOverlay's catch. Rendering here,
+    // after renderLCD() has already shown the panel, removes that cycle.
+    const box = host.getBoundingClientRect();
+    renderQrCode(host, QR_DEST_URL, box.width, box.height);
   }
   function cycleEngNotation() {
     if (!appState.resultDisplayed || appState.result === null) {
@@ -7092,6 +7749,32 @@ function itemLatex(item, ph) {
     if (appState.menuOpen && rawKey === 'ac') return;
     if (rawKey === 'shift') { appState.shift = !isShift; if (appState.shift) appState.alpha = false; renderLCD(); return; }
     if (rawKey === 'alpha') { appState.alpha = !isAlpha; if (appState.alpha) appState.shift = false; renderLCD(); return; }
+    if (appState.solvePrompt.active) {
+      if (rawKey === 'ac') { resetExpr(); renderLCD(); return; }
+      if (/^[0-9]$/.test(rawKey)) {
+        appState.solvePrompt.value = appState.solvePrompt.value === '0'
+          ? rawKey : appState.solvePrompt.value + rawKey;
+        renderLCD(); return;
+      }
+      if (rawKey === 'decimal' && !appState.solvePrompt.value.includes('.')) {
+        appState.solvePrompt.value += '.';
+        renderLCD(); return;
+      }
+      if (rawKey === 'negate') {
+        appState.solvePrompt.value = appState.solvePrompt.value.startsWith('-')
+          ? appState.solvePrompt.value.slice(1) : '-' + appState.solvePrompt.value;
+        renderLCD(); return;
+      }
+      if (rawKey === 'del') {
+        appState.solvePrompt.value = appState.solvePrompt.value.slice(0, -1) || '0';
+        renderLCD(); return;
+      }
+      if (rawKey === 'equals') {
+        doSolve(Number(appState.solvePrompt.value || 0));
+        return;
+      }
+      return;
+    }
     if (!isShift && !isAlpha && handleOptnKey(rawKey)) return;
 
     // SHIFT + 7 -> CONSTANTS
@@ -7837,8 +8520,9 @@ function itemLatex(item, ph) {
       if (eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
         if (rawKey === 'dpad_up') eq.selectedMenuItem = (eq.selectedMenuItem + 2) % 3;
         else if (rawKey === 'dpad_down') eq.selectedMenuItem = (eq.selectedMenuItem + 1) % 3;
-        else if (rawKey >= '1' && rawKey <= '3') eq.selectedMenuItem = Number(rawKey)-1;
-        else if (rawKey === 'equals') { const n=eq.selectedMenuItem+2; if(eq.phase==='simultaneousCount'){eq.numberOfEquations=n;eq.coefficientValues=Array.from({length:n},()=>Array(n+1).fill(''));eq.phase='simultaneousInput';}else{eq.polynomialDegree=n;eq.coefficientValues=[Array(n+1).fill('')];eq.phase='polynomialInput';} eq.currentEquation=0;eq.currentCoefficient=0;eq.inputBuffer=''; }
+        else if (eq.phase === 'polynomialDegree' && rawKey >= '2' && rawKey <= '4') eq.selectedMenuItem = Number(rawKey)-2;
+        else if (eq.phase !== 'polynomialDegree' && rawKey >= '1' && rawKey <= '3') eq.selectedMenuItem = Number(rawKey)-1;
+        else if (rawKey === 'equals') { const n=eq.phase==='polynomialDegree' ? eq.selectedMenuItem+2 : eq.selectedMenuItem+2; if(eq.phase==='simultaneousCount'){eq.numberOfEquations=n;eq.coefficientValues=Array.from({length:n},()=>Array(n+1).fill(''));eq.phase='simultaneousInput';}else{eq.polynomialDegree=n;eq.coefficientValues=[Array(n+1).fill('')];eq.phase='polynomialInput';} eq.currentEquation=0;eq.currentCoefficient=0;eq.inputBuffer=''; }
         renderLCD(); return;
       }
       if (eq.phase === 'simultaneousInput' || eq.phase === 'polynomialInput') {
@@ -7848,9 +8532,23 @@ function itemLatex(item, ph) {
         else if (rawKey === 'decimal' && !eq.inputBuffer.includes('.')) eq.inputBuffer=(eq.inputBuffer||'0')+'.';
         else if (rawKey === 'negate' || rawKey === 'minus') {
           eq.inputBuffer=eq.inputBuffer.startsWith('-')?eq.inputBuffer.slice(1):'-'+eq.inputBuffer;
-          console.debug('[EQUATION-TRACE-MINUS]', JSON.stringify({rawKey, inputBuffer:eq.inputBuffer, type:typeof eq.inputBuffer}));
         }
-        else if (rawKey === 'del') eq.inputBuffer=eq.inputBuffer.slice(0,-1);
+        else if (rawKey === 'del') {
+          if (eq.inputBuffer !== '') { eq.inputBuffer = eq.inputBuffer.slice(0,-1); }
+          else {
+            // DEL on an empty buffer edits the COMMITTED coefficient. It used
+            // to be a no-op, which left the stored number on screen with no way
+            // to reach it: the buffer is what renders, so the cell looked blank
+            // and pressing = re-committed the old value from memory.
+            // Pull the value back into the buffer AND clear the stored field,
+            // so the old number is not silently retained behind the entry.
+            const stored = eq.coefficientValues[eq.currentEquation]?.[eq.currentCoefficient];
+            if (stored !== undefined && stored !== '') {
+              eq.inputBuffer = String(stored);
+              eq.coefficientValues[eq.currentEquation][eq.currentCoefficient] = '';
+            }
+          }
+        }
         else if (rawKey === 'dpad_up') {commit(); eq.currentEquation=Math.max(0,eq.currentEquation-1);}
         else if (rawKey === 'dpad_down') {commit(); eq.currentEquation=Math.min(rows-1,eq.currentEquation+1);}
         else if (rawKey === 'dpad_left') {commit(); eq.currentCoefficient=Math.max(0,eq.currentCoefficient-1);}
@@ -7860,13 +8558,31 @@ function itemLatex(item, ph) {
           if (eq.currentCoefficient<cols-1) eq.currentCoefficient++;
           else if (eq.currentEquation<rows-1) { eq.currentEquation++; eq.currentCoefficient=0; }
           else {
-            console.debug('[EQUATION-TRACE-STATE]', JSON.stringify({degree:eq.polynomialDegree, coefficients:eq.coefficientValues, types:eq.coefficientValues.map(row=>row.map(value=>typeof value))}));
             solveEquationRemote(); return;
           }
         }
         renderLCD(); return;
       }
-      if (eq.phase === 'result') return;
+      if (eq.phase === 'result') {
+        // fx-991EX steps through the solutions with the D-pad instead of
+        // listing them all. Previously every key was swallowed here, so root
+        // #2 and beyond were unreachable however many there were.
+        const roots = Array.isArray(eq.resultState) ? eq.resultState : [];
+        const n = roots.length;
+        if (n > 0) {
+          if (eq.solutionIndex == null) eq.solutionIndex = 0;
+          if (eq.solutionIndex >= n) eq.solutionIndex = n - 1;
+          if (rawKey === 'dpad_down' || rawKey === 'dpad_right' || rawKey === 'equals' || rawKey === 'dpad_center') {
+            eq.solutionIndex = (eq.solutionIndex + 1) % n; renderLCD(); return;
+          }
+          if (rawKey === 'dpad_up' || rawKey === 'dpad_left' || rawKey === 'backspace') {
+            eq.solutionIndex = (eq.solutionIndex - 1 + n) % n; renderLCD(); return;
+          }
+        }
+        // S<->D applies to the solution currently on screen.
+        if (rawKey === 's_to_d') { eq.exactForm = !eq.exactForm; renderLCD(); return; }
+        return;
+      }
     }
 
     // INEQUALITY MODE: local degree/operator/coefficient state machine.
@@ -8740,8 +9456,9 @@ function itemLatex(item, ph) {
     if (rawKey === 'del') { deleteAtCursor(); return; }
     if (rawKey === 'equals') { (isShift || action === 'approx') ? evaluateApprox() : evaluate(); return; }
 
-    // STEP 2: Base-N mode — SHIFT on these keys switches base (buttons.md); keep local LCD in sync.
-    if (appState.mode === 'Base-N' && isShift) {
+    // STEP 2: Base-N mode - SHIFT/ALPHA on these keys switches base
+    // (buttons.md); keep local LCD in sync.
+    if (appState.mode === 'Base-N' && (isShift || isAlpha)) {
       const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };
       if (baseNSwitchKeys[rawKey]) {
         const nb = baseNSwitchKeys[rawKey];
@@ -8812,7 +9529,19 @@ function itemLatex(item, ph) {
       insertToken(isShift ? 'tan\u207b\u00b9(' : 'tan('); return;
     }
 
-    if (rawKey === 'scientific') { insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return; }
+    if (rawKey === 'scientific') {
+      // ×10^x -- and its SHIFT π / ALPHA e overlays -- are disabled in BASE-N on
+      // the physical unit; raw/buttons.md lists only the four SHIFT base
+      // switches (x²→DEC, x^→HEX, log→BIN, ln→OCT) for Base-N.
+      //
+      // Inserting "×10^" here spliced scientific notation into a fixed-radix
+      // expression. It did not even surface as an error: evaluate_base_n()
+      // rewrites digit runs through the ACTIVE BASE and then evaluates, so
+      // "5×10^3" silently produced 5000 in DEC and 5000 in HEX -- a plausible
+      // looking but semantically meaningless answer instead of an ignored key.
+      if (appState.mode === 'Base-N') return;
+      insertToken(isShift ? '\u03c0' : isAlpha ? 'e' : '\u00d710^'); return;
+    }
     if (rawKey === 'ans') {
       if (isShift || action === 'percent') { insertToken('%'); return; }
       insertToken('Ans'); return;

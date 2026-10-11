@@ -1,0 +1,40 @@
+Third-party dependency notice
+=============================
+
+qrcode/qrcode.js
+----------------
+QR Code Generator for JavaScript
+Copyright (c) 2009 Kazuhiko Arase
+URL: http://www.d-project.com/
+Licensed under the MIT license:
+ http://www.opensource.org/licenses/mit-license.php
+
+Source: npm package `qrcode-generator` v1.4.4 (file `qrcode.js`), vendored
+verbatim with its original header intact. No local modifications were made.
+
+Why this library
+----------------
+`frontend.html` previously loaded `qrcodejs` 1.0.0 from the cdnjs CDN:
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+That was the calculator's only remaining network dependency, so the QR screen
+could not render at all in the offline portable build. `qrcodejs` was also
+unsuitable for the LCD for two further reasons:
+
+  * its canvas drawer sizes modules as `width / moduleCount`, a FRACTIONAL
+    pixel size, so adjacent modules land on non-integer boundaries and the
+    symbol is anti-aliased rather than crisp;
+  * it draws the symbol edge-to-edge with NO quiet zone, and it does not expose
+    the module matrix (the model lives inside the library's closure), so the
+    frontend cannot add a quiet zone or compute an integer module scale.
+
+`qrcode-generator` is the same author's canonical library, exposes
+`getModuleCount()` and `isDark(row, col)`, and ships under the same MIT terms.
+That matrix access is what lets `renderQrCode()` in frontend.html draw each
+module at an exact integer size inside a real four-module white quiet zone.
+
+Trademark
+---------
+The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED
+ http://www.denso-wave.com/qrcode/faqpatent-e.html

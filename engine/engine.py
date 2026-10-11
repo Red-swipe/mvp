@@ -361,6 +361,10 @@ class Engine:
         self._require_mode(MODE_EQUATION)
         return self._equation.solve_quadratic(a, b, c)
 
+    def equation_quadratic_extremum(self, a, b, c):
+        self._require_mode(MODE_EQUATION)
+        return self._equation.quadratic_extremum(a, b, c)
+
     def equation_solve_cubic(self, a, b, c, d):
         self._require_mode(MODE_EQUATION)
         return self._equation.solve_cubic(a, b, c, d)

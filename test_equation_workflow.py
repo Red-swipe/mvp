@@ -41,10 +41,22 @@ class QuadraticWorkflowTests(unittest.TestCase):
             frontend = handle.read()
         self.assertIn("formatEquationRoot", frontend)
         self.assertIn("root.real", frontend)
-        self.assertIn("x${['₁','₂','₃','₄']", frontend)
-        self.assertIn("EQUATION-TRACE-RESPONSE", frontend)
+        # Item 13: this used to assert the literal template
+        # `x${['₁','₂','₃','₄']`, i.e. that every equation result was labelled
+        # with a polynomial root index. That is exactly the defect Item 13 fixed:
+        # a solved simultaneous system was reported as x_1, x_2, ... while its
+        # input grid showed x, y, z, w. The contract is now that the label is
+        # chosen by the equation type, and a polynomial still keeps its indexed
+        # subscript (Item 6 depends on that being a real KaTeX msub).
+        self.assertIn("function equationVariableLabel(", frontend)
+        self.assertIn("eq.selectedType === 'simultaneous'", frontend)
+        self.assertIn("'x_{' + (index + 1) + '}'", frontend)
+        self.assertNotIn("x${['\u2081','\u2082','\u2083','\u2084']", frontend)
         self.assertIn("rawKey === 'negate' || rawKey === 'minus'", frontend)
-        self.assertIn("EQUATION-TRACE-STATE", frontend)
+        # Item 13 also removed the equation path's leftover tracing. The
+        # KEY-TRACE-DROP trace below belongs to backendKey() and is unrelated, so
+        # it is deliberately left alone and still asserted here.
+        self.assertNotIn("EQUATION-TRACE", frontend)
         self.assertIn("KEY-TRACE-DROP", frontend)
 
 

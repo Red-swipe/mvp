@@ -371,7 +371,7 @@ class TestCalcSolveWiring(unittest.TestCase):
                       "doCalc must be EDITING-gated like evaluate()")
 
     def test_do_solve_guards_editing_state(self):
-        body = self._body("async function doSolve()")
+        body = self._body("async function doSolve(guessOverride)")
         self.assertIn("shouldEvaluateNow", body,
                       "doSolve must be EDITING-gated like evaluate()")
 
@@ -382,7 +382,7 @@ class TestCalcSolveWiring(unittest.TestCase):
                       "matrix expression must reach MatAns, not scalar Ans)")
 
     def test_do_solve_routes_registers(self):
-        body = self._body("async function doSolve()")
+        body = self._body("async function doSolve(guessOverride)")
         self.assertIn("storeCalcAnswer", body,
                       "doSolve must share the register store")
         self.assertIn("isMatVecResultString", body,
@@ -614,6 +614,13 @@ class TestShiftAlphaRouting3A(unittest.TestCase):
         ]
         for branch in branches:
             self.assertIn(branch, FRONTEND, f"routing branch missing: {branch}")
+
+    def test_alpha_base_switch_branches(self):
+        """ALPHA DEC/HEX/BIN/OCT must switch bases in Base-N mode."""
+        start = FRONTEND.index("// STEP 2: Base-N mode")
+        body = FRONTEND[start:start + 900]
+        self.assertIn("isShift || isAlpha", body)
+        self.assertIn("const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 }", body)
 
     def test_prepare_infix_rewrites(self):
         idx = FRONTEND.find("function prepareExpressionForEvaluation(")

@@ -27,6 +27,78 @@ from engine.evaluator import evaluate
 from engine.parser import parse
 from engine.tokenizer import tokenize
 
+# Offline assets the frontend requests by relative URL. Kept here so the startup
+# self-test can prove a fresh build can actually serve them, rather than leaving
+# a developer to discover a 404 from a blank LCD in the browser.
+REQUIRED_ASSETS = (
+    "frontend.html",
+    "katex/katex.min.css",
+    "katex/katex.min.js",
+    "katex/contrib/auto-render.min.js",
+    "ClassWizFontSet/ClassWizCWDisplay-Regular.woff2",
+    "ClassWizFontSet/CASIOClassWizCW01.ttf",
+    # The QR screen's generator. It used to be fetched from the cdnjs CDN at
+    # runtime, so a build that failed to copy it only showed a blank LCD on the
+    # QR screen and nothing else looked wrong -- exactly the kind of failure this
+    # list exists to catch before a developer discovers it in the browser.
+    "qrcode/qrcode.js",
+)
+
+
+def run_startup_selftest() -> bool:
+    """Report the Python runtime, the real engine and the offline assets.
+
+    The portable build ships the embeddable CPython distribution, which starts
+    in isolated mode: ``python312._pth`` alone decides ``sys.path``, and the
+    application directory is not added automatically. Reaching this function at
+    all already proves the engine imported (the module-level imports above are
+    unguarded), but a developer staring at a blank calculator needs to see that
+    in one glance instead of guessing, so print it loudly and return the verdict.
+    """
+    print("[SELFTEST] Python executable: " + sys.executable)
+    print("[SELFTEST] Python version: " + sys.version.split()[0])
+    print("[SELFTEST] App directory: " + str(PROJECT_ROOT))
+    # In isolated mode the embeddable distribution skips site.main(), so `site`
+    # never lands in sys.modules. That is the tell-tale for a _pth-managed path.
+    print("[SELFTEST] Isolated mode (site not loaded): "
+          + ("YES" if "site" not in sys.modules else "NO"))
+    print("[SELFTEST] sys.path:")
+    for entry in sys.path:
+        print("[SELFTEST]   " + entry)
+
+    engine_pkg = sys.modules.get("engine")
+    engine_file = getattr(engine_pkg, "__file__", "<unknown>")
+    print("[SELFTEST] Engine import: OK")
+    print("[SELFTEST] Engine module: " + str(engine_file))
+
+    # The evaluator used for every calculation must come from THIS app directory,
+    # not from a stray copy elsewhere on sys.path. Cheap and catches a mis-built
+    # portable folder that happens to import successfully.
+    evaluator_file = getattr(getattr(evaluate, "__code__", None), "co_filename", "<unknown>")
+    print("[SELFTEST] Evaluator source: " + str(evaluator_file))
+    engine_root = (PROJECT_ROOT / "engine").resolve()
+    try:
+        evaluator_path = Path(evaluator_file).resolve()
+    except (OSError, ValueError):
+        evaluator_path = None
+    if evaluator_path is not None and engine_root in evaluator_path.parents:
+        print("[SELFTEST] Engine wiring: OK")
+    else:
+        print("[SELFTEST] Engine wiring: FAILED (evaluator is not inside "
+              + str(engine_root) + ")")
+
+    missing = []
+    for rel in REQUIRED_ASSETS:
+        candidate = PROJECT_ROOT / rel
+        if not candidate.is_file():
+            missing.append(rel)
+    if missing:
+        print("[SELFTEST] Static assets: FAILED (missing " + ", ".join(missing) + ")")
+    else:
+        print("[SELFTEST] Static assets: OK (" + str(len(REQUIRED_ASSETS))
+              + " files present, served locally, no CDN required)")
+    return not missing
+
 MODE_MAP = {
     "Calculate": "CALC",
     "Complex": "COMPLEX",
@@ -2223,7 +2295,7 @@ class CalculatorController:
             if normalized in {"value", "Value"}:
                 return "Value" if key == "showCell" else "value"
             raise ValueError
-        if key in {"engineeringSymbols", "engineering_symbols", "statisticsFrequency", "stat_frequency", "autoCalc", "spreadsheet_auto_calc"}:
+        if key in {"engineeringSymbols", "engineering_symbols", "statisticsFrequency", "statistics_frequency", "stat_frequency", "autoCalc", "spreadsheet_auto_calc"}:
             if not isinstance(value, bool):
                 raise ValueError
             return value
@@ -2405,7 +2477,6 @@ class CalculatorController:
 
     def solve_equation(self, kind: str, coefficients, count_or_degree: int) -> dict:
         try:
-            print(f"[EQUATION] request kind={kind!r} count_or_degree={count_or_degree!r} coefficients={coefficients!r}", flush=True)
             self.engine.set_mode("EQUATION")
             if kind == "simultaneous":
                 n = int(count_or_degree)
@@ -2420,6 +2491,7 @@ class CalculatorController:
                 elif n == 3: result = self.engine.equation_solve_cubic(*vals)
                 elif n == 4: result = self.engine.equation_solve_quartic(*vals)
                 else: raise ValueError("degree must be 2-4")
+            extremum = self.engine.equation_quadratic_extremum(*vals) if kind != "simultaneous" and n == 2 else None
             def json_safe(value):
                 if isinstance(value, complex):
                     return {"real": value.real, "imag": value.imag}
@@ -2431,10 +2503,10 @@ class CalculatorController:
                     return {key: json_safe(item) for key, item in value.items()}
                 return value
             response = {"ok": True, "success": True, "result": json_safe(result)}
-            print(f"[EQUATION] parsed={vals!r} result={response['result']!r}", flush=True)
+            if extremum is not None:
+                response["extremum"] = json_safe(extremum)
             return response
         except Exception as exc:
-            print(f"[EQUATION] error={exc!r}", flush=True)
             return {"ok": False, "error": f"Math ERROR: {exc}"}
 
     def solve_inequality(self, degree: int, operator: str, coefficients: list) -> dict:
@@ -2776,6 +2848,9 @@ class CalculatorController:
             expr = str(expression)
             if "=" in expr and "__BASE_SWITCH__" not in expr:
                 lhs, rhs = expr.split("=", 1)
+                variable_token = re.escape(var)
+                lhs = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', lhs, flags=re.IGNORECASE)
+                rhs = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', rhs, flags=re.IGNORECASE)
                 def f(x):
                     merged = dict(self.variables)
                     merged[var] = float(x)
@@ -2783,6 +2858,8 @@ class CalculatorController:
                     r = safe_evaluate_expression(rhs, ans_val=ans_float, angle_unit=angle_u, variables=merged)
                     return float(l) - float(r)
             else:
+                variable_token = re.escape(var)
+                expr = re.sub(rf'(?<=[0-9.)])(?={variable_token}(?![A-Za-z]))', '*', expr, flags=re.IGNORECASE)
                 def f(x):
                     merged = dict(self.variables)
                     merged[var] = float(x)
@@ -2794,12 +2871,14 @@ class CalculatorController:
                     fx = f(x)
                 except Exception:
                     return {"ok": False, "error": "Math ERROR"}
-                if abs(fx) < 1e-10:
-                    break
                 try:
                     dfx = (f(x + h) - f(x - h)) / (2 * h)
                 except Exception:
                     return {"ok": False, "error": "Math ERROR"}
+                if abs(fx) < 1e-10:
+                    if "=" in expr and "__BASE_SWITCH__" not in expr and abs(dfx) < 1e-12:
+                        return {"ok": False, "error": "Math ERROR"}
+                    break
                 if abs(dfx) < 1e-12:
                     # nudge and retry (Newton needs nonzero derivative)
                     x = x + 0.5 if x >= 0 else x - 0.5
@@ -3627,6 +3706,33 @@ class MvpHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        # Vendored QR generator. frontend.html loads it with the relative url
+        # ./qrcode/qrcode.js, so a browser served over http asks for
+        # /qrcode/qrcode.js. This used to come from the cdnjs CDN; without this
+        # route the portable build 404'd and the QR screen fell back to showing
+        # the destination as plain text. Same containment rules as /katex/.
+        if path.startswith("/qrcode/"):
+            rel = path[len("/qrcode/"):]
+            root = (PROJECT_ROOT / "qrcode").resolve()
+            try:
+                target = (root / rel).resolve()
+            except (OSError, ValueError):
+                target = None
+            inside = (target is not None and target != root
+                      and root in target.parents)
+            ctype = "application/javascript" if (inside and target.suffix.lower() == ".js") else None
+            if not inside or ctype is None or not target.is_file():
+                self._send_json({"ok": False, "error": "not found"}, 404)
+                return
+            body = target.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if path == "/health":
             self._send_json({"ok": True})
             return
@@ -3783,6 +3889,8 @@ class MvpHandler(BaseHTTPRequestHandler):
 
 
 def main():
+    run_startup_selftest()
+    print("")
     parser = argparse.ArgumentParser(description="Run the local ClassWiz browser MVP")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
