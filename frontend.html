@@ -7075,6 +7075,15 @@ function storeCalcAnswer(r, rawExpr) {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const s = await r.json();
       if (requestSequence !== backendKeySequence) {
+        // Deliberate diagnostic, not leftover debug output. This is the
+        // out-of-order response guard: a slow reply from an earlier key press
+        // is dropped so it cannot overwrite newer state. Without a marker that
+        // drop is invisible, which is exactly how "the keypad went dead after a
+        // fast burst" gets misdiagnosed as an input bug rather than a dropped
+        // response. console.debug is suppressed by default in shipped browsers,
+        // so it costs nothing in normal use. Asserted by
+        // test_equation_workflow.test_frontend_uses_the_api_root_contract --
+        // do not remove without updating that test and this note.
         console.debug('[KEY-TRACE-DROP]', JSON.stringify({key, requestSequence, latestSequence:backendKeySequence}));
         return;
       }
