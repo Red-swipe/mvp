@@ -8512,7 +8512,22 @@ function showQRinLCD() {
         else if (rawKey === 'negate' || rawKey === 'minus') {
           eq.inputBuffer=eq.inputBuffer.startsWith('-')?eq.inputBuffer.slice(1):'-'+eq.inputBuffer;
         }
-        else if (rawKey === 'del') eq.inputBuffer=eq.inputBuffer.slice(0,-1);
+        else if (rawKey === 'del') {
+          if (eq.inputBuffer !== '') { eq.inputBuffer = eq.inputBuffer.slice(0,-1); }
+          else {
+            // DEL on an empty buffer edits the COMMITTED coefficient. It used
+            // to be a no-op, which left the stored number on screen with no way
+            // to reach it: the buffer is what renders, so the cell looked blank
+            // and pressing = re-committed the old value from memory.
+            // Pull the value back into the buffer AND clear the stored field,
+            // so the old number is not silently retained behind the entry.
+            const stored = eq.coefficientValues[eq.currentEquation]?.[eq.currentCoefficient];
+            if (stored !== undefined && stored !== '') {
+              eq.inputBuffer = String(stored);
+              eq.coefficientValues[eq.currentEquation][eq.currentCoefficient] = '';
+            }
+          }
+        }
         else if (rawKey === 'dpad_up') {commit(); eq.currentEquation=Math.max(0,eq.currentEquation-1);}
         else if (rawKey === 'dpad_down') {commit(); eq.currentEquation=Math.min(rows-1,eq.currentEquation+1);}
         else if (rawKey === 'dpad_left') {commit(); eq.currentCoefficient=Math.max(0,eq.currentCoefficient-1);}
