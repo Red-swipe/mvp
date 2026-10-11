@@ -932,7 +932,19 @@
   .lcd-result-line{
     position:absolute;
     right:4px;
-    bottom:2px;
+    /* 8px, not 2px. KaTeX renders a stacked \frac as a vlist whose ink is
+     * ~37px tall while `line-height:1` keeps the LINE BOX at ~20px, so the
+     * glyphs spill below the box by ~9px. With bottom:2px that put the ink at
+     * y=329.97..367.17 while `.lcd` ends at 365: `.lcd` is overflow:hidden, so
+     * the denominator of an exact result was silently clipped at the bottom
+     * edge of the screen. Measured across 5/8, 7/3, 7*8 and a 20-term sum, 8px
+     * is the smallest offset that brings the tallest result ink fully inside
+     * the LCD (clearance 3.83px) without lifting the result out of the lower
+     * band. The expression viewport ends at y=337 and its tallest ink (a Sigma
+     * vlist) reaches 335.86, but the two never meet horizontally: the
+     * expression is left-aligned and the result right-aligned, a gap of ~105px
+     * in the worst case (test_lcd_expression_result_geometry). */
+    bottom:8px;
     font-size:20px;
     font-weight:bold;
     line-height:1;
