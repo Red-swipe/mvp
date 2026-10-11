@@ -1,12 +1,16 @@
 import json
 import os
+import pathlib
 import subprocess
 import threading
 import time
 import sys
 import urllib.request
 
-sys.path.insert(0, r'E:\A.G\casio_mvp')
+# Derive the repository root from this file rather than hardcoding one
+# machine's checkout path: a fixed absolute path silently imports another
+# machine's mvp_server when this suite is run from a fresh clone.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from mvp_server import CONTROLLER, CONTROLLER_LOCK
 
 def start_server():
