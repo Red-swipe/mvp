@@ -358,7 +358,27 @@ E:\A.G\casio_release_acceptance_20261011\mvp_server.py
 
 ## 11. Delivery status
 
-- **Branch pushed:** `frontend_fixes_october` → `a63b698` (fast-forward, `1a15f8a..a63b698`).
-- **Pull request:** **https://github.com/Red-swipe/mvp/pull/5** — open, `mergeable_state: clean`, 44 commits, 64 files.
-- **Not merged.** Required human action: **review and merge PR #5 into `main`.** I did not merge it myself, because merging to a shared branch is a governance decision and required review must not be bypassed.
-- Once merged, `main` will contain the verified release at the merge commit.
+- **Branch pushed:** `frontend_fixes_october` → `dcccb6e` (fast-forward). The **verified release code commit is `a63b698`**; `dcccb6e` adds only this report (documentation).
+- **Pull request:** **https://github.com/Red-swipe/mvp/pull/5** — open, 44 commits, 64 files.
+- **Not merged.** Decision deliberately left to the project owner.
+
+### Repository merge-requirement verification
+
+`mergeable_state: clean` alone does **not** prove approval is unnecessary, so branch protection was queried directly:
+
+| Check | Result |
+|---|---|
+| Branch protection on `main` | **None** — API returns `404 {"message":"Branch not protected"}` |
+| Branch protection on `frontend_fixes_october` | **None** — same 404 |
+| Repository rulesets | **0** |
+| Required approving reviews | **0** — `get_reviews` returned `[]` |
+| Required status checks / CI | **None** — `get_check_runs` returned `0`; repository has **0 GitHub Actions workflows** |
+| Token permission on repo | `admin` |
+
+**Conclusion:** no approval is technically *mandatory* and there is no CI gate — the repository has no protection rules and no automation. All A1–I release gates have passed, so a merge would be permitted.
+
+**It was still not performed.** `clean` mergeability plus admin rights is a technical capability, not authorisation: merging to a shared `main` is a governance decision for the project owner, and the owner explicitly reserved it. Merging was therefore left as-is pending their instruction.
+
+**Exact remaining human action:** review PR #5 and either merge it (a **merge commit** is appropriate — this history must not be squashed, since the branch already contains a `--no-ff` merge of `main`) or say the word and it will be merged.
+
+Once merged, `main` will contain the verified release, and this section should be updated with the resulting merge SHA.
