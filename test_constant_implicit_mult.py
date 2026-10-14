@@ -100,13 +100,9 @@ class TestImplicitMultiplication(unittest.TestCase):
     def test_ans_juxtaposition(self):
         self.assertAlmostEqual(self.ev("Ans2", ans=5.0), 10.0, delta=TOL)
 
-    def test_group_adjacent_to_group_stays_an_error(self):
-        # Deliberately NOT implicit multiplication: this is the shape the
-        # postfix-% rewrite produces for `10%10%`, which must stay Syntax
-        # ERROR (see test_percent_contextual). Identity and explicit
-        # multiplication remain available for that intent.
-        with self.assertRaises(ValueError):
-            self.ev("(2)(3)")
+    def test_group_adjacent_to_group_is_implicit_mult(self):
+        # Casio fx-991EX standard: adjacent bracket groups evaluate as implicit multiplication
+        self.assertAlmostEqual(self.ev("(2)(3)"), 6.0, delta=TOL)
 
     def test_group_juxtaposition_at_parser_level(self):
         node = parse(tokenize("2(3)"))

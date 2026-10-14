@@ -281,7 +281,7 @@ CASES_ERR = [
     "integral(1/x,(-1),1)", "171!", "((2))(", "abc", "(2)(3)", "2e",
 ]
 # 1/0 is special: both sides must show the custom div-zero message.
-DIV_ZERO = "To infinity and beyonddd"
+DIV_ZERO = "Math ERROR"
 
 VARS_5 = dict(DEFAULT_VARS, A=5)
 

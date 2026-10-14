@@ -68,19 +68,20 @@ class _Parser:
                 return node
 
     def _term(self):
-        node = self._factor()
+        node = self._implicit_term()
         while True:
             token = self._peek()
             if token is not None and token.kind in (TokenKind.TIMES, TokenKind.SLASH):
                 self._advance()
-                right = self._factor()
+                right = self._implicit_term()
                 node = BinaryOpNode(node, token.kind, right)
                 continue
-            # IMPLICIT MULTIPLICATION. A value directly followed by another
-            # operand means "multiply", which is how the calculator is driven:
-            # SHIFT+pi inserts the constant with no operator, so `2pi` arrives
-            # here as `2 ( 3.14159... )` after the constants are substituted.
-            # The same holds for `Ans2` -> `(5)2`.
+            return node
+
+    def _implicit_term(self):
+        node = self._factor()
+        while True:
+            token = self._peek()
             if token is not None and self._starts_factor(token) \
                     and self._implicit_multiply_allowed():
                 right = self._factor()
@@ -94,19 +95,7 @@ class _Parser:
         return token.kind in (TokenKind.NUMBER, TokenKind.LPAREN)
 
     def _implicit_multiply_allowed(self):
-        """Refuse `)(` juxtaposition.
-
-        A group directly followed by another group is NOT calculator
-        juxtaposition -- it is what the postfix-`%` rewrite produces for a
-        deliberately malformed input: `10%10%` becomes
-        `((10)/100)((10)/100)`, which must stay a Syntax ERROR. Every real
-        juxtaposition form (`2pi`, `2(3)`, `Ans2`, `3 4`) has the left operand
-        ending in something OTHER than a closing parenthesis, so this single
-        exclusion keeps the error contract without losing the feature.
-        """
-        previous = self._tokens[self._pos - 1] if self._pos > 0 else None
-        if previous is not None and previous.kind == TokenKind.RPAREN:
-            return self._peek().kind != TokenKind.LPAREN
+        """Allow all implicit multiplication forms including adjacent brackets `)(`."""
         return True
 
     def _factor(self):
