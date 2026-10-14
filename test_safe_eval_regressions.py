@@ -121,8 +121,8 @@ class TestSafeEvalRegressions(unittest.TestCase):
     def test_controller_div_zero_message(self):
         reset_controller()
         resp = CONTROLLER.press_key({"key": "equals", "expression": "5/0"})
-        check("controller 5/0 -> To infinity and beyonddd",
-              resp.get("error") == "To infinity and beyonddd" and resp.get("display") == "To infinity and beyonddd",
+        check("controller 5/0 -> Math ERROR",
+              resp.get("error") == "Math ERROR" and resp.get("display") == "Math ERROR",
               repr((resp.get("error"), resp.get("display"))))
 
     def test_controller_evaluates_nonzero_denominator(self):

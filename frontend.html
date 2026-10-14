@@ -4047,17 +4047,21 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // which must stay Math ERROR. Every real juxtaposition form (`2pi`,
     // `2(3)`, `Ans2`, `3 4`) ends its left operand in something other than a
     // closing paren, so this one exclusion keeps the error contract.
-    const implicitAllowed = () => {
-      const prev = p > 0 ? tokens[p - 1] : null;
-      if (prev && prev.length === 1 && prev[0] === ')') return tokens[p][0] !== '(';
-      return true;
-    };
-    function mulDiv() {
+    const implicitAllowed = () => true;
+    function implicitMul() {
       let l = unary();
+      while (startsFactor() && implicitAllowed()) {
+        const r = unary();
+        l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
+      }
+      return l;
+    }
+    function mulDiv() {
+      let l = implicitMul();
       for (;;) {
         if (peekOp(['*', '/'])) {
           const op = tokens[p][0]; p++;
-          const r = unary();
+          const r = implicitMul();
           if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
           if (_cIsC(l) || _cIsC(r)) {
             if (_cIsZero(r)) throw new Error('Math ERROR');
@@ -4066,11 +4070,6 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
           }
           if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
           l = l / r;
-          continue;
-        }
-        if (startsFactor() && implicitAllowed()) {
-          const r = unary();
-          l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
           continue;
         }
         return l;
@@ -4145,6 +4144,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         }
       }
     } catch (e) {}
+    if (/(?:%\s*%|%\s*\d+(?:\.\d+)?\s*%)/.test(s)) throw new Error('Math ERROR');
     s = s.replace(/(\(\s*[^()]*?\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%/g, '(($1)/100)');
     s = s.split('×').join('*').split('÷').join('/').split('−').join('-');
     s = _transformSpecial(s);
@@ -4213,7 +4213,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     let v;
     try { v = _evalStr(expr); }
     catch (e) {
-      if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'To infinity and beyonddd'; }
+      if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'Math ERROR'; }
       throw e;
     }
     if (_cIsC(v) && Math.abs(v.im) > 1e-12 && !_complexMode) throw new Error('Math ERROR');
@@ -4382,15 +4382,57 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       insertTemplate({ type:'radical', id:nextId(), index:null, radicand:createSlot() }, 'radicand');
     }
   }
+  function _extractPowerBaseItems() {
+    if (cursor.index <= 0) return { items: [], startIndex: 0 };
+    const items = cursor.slot.items;
+    let i = cursor.index - 1;
+    const lastItem = items[i];
+    // If previous item is a closing parenthesis token, capture the full bracketed group
+    if (typeof lastItem === 'string' && lastItem.trim() === ')') {
+      let depth = 1;
+      i--;
+      while (i >= 0 && depth > 0) {
+        if (typeof items[i] === 'string') {
+          const s = items[i].trim();
+          if (s === ')') depth++;
+          else if (s === '(' || s.endsWith('(')) depth--;
+        }
+        i--;
+      }
+      // If the opening bracket is attached to a function token (e.g. "sin("), include the function token
+      if (i >= 0 && typeof items[i] === 'string' && /^[A-Za-z]+$/.test(items[i].trim())) {
+        i--;
+      }
+      const startIndex = i + 1;
+      const baseItems = items.slice(startIndex, cursor.index);
+      return { items: baseItems, startIndex };
+    }
+    // If previous item is part of a number (digits or decimal point), capture the entire number
+    if (typeof lastItem === 'string' && /^[0-9.]$/.test(lastItem.trim())) {
+      while (i >= 0 && typeof items[i] === 'string' && /^[0-9.]$/.test(items[i].trim())) {
+        i--;
+      }
+      const startIndex = i + 1;
+      const baseItems = items.slice(startIndex, cursor.index);
+      return { items: baseItems, startIndex };
+    }
+    // Default: single previous item (object or token)
+    return { items: [lastItem], startIndex: cursor.index - 1 };
+  }
+
   function insertPower(fixedExp) {
     pushUndoState();
-    // Postfix powers (x²/x³/x⁻¹) apply to the displayed result like an
-    // operator; an open power template starts fresh input.
     if (normalizeResultErrorEntry(fixedExp ? 'operator' : 'number') === 'ignore') return;
-    const baseItems = cursor.index > 0 ? [cursor.slot.items[cursor.index-1]] : [];
+    const extracted = _extractPowerBaseItems();
+    const baseItems = extracted.items;
+    const startIndex = extracted.startIndex;
     const pow = { type:'power', id:nextId(), base:createSlot(baseItems), exp:createSlot(fixedExp ? [fixedExp] : []), parentSlot:cursor.slot };
-    if (baseItems.length) cursor.slot.items.splice(cursor.index-1, 1, pow);
-    else { cursor.slot.items.splice(cursor.index, 0, pow); }
+    if (baseItems.length > 0) {
+      cursor.slot.items.splice(startIndex, baseItems.length, pow);
+      cursor.index = startIndex + 1;
+    } else {
+      cursor.slot.items.splice(cursor.index, 0, pow);
+    }
     if (fixedExp) { /* cursor stays after */ }
     else { cursor.slot = pow.exp; cursor.index = 0; }
     renderLCD();
@@ -5007,8 +5049,44 @@ function itemLatex(item, ph) {
   }
   const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
   function makeCursor() { const c = el('span','lcd-cursor'); return c; }
+  const debugErrors = [];
+
+  function logErrorToDebugPanel(err, context = '') {
+    const timeStr = new Date().toLocaleTimeString();
+    const message = err && err.message ? err.message : String(err);
+    const stack = err && err.stack ? err.stack : '';
+    const logItem = { time: timeStr, context, message, stack };
+    debugErrors.push(logItem);
+    if (debugErrors.length > 20) debugErrors.shift();
+    console.error('[SYSTEM ERROR]', context, err);
+    updateDebugPanelUI();
+  }
+
+  function updateDebugPanelUI() {
+    const panel = document.getElementById('debug-panel');
+    if (!panel) return;
+    const list = document.getElementById('debug-error-list');
+    if (!list) return;
+    list.innerHTML = '';
+    debugErrors.slice().reverse().forEach(item => {
+      const div = document.createElement('div');
+      div.style.cssText = 'margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 4px;';
+      div.innerHTML = `<div style="color: #ff8888;">[${item.time}] ${item.context ? item.context + ': ' : ''}${item.message}</div>` +
+        (item.stack ? `<pre style="margin: 2px 0; font-size: 10px; color: #aaa; white-space: pre-wrap;">${item.stack}</pre>` : '');
+      list.appendChild(div);
+    });
+  }
+
   function showMathError(msg) {
     appState.error = msg || 'Math ERROR';
+    appState.result = null;
+    appState.resultDisplayed = false;
+    renderLCD();
+  }
+
+  function showSystemError(err, context = '') {
+    logErrorToDebugPanel(err, context);
+    appState.error = 'System ERROR';
     appState.result = null;
     appState.resultDisplayed = false;
     renderLCD();
@@ -5165,7 +5243,7 @@ function itemLatex(item, ph) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await response.json();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   function renderVectorLCD() {
@@ -5291,7 +5369,7 @@ function itemLatex(item, ph) {
     }).then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).catch(() => { showMathError(); });
+    }).catch(e => { showSystemError(e, 'Async operation failed'); });
   }
 
   function calculateStatisticsRemote() {
@@ -5527,7 +5605,7 @@ function itemLatex(item, ph) {
     saveSettings(appState.settings);
     if (!FILE_MODE) fetch('/setup_update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key, value})})
       .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-      .catch(() => { showMathError(); });
+      .catch(e => { showSystemError(e, 'Async operation failed'); });
     if (key === 'angle_unit') appState.settings.angleUnit = value;
   }
 
@@ -5859,7 +5937,7 @@ function itemLatex(item, ph) {
         appState.spreadsheet.cells[cellRef] = data.data;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function calculateRatioRemote() {
@@ -5886,7 +5964,7 @@ function itemLatex(item, ph) {
         r.result = null;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function performConversionRemote() {
@@ -5916,7 +5994,7 @@ function itemLatex(item, ph) {
         cv.result = null;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function performResetRemote(target) {
@@ -5928,7 +6006,7 @@ function itemLatex(item, ph) {
         body: JSON.stringify({ target: target })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   function renderSpreadsheetLCD() {
@@ -6865,7 +6943,9 @@ function exactFractionResult(value, mixed) {
   if (!m) return null;
   const num = Number(m[1]), den = Number(m[2]);
   if (den <= 0 || den > 10000) return null;
-  if (Math.abs(num / den - n) > 1e-12) return null;
+  const strFormatted = localFormat ? localFormat(n) : String(n);
+  const fracFormatted = localFormat ? localFormat(num / den) : String(num / den);
+  if (Math.abs(num / den - n) > 1e-12 && strFormatted !== fracFormatted) return null;
   if (mixed && Math.abs(num) >= den) {
     const whole = Math.trunc(num / den);
     const rem = Math.abs(num) % den;
@@ -6932,15 +7012,15 @@ function storeCalcAnswer(r, rawExpr) {
     if (FILE_MODE) {
       try {
         const r = localEvaluate(evalExpr);
-        if (r === 'To infinity and beyonddd') {
+        if (r === 'Math ERROR') {
           // Division-by-zero display keeps the previous Ans intact.
           appState.result = r; appState.resultDisplayed = true; appState.error = null;
         } else {
           storeCalcAnswer(r, evalExpr);
         }
       } catch (e) {
-        appState.error = (e && e.message === 'DIV_ZERO') ? 'To infinity and beyonddd' : 'Math ERROR';
-        if (appState.error === 'To infinity and beyonddd') {
+        appState.error = (e && e.message === 'DIV_ZERO') ? 'Math ERROR' : 'Math ERROR';
+        if (appState.error === 'Math ERROR') {
           appState.result = appState.error; appState.resultDisplayed = true; appState.error = null;
         } else { appState.result = null; appState.resultDisplayed = false; }
       }
@@ -6956,7 +7036,7 @@ function storeCalcAnswer(r, rawExpr) {
       try { s = await r.json(); } catch (e) { s = null; }
       if (!r.ok) {
         const msg = (s && s.error) ? s.error : (s && s.display) ? s.display : `HTTP ${r.status}`;
-        if (msg === 'To infinity and beyonddd') {
+        if (msg === 'Math ERROR') {
           appState.result = msg; appState.resultDisplayed = true; appState.error = null;
           renderLCD(); return;
         }
@@ -6971,7 +7051,7 @@ function storeCalcAnswer(r, rawExpr) {
       if (s.modeName) appState.mode = s.modeName;
       if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
       renderLCD();
-    } catch(e) { showMathError(); }
+    } catch(e) { showSystemError(e, 'Backend communication'); }
   }
 
   function matrixToLatex(canonical) {
@@ -7134,7 +7214,7 @@ function storeCalcAnswer(r, rawExpr) {
         }
       }
       renderLCD();
-    } catch(e) { showMathError(); }
+    } catch(e) { showSystemError(e, 'Backend communication'); }
   }
 
   function displayFormat(canonical) {
@@ -7142,7 +7222,7 @@ function storeCalcAnswer(r, rawExpr) {
     // results (dots, no separators) stay untouched for Ans/storage/eval.
     // With Comma mark, multi-value ',' separators become ';' (per manual).
     let s = String(canonical == null ? '' : canonical);
-    if (s === '' || s === 'Math ERROR' || s === 'Dimension ERROR' || s === 'To infinity and beyonddd') return s;
+    if (s === '' || s === 'Math ERROR' || s === 'Dimension ERROR' || s === 'Math ERROR') return s;
     const mark = (typeof setupSettings !== 'undefined' && setupSettings.decimal_mark) || 'Dot';
     const sep = (typeof setupSettings !== 'undefined' && !!setupSettings.digit_separator);
     let approx = '';
@@ -7405,7 +7485,7 @@ function storeCalcAnswer(r, rawExpr) {
     }
   }
 
-  const DIV_ZERO_MSG = 'To infinity and beyonddd';
+  const DIV_ZERO_MSG = 'Math ERROR';
   const QR_DEST_URL = 'https://mentisai-delta.vercel.app/';
   function flashStoRecall(label) {
     const elx = document.getElementById('indMode');
@@ -7472,7 +7552,7 @@ function storeCalcAnswer(r, rawExpr) {
         if (s.variables) Object.assign(appState.variables, s.variables);
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
   async function doSolve(guessOverride) {
     // No valid calculation context (EMPTY/RESULT/ERROR) → no-op, never an
@@ -7520,7 +7600,7 @@ function storeCalcAnswer(r, rawExpr) {
         if (s.variable) appState.variables[s.variable] = s.value;
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
   function _localNewtonSolve(expr, varName, x0) {
     const source = String(expr);
@@ -9197,7 +9277,7 @@ function showQRinLCD() {
         if (!FILE_MODE) {
           fetch('/api/spreadsheet/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
             .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-            .catch(() => { showMathError(); });
+            .catch(e => { showSystemError(e, 'Async operation failed'); });
         }
         renderLCD();
         return;
@@ -9618,9 +9698,27 @@ function showQRinLCD() {
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeOptnPanel();
+    if (event.ctrlKey && event.shiftKey && (event.key === 'D' || event.key === 'd')) {
+      event.preventDefault();
+      const p = document.getElementById('debug-panel');
+      if (p) {
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        updateDebugPanelUI();
+      }
+    }
   });
   renderLCD();
 </script>
+
+
+    <!-- Hidden Debug Panel (Ctrl+Shift+D) -->
+    <div id="debug-panel" style="display: none; position: fixed; top: 10px; right: 10px; width: 400px; max-height: 500px; background: rgba(0,0,0,0.9); color: #fff; border: 2px solid #ff4444; border-radius: 8px; padding: 12px; z-index: 99999; font-family: monospace; font-size: 11px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff4444; padding-bottom: 6px; margin-bottom: 8px;">
+        <strong style="color: #ff4444;">SYSTEM DEBUG LOG (Last 20 Errors)</strong>
+        <button onclick="document.getElementById('debug-panel').style.display='none'" style="background: #ff4444; color: #fff; border: none; border-radius: 4px; cursor: pointer; padding: 2px 6px;">X</button>
+      </div>
+      <div id="debug-error-list"><em>No system errors recorded.</em></div>
+    </div>
 
 </body>
 </html>

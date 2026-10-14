@@ -462,7 +462,7 @@ class TestErrorContract(unittest.TestCase):
         c.expression = "1/0"
         st = c.press_key({"key": "equals", "expression": "1/0"})
         self.assertEqual(st["display"], DIV_ZERO_MSG)
-        self.assertIn("beyonddd", DIV_ZERO_MSG)
+        self.assertEqual(DIV_ZERO_MSG, "Math ERROR")
 
     def test_math_error_not_leaked(self):
         with self.assertRaises(ValueError) as ctx:

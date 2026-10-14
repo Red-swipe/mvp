@@ -126,7 +126,7 @@ CALC_ENGINE = CalculusEngine()
 
 _SPECIAL_FUNCS = ('integral', 'sigma', 'diff', 'log_base', 'xroot', 'cbrt', 'sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'ln', 'log', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'Abs', 'abs', 'round', 'Rnd', 'FACT', 'RanInt', 'Pol', 'Rec', 'nCr', 'nPr')
 
-DIV_ZERO_MSG = "To infinity and beyonddd"
+DIV_ZERO_MSG = "Math ERROR"
 
 
 def _group_integer_part(ip: str) -> str:
@@ -361,6 +361,8 @@ def _transform_percent(s: str) -> str:
     depth[len(s)] = level
 
     # Apply repeatedly for cases like 50%% and chained percentages.
+    if re.search(r'%\s*%', s) or re.search(r'%\s*\d+(?:\.\d+)?\s*%', s):
+        raise ValueError('Math ERROR')
     for _ in range(20):
         m = _PERCENT_RE.search(s)
         if not m:
