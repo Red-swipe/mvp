@@ -1223,9 +1223,42 @@ _VAR_ALIAS_RE = re.compile(r'(?<![A-Za-z0-9_.])([xy])(?![A-Za-z0-9_])')
 _VAR_ALIAS_CANON = {'x': 'X', 'y': 'Y'}
 
 
+def _translate_radicals(expr_str: str) -> str:
+    res = []
+    i = 0
+    n = len(expr_str)
+    while i < n:
+        if expr_str[i] == '√':
+            # Insert implicit multiplication * if preceded by digit or closing paren
+            if res and (res[-1].isdigit() or res[-1] == ')'):
+                res.append('*')
+            i += 1
+            if i < n and expr_str[i] == '(':
+                j = i
+                depth = 0
+                while j < n:
+                    if expr_str[j] == '(': depth += 1
+                    elif expr_str[j] == ')': depth -= 1
+                    j += 1
+                    if depth == 0: break
+                res.append('sqrt' + expr_str[i:j])
+                i = j
+            else:
+                j = i
+                while j < n and (expr_str[j].isdigit() or expr_str[j] == '.'):
+                    j += 1
+                operand = expr_str[i:j] if j > i else '0'
+                res.append(f'sqrt({operand})')
+                i = j if j > i else i
+        else:
+            res.append(expr_str[i])
+            i += 1
+    return "".join(res)
+
 def safe_evaluate_expression(expr_str: str, ans_val: float = 0.0, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None):
     """Evaluate mathematical expressions with scientific functions, roots, powers, and integrals."""
-    s = expr_str.strip()
+    s = _translate_radicals(expr_str).strip()
+
     if not s:
         return 0.0
 

@@ -3399,6 +3399,14 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         const a = _evalStr(args[1]), b = _evalStr(args[2]);
         const val = _simpson((x) => _evalStr(body.replace(/\bx\b/g, '(' + x + ')')), a, b);
         rep = '(' + _reprNum(val) + ')';
+      } else if (name === 'log') {
+        if (args.length === 1 && args[0]) {
+          const value = _evalStr(args[0]);
+          rep = '(' + _reprNum(Math.log10(value)) + ')';
+        } else if (args.length === 2 && args[0] && args[1]) {
+          const base = _evalStr(args[0]), value = _evalStr(args[1]);
+          rep = '(' + _reprNum(Math.log(value) / Math.log(base)) + ')';
+        } else throw new Error('Math ERROR');
       } else if (name === 'log_base') {
         if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
         const base = _evalStr(args[0]), val = _evalStr(args[1]);
