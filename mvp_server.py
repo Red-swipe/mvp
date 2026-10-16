@@ -3068,6 +3068,31 @@ class CalculatorController:
             return ("Sci", prec_int)
         return ("Norm", 2 if prec_int == 2 else 1)
 
+    def _calculation_error(self, message):
+        """Enter the ERROR state after a genuine calculation failure.
+
+        A failed calculation must NOT leave its text in the input buffer.
+        Without this the next keystroke continued the failed expression, so
+        `10 =`, `1/0 =`, `Ans+1 =` evaluated `1/010+1` and silently returned
+        1.1 instead of 11 -- a wrong number with no error shown.
+
+        `Ans` is deliberately preserved, matching the physical device and the
+        frontend's own normalizeResultErrorEntry(), which calls resetExpr()
+        while keeping lastAnswer. Nothing else is cleared: modes, variables,
+        matrices and statistics are untouched.
+
+        Only the buffer and the cursor move. The error string and the HTTP
+        status are chosen by the caller, so this does not encode a decision
+        about which error text divide-by-zero should display.
+        """
+        self.shift = False
+        self.alpha = False
+        self.state = "ERROR"
+        self.expression = ""
+        self.cursor_position = 0
+        self.expression_viewport = 0
+        return self._state(False, message, message)
+
     def _state(self, ok=True, error=None, display=None):
         if not self.powered_on:
             display = ""
@@ -3443,10 +3468,7 @@ class CalculatorController:
                     self.state = "RESULT"
                     return self._state(display=self._display(self.last_result))
                 except ZeroDivisionError:
-                    self.shift = False
-                    self.alpha = False
-                    self.state = "ERROR"
-                    return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
+                    return self._calculation_error(DIV_ZERO_MSG)
                 except Exception:
                     # Fallback to engine.evaluate
                     try:
@@ -3459,15 +3481,9 @@ class CalculatorController:
                         self.state = "RESULT"
                         return self._state(display=self._display(self.last_result))
                     except ZeroDivisionError:
-                        self.shift = False
-                        self.alpha = False
-                        self.state = "ERROR"
-                        return self._state(False, DIV_ZERO_MSG, DIV_ZERO_MSG)
+                        return self._calculation_error(DIV_ZERO_MSG)
                     except Exception:
-                        self.shift = False
-                        self.alpha = False
-                        self.state = "ERROR"
-                        return self._state(False, "Math ERROR", "Math ERROR")
+                        return self._calculation_error("Math ERROR")
 
             if key in {"menu", "setup"} and action.upper() != "SETUP":
                 if self.state == "MENU":
