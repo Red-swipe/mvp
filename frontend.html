@@ -6951,9 +6951,7 @@ function exactFractionResult(value, mixed) {
   if (!m) return null;
   const num = Number(m[1]), den = Number(m[2]);
   if (den <= 0 || den > 10000) return null;
-  const strFormatted = localFormat ? localFormat(n) : String(n);
-  const fracFormatted = localFormat ? localFormat(num / den) : String(num / den);
-  if (Math.abs(num / den - n) > 1e-12 && strFormatted !== fracFormatted) return null;
+  if (Math.abs(num / den - n) > 1e-12) return null;
   if (mixed && Math.abs(num) >= den) {
     const whole = Math.trunc(num / den);
     const rem = Math.abs(num) % den;
