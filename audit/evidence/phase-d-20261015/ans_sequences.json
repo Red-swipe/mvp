@@ -1,0 +1,506 @@
+{
+  "chromium": "C:\\Users\\DELL\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "sequences": [
+    {
+      "id": "ans_basic",
+      "title": "harmless known sequence: 5, then Ans+2",
+      "why": "establishes the baseline Ans behaviour that everything else is compared against",
+      "contract": "approved_by_source",
+      "note": null,
+      "expected_final": 7,
+      "expected_ans": null,
+      "observed_final": "7",
+      "observed_final_error": null,
+      "observed_ans": "7",
+      "console_errors": [],
+      "page_errors": [],
+      "steps": [
+        {
+          "note": "compute 5",
+          "keys": [
+            "5",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "5",
+          "lcd": "D Math □ 5 5 5",
+          "appState_result": "5",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "5",
+          "keys_not_found": []
+        },
+        {
+          "note": "Ans+2 -- 7 if Ans is still 5",
+          "keys": [
+            "ans",
+            "plus",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "Ans+2",
+          "lcd": "D Math □ Ans+2 7 7",
+          "appState_result": "7",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "7",
+          "keys_not_found": []
+        }
+      ],
+      "path": "browser_file"
+    },
+    {
+      "id": "ans_chain",
+      "title": "Ans chaining as battery case 35 intends",
+      "why": "case 35 states '5+5 = then x2 =' expecting 20, but raw/context.md:239 records that a previous agent's case 35 never tested this at all",
+      "contract": "contested_by_raw_context_239",
+      "note": "EXPECTATION UNRESOLVED. The arithmetic is unambiguous (10*2=20) but no keypad sequence in this repository is documented to produce it, and the battery row is contested. Observed behaviour is recorded without being scored.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "20",
+      "observed_final_error": null,
+      "observed_ans": "20",
+      "console_errors": [],
+      "page_errors": [],
+      "steps": [
+        {
+          "note": "compute 10",
+          "keys": [
+            "5",
+            "plus",
+            "5",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "5+5",
+          "lcd": "D Math □ 5+5 10 10",
+          "appState_result": "10",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "10",
+          "keys_not_found": []
+        },
+        {
+          "note": "Ans should be 10, so 20",
+          "keys": [
+            "ans",
+            "multiply",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "Ans*2",
+          "lcd": "D Math □ Ans × 2 20 20",
+          "appState_result": "20",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "20",
+          "keys_not_found": []
+        }
+      ],
+      "path": "browser_file"
+    },
+    {
+      "id": "divzero_then_ans",
+      "title": "divide by zero, then use Ans",
+      "why": "proves whether a failed calculation overwrites Ans. raw/september_handover.md:1403 states Ans must be preserved; audit/docs/divzero_contract.md records that this is undecided.",
+      "contract": "BLOCKED_BY_GATE_B",
+      "note": "EXPECTATION UNRESOLVED by Gate B. Recorded as an observation.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "1",
+      "observed_final_error": null,
+      "observed_ans": "1",
+      "console_errors": [],
+      "page_errors": [],
+      "steps": [
+        {
+          "note": "compute 10",
+          "keys": [
+            "1",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "10",
+          "lcd": "D Math □ 10 10 10",
+          "appState_result": "10",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "10",
+          "keys_not_found": []
+        },
+        {
+          "note": "divide by zero",
+          "keys": [
+            "1",
+            "divide",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "1/0",
+          "lcd": "D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR",
+          "appState_result": "Math ERROR",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": null,
+          "keys_not_found": []
+        },
+        {
+          "note": "observe Ans",
+          "keys": null,
+          "expr": null,
+          "getExpr": "1/0",
+          "lcd": "D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR",
+          "appState_result": "Math ERROR",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": null,
+          "keys_not_found": []
+        },
+        {
+          "note": "Ans+1 -- 11 if Ans was preserved, something else if not",
+          "keys": [
+            "ans",
+            "plus",
+            "1",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "Ans+1",
+          "lcd": "D Math □ Ans+1 1 1",
+          "appState_result": "1",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "1",
+          "keys_not_found": []
+        }
+      ],
+      "path": "browser_file"
+    },
+    {
+      "id": "usable_after_divzero",
+      "title": "is the calculator still usable after a divide by zero",
+      "why": "raw/context.md:351 requires that a non-maths failure show System ERROR, which implies recovery; whether the keypad still accepts input afterwards is unverified",
+      "contract": "BLOCKED_BY_GATE_B",
+      "note": "EXPECTATION UNRESOLVED by Gate B, even though the arithmetic (2+2=4) is uncontroversial. The unresolved part is whether the next calculation SHOULD start clean after an error, which is precisely what the divzero_then_ans sequence shows the server failing to do. Recording the observation without scoring it.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "4",
+      "observed_final_error": null,
+      "observed_ans": "4",
+      "console_errors": [],
+      "page_errors": [],
+      "steps": [
+        {
+          "note": "divide by zero",
+          "keys": [
+            "1",
+            "divide",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "1/0",
+          "lcd": "D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR",
+          "appState_result": "Math ERROR",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": null,
+          "keys_not_found": []
+        },
+        {
+          "note": "2+2 must work if the calculator recovered",
+          "keys": [
+            "2",
+            "plus",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "getExpr": "2+2",
+          "lcd": "D Math □ 2+2 4 4",
+          "appState_result": "4",
+          "appState_error": null,
+          "appState_state": null,
+          "localAns": "4",
+          "keys_not_found": []
+        }
+      ],
+      "path": "browser_file"
+    }
+  ],
+  "server_sequences": [
+    {
+      "id": "ans_basic",
+      "title": "harmless known sequence: 5, then Ans+2",
+      "why": "establishes the baseline Ans behaviour that everything else is compared against",
+      "contract": "approved_by_source",
+      "note": null,
+      "expected_final": 7,
+      "expected_ans": null,
+      "observed_final": "7",
+      "observed_final_error": null,
+      "observed_ans": "7",
+      "steps": [
+        {
+          "note": "compute 5",
+          "keys": [
+            "5",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "5",
+          "display": "5",
+          "result": "5",
+          "error": null,
+          "state": "RESULT",
+          "ans": "5"
+        },
+        {
+          "note": "Ans+2 -- 7 if Ans is still 5",
+          "keys": [
+            "ans",
+            "plus",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "5+2",
+          "display": "7",
+          "result": "7",
+          "error": null,
+          "state": "RESULT",
+          "ans": "7"
+        }
+      ],
+      "path": "http"
+    },
+    {
+      "id": "ans_chain",
+      "title": "Ans chaining as battery case 35 intends",
+      "why": "case 35 states '5+5 = then x2 =' expecting 20, but raw/context.md:239 records that a previous agent's case 35 never tested this at all",
+      "contract": "contested_by_raw_context_239",
+      "note": "EXPECTATION UNRESOLVED. The arithmetic is unambiguous (10*2=20) but no keypad sequence in this repository is documented to produce it, and the battery row is contested. Observed behaviour is recorded without being scored.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "20",
+      "observed_final_error": null,
+      "observed_ans": "20",
+      "steps": [
+        {
+          "note": "compute 10",
+          "keys": [
+            "5",
+            "plus",
+            "5",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "5+5",
+          "display": "10",
+          "result": "10",
+          "error": null,
+          "state": "RESULT",
+          "ans": "10"
+        },
+        {
+          "note": "Ans should be 10, so 20",
+          "keys": [
+            "ans",
+            "multiply",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "10*2",
+          "display": "20",
+          "result": "20",
+          "error": null,
+          "state": "RESULT",
+          "ans": "20"
+        }
+      ],
+      "path": "http"
+    },
+    {
+      "id": "divzero_then_ans",
+      "title": "divide by zero, then use Ans",
+      "why": "proves whether a failed calculation overwrites Ans. raw/september_handover.md:1403 states Ans must be preserved; audit/docs/divzero_contract.md records that this is undecided.",
+      "contract": "BLOCKED_BY_GATE_B",
+      "note": "EXPECTATION UNRESOLVED by Gate B. Recorded as an observation.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "11",
+      "observed_final_error": null,
+      "observed_ans": "11",
+      "steps": [
+        {
+          "note": "compute 10",
+          "keys": [
+            "1",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "10",
+          "display": "10",
+          "result": "10",
+          "error": null,
+          "state": "RESULT",
+          "ans": "10"
+        },
+        {
+          "note": "divide by zero",
+          "keys": [
+            "1",
+            "divide",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 400,
+          "expression": "",
+          "display": "Math ERROR",
+          "result": null,
+          "error": "Math ERROR",
+          "state": "ERROR",
+          "ans": "10"
+        },
+        {
+          "note": "observe Ans",
+          "keys": null,
+          "expr": null,
+          "http_status": null,
+          "expression": null,
+          "display": null,
+          "result": null,
+          "error": null,
+          "state": null,
+          "ans": null,
+          "observation_only": true
+        },
+        {
+          "note": "Ans+1 -- 11 if Ans was preserved, something else if not",
+          "keys": [
+            "ans",
+            "plus",
+            "1",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "10+1",
+          "display": "11",
+          "result": "11",
+          "error": null,
+          "state": "RESULT",
+          "ans": "11"
+        }
+      ],
+      "path": "http"
+    },
+    {
+      "id": "usable_after_divzero",
+      "title": "is the calculator still usable after a divide by zero",
+      "why": "raw/context.md:351 requires that a non-maths failure show System ERROR, which implies recovery; whether the keypad still accepts input afterwards is unverified",
+      "contract": "BLOCKED_BY_GATE_B",
+      "note": "EXPECTATION UNRESOLVED by Gate B, even though the arithmetic (2+2=4) is uncontroversial. The unresolved part is whether the next calculation SHOULD start clean after an error, which is precisely what the divzero_then_ans sequence shows the server failing to do. Recording the observation without scoring it.",
+      "expected_final": null,
+      "expected_ans": null,
+      "observed_final": "4",
+      "observed_final_error": null,
+      "observed_ans": "4",
+      "steps": [
+        {
+          "note": "divide by zero",
+          "keys": [
+            "1",
+            "divide",
+            "0",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 400,
+          "expression": "",
+          "display": "Math ERROR",
+          "result": null,
+          "error": "Math ERROR",
+          "state": "ERROR",
+          "ans": "0"
+        },
+        {
+          "note": "2+2 must work if the calculator recovered",
+          "keys": [
+            "2",
+            "plus",
+            "2",
+            "equals"
+          ],
+          "expr": null,
+          "http_status": 200,
+          "expression": "2+2",
+          "display": "4",
+          "result": "4",
+          "error": null,
+          "state": "RESULT",
+          "ans": "4"
+        }
+      ],
+      "path": "http"
+    }
+  ],
+  "cross_path": {
+    "ans_basic": {
+      "contract": "approved_by_source",
+      "browser_final": "7",
+      "browser_error": null,
+      "browser_ans": "7",
+      "server_final": "7",
+      "server_error": null,
+      "server_ans": "7",
+      "paths_agree": true,
+      "ans_agrees": true
+    },
+    "ans_chain": {
+      "contract": "contested_by_raw_context_239",
+      "browser_final": "20",
+      "browser_error": null,
+      "browser_ans": "20",
+      "server_final": "20",
+      "server_error": null,
+      "server_ans": "20",
+      "paths_agree": true,
+      "ans_agrees": true
+    },
+    "divzero_then_ans": {
+      "contract": "BLOCKED_BY_GATE_B",
+      "browser_final": "1",
+      "browser_error": null,
+      "browser_ans": "1",
+      "server_final": "11",
+      "server_error": null,
+      "server_ans": "11",
+      "paths_agree": false,
+      "ans_agrees": false
+    },
+    "usable_after_divzero": {
+      "contract": "BLOCKED_BY_GATE_B",
+      "browser_final": "4",
+      "browser_error": null,
+      "browser_ans": "4",
+      "server_final": "4",
+      "server_error": null,
+      "server_ans": "4",
+      "paths_agree": true,
+      "ans_agrees": true
+    }
+  }
+}
