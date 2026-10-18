@@ -4228,7 +4228,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     let v;
     try { v = _evalStr(expr); }
     catch (e) {
-      if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'Math ERROR'; }
+      if (e && e.message === 'DIV_ZERO') { appState.error = null; return 'Math ERROR'; }
       throw e;
     }
     if (_cIsC(v) && Math.abs(v.im) > 1e-12 && !_complexMode) throw new Error('Math ERROR');
