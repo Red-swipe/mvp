@@ -68,7 +68,10 @@ def clean_and_assemble():
     print(f"  - Removed {pycache_count} __pycache__ directories.")
 
 
-def verify_release():
+PYTHON_EXE_REL = Path("python") / "python.exe"
+
+
+def verify_release(require_python=False):
     print("[VERIFY] Checking asset completeness...")
     missing = []
     for f in REQUIRED_FILES:
@@ -82,9 +85,43 @@ def verify_release():
         print(f"[ERROR] Release missing assets: {missing}")
         sys.exit(1)
 
+    # RUN_CALCULATOR.bat launches %~dp0python\python.exe and refuses to start
+    # without it, printing "ERROR: Python runtime folder is missing!". A
+    # package produced by this script never contains that folder, so saying
+    # "complete and clean" would be misleading.
+    #
+    # The bundled interpreter is produced by portable\BUILD_ON_MY_PC.bat, not
+    # here. So this is a WARNING by default and only fatal under
+    # --require-python, which is what a real shippable package is built with.
+    if not (DIST_DIR / PYTHON_EXE_REL).exists():
+        print("")
+        print("[WARNING] This package CANNOT BE LAUNCHED AS-IS.")
+        print(f"[WARNING]   Missing: {PYTHON_EXE_REL.as_posix()}")
+        print("[WARNING]   RUN_CALCULATOR.bat will stop with")
+        print('[WARNING]     "ERROR: Python runtime folder is missing!"')
+        print("[WARNING]   Build the shippable folder with")
+        print("[WARNING]     portable\\BUILD_ON_MY_PC.bat")
+        print("[WARNING]   (it downloads the embeddable Python), or rerun this")
+        print("[WARNING]   script with --require-python to make this fatal.")
+        print("")
+        if require_python:
+            print("[ERROR] --require-python: bundled python\\python.exe is absent.")
+            sys.exit(1)
+    elif require_python:
+        print(f"[VERIFY] Bundled interpreter present: {PYTHON_EXE_REL.as_posix()}")
+
     print("[VERIFY] Release package is complete and clean.")
 
 
 if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        description="Build and verify the portable calculator release.")
+    ap.add_argument("--require-python", action="store_true",
+                    help="fail if the bundled python\\python.exe is missing, "
+                         "i.e. the package would refuse to start")
+    args = ap.parse_args()
+
     clean_and_assemble()
-    verify_release()
+    verify_release(require_python=args.require_python)
