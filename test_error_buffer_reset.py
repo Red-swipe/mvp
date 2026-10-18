@@ -154,40 +154,77 @@ def test_calculator_remains_usable_after_a_calculation_error(live_post):
 @pytest.mark.skipif(not pathlib.Path(CHROMIUM).exists(),
                     reason="chromium is not installed")
 def test_frontend_keeps_the_failed_expression_out_of_the_next_input():
-    """The frontend already resets; this pins the behaviour so it cannot drift."""
+    """The served page must not carry a failed expression into the next one.
+
+    Retargeted from file:// to the SERVED page. file:// is not a supported
+    deployment mode: there the DIV_ZERO result branch is taken and
+    appState.error legitimately stays null, so the old assertion could not
+    hold. On the served page (FILE_MODE false) evaluate() takes the fetch()
+    path, a genuine calculation error sets appState.error, and the buffer
+    reset contract is what we actually want to pin.
+    """
+    import json
+    import socket
+    import subprocess
+    import threading
+    import time
+    from http.server import ThreadingHTTPServer
     from playwright.sync_api import sync_playwright
 
-    url = "file:///" + str(PROJECT / "frontend.html").replace("\\", "/")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, executable_path=CHROMIUM)
+    import mvp_server  # noqa: E402
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), mvp_server.MvpHandler)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    time.sleep(0.4)
+    browser = None
+    pw = None
+    try:
+        pw = sync_playwright().start()
+        browser = pw.chromium.launch(channel="chrome")
         page = browser.new_page()
-        page.goto(url, wait_until="load")
-        try:
-            page.evaluate("() => { hardResetExpr(); }")
-            for k in ["1", "0", "equals"]:
-                page.locator('[data-key="%s"]' % k).click()
-            page.wait_for_timeout(350)
-            ans_after_ten = page.evaluate("() => appState.lastAnswer")
+        page.goto("http://127.0.0.1:%d/" % port, wait_until="load")
+        page.wait_for_timeout(1200)
+        assert page.evaluate(
+            "() => (typeof FILE_MODE !== 'undefined') ? FILE_MODE : true"
+        ) is False, "this test must run against the served page, not file://"
 
-            for k in ["1", "divide", "0", "equals"]:
-                page.locator('[data-key="%s"]' % k).click()
-            page.wait_for_timeout(450)
-            assert page.evaluate("() => !!appState.error"), \
-                "1/0 must raise a calculation error on the frontend"
+        page.evaluate("() => { hardResetExpr(); appState.shift = false; }")
+        for k in ["1", "0", "equals"]:
+            page.locator('[data-key="%s"]' % k).click()
+        page.wait_for_timeout(500)
+        ans_after_ten = page.evaluate("() => appState.lastAnswer")
 
-            # Ans survives the error
-            assert str(page.evaluate("() => appState.lastAnswer")) == str(ans_after_ten), \
-                "the frontend lost Ans across an error"
+        for k in ["1", "divide", "0", "equals"]:
+            page.locator('[data-key="%s"]' % k).click()
+        page.wait_for_timeout(700)
+        assert page.evaluate("() => !!appState.error"), \
+            "1/0 must raise a calculation error on the served page"
 
-            # the next input starts clean
-            for k in ["ans", "plus", "1", "equals"]:
-                page.locator('[data-key="%s"]' % k).click()
-            page.wait_for_timeout(450)
-            assert page.evaluate("() => getExpr()") == "Ans+1", \
-                "frontend built %r instead of a fresh Ans+1" % (
-                    page.evaluate("() => getExpr()"),)
-            assert str(page.evaluate("() => appState.result")) == "11", \
-                "frontend returned %r, expected 11" % (
-                    page.evaluate("() => appState.result"),)
-        finally:
-            browser.close()
+        # Ans survives the error
+        assert str(page.evaluate("() => appState.lastAnswer")) == str(ans_after_ten), \
+            "the frontend lost Ans across an error"
+
+        # the next input starts clean
+        for k in ["ans", "plus", "1", "equals"]:
+            page.locator('[data-key="%s"]' % k).click()
+        page.wait_for_timeout(700)
+        assert page.evaluate("() => getExpr()") == "Ans+1", \
+            "frontend built %r instead of a fresh Ans+1" % (
+                page.evaluate("() => getExpr()"),)
+        assert str(page.evaluate("() => appState.result")) == "11", \
+            "frontend returned %r, expected 11" % (
+                page.evaluate("() => appState.result"),)
+    finally:
+        if browser is not None:
+            try:
+                browser.close()
+            except Exception:
+                pass
+        if pw is not None:
+            try:
+                pw.stop()
+            except Exception:
+                pass
+        srv.shutdown()
+        srv.server_close()

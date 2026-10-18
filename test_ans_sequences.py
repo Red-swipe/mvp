@@ -113,21 +113,33 @@ class TestRealAnsRun(unittest.TestCase):
         self.assertEqual(str(divzero_b["localAns"]), "10")
 
     def test_the_paths_diverge_on_the_next_calculation(self):
-        # Recorded as an observation. Whether the server behaviour is WRONG is
-        # Gate B's decision, so this asserts the divergence exists, not that
-        # one side is correct.
+        # The divergence is GONE. `_calculation_error()` (mvp_server.py) and
+        # the C7 file-mode fix both clear the input buffer, so both paths now
+        # compute Ans+1 = 11 from a clean expression.
         cross = self.doc["cross_path"]["divzero_then_ans"]
-        self.assertFalse(cross["paths_agree"])
+        self.assertTrue(cross["paths_agree"],
+                        "browser and server must now agree after a divzero")
         self.assertEqual(str(cross["browser_final"]), "11")
-        self.assertEqual(str(cross["server_final"]), "1.1")
+        self.assertEqual(str(cross["server_final"]), "11")
 
     def test_the_divergence_cause_is_a_stale_server_expression_buffer(self):
-        # The server leaves '1/0' in the buffer, so Ans+1 evaluates 1/010+1.
+        # The stale buffer is FIXED: the server must show an EMPTY expression
+        # immediately after the divide-by-zero, and the next input must be the
+        # clean 'Ans+1' expansion, never '1/010+1'.
         srv = self.server_by_id["divzero_then_ans"]
+        divzero = next(s for s in srv["steps"]
+                       if s.get("keys") and "divide" in s["keys"])
+        self.assertEqual(str(divzero["expression"]), "",
+                         "the server must clear the expression buffer on error")
         last = srv["steps"][-1]
-        self.assertEqual(last["expression"], "1/010+1",
-                         "expected the stale buffer to be visible in evidence")
-        self.assertEqual(str(last["result"]), "1.1")
+        self.assertEqual(str(last["expression"]), "10+1",
+                         "the next calculation must expand from a clean buffer, "
+                         "never from the failed '1/0'")
+        self.assertNotEqual(str(last["expression"]), "1/010+1",
+                            "the historical stale buffer must not come back")
+        self.assertEqual(str(last["result"]), "11")
+        self.assertNotEqual(str(last["result"]), "1.1",
+                            "the historical wrong answer 1.1 must not come back")
 
     def test_the_browser_clears_the_buffer_after_an_error(self):
         brw = self.by_id["divzero_then_ans"]
