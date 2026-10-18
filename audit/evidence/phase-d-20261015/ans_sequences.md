@@ -37,11 +37,11 @@ contract: `BLOCKED_BY_GATE_B`
 | # | step | getExpr | LCD | result | error | Ans |
 |---|---|---|---|---|---|---|
 | 1 | compute 10 | `10` | D Math □ 10 10 10 | 10 | None | 10 |
-| 2 | divide by zero | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | None |
-| 3 | observe Ans | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | None |
-| 4 | Ans+1 -- 11 if Ans was preserved, something else if not | `Ans+1` | D Math □ Ans+1 1 1 | 1 | None | 1 |
+| 2 | divide by zero | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | 10 |
+| 3 | observe Ans | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | 10 |
+| 4 | Ans+1 -- 11 if Ans was preserved, something else if not | `Ans+1` | D Math □ Ans+1 11 11 | 11 | None | 11 |
 
-expected_final=None  observed_final=1  observed_ans=1
+expected_final=None  observed_final=11  observed_ans=11
 
 ## usable_after_divzero - is the calculator still usable after a divide by zero
 
@@ -51,7 +51,7 @@ contract: `BLOCKED_BY_GATE_B`
 
 | # | step | getExpr | LCD | result | error | Ans |
 |---|---|---|---|---|---|---|
-| 1 | divide by zero | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | None |
+| 1 | divide by zero | `1/0` | D Math □ 1 ÷ 0 𝑀 𝑎 𝑡 ℎ 𝐸 𝑅 𝑅 𝑂 𝑅 MathERROR | Math ERROR | None | 0 |
 | 2 | 2+2 must work if the calculator recovered | `2+2` | D Math □ 2+2 4 4 | 4 | None | 4 |
 
 expected_final=None  observed_final=4  observed_ans=4
@@ -64,6 +64,6 @@ Tests the Phase C claim that Ans handling diverges between paths.
 |---|---|---|---|---|---|---|---|
 | ans_basic | approved_by_source | 7 | 7 | True | 7 | 7 | True |
 | ans_chain | contested_by_raw_context_239 | 20 | 20 | True | 20 | 20 | True |
-| divzero_then_ans | BLOCKED_BY_GATE_B | 1 | 11 | False | 1 | 11 | False |
+| divzero_then_ans | BLOCKED_BY_GATE_B | 11 | 11 | True | 11 | 11 | True |
 | usable_after_divzero | BLOCKED_BY_GATE_B | 4 | 4 | True | 4 | 4 | True |
 

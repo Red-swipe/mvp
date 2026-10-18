@@ -109,9 +109,9 @@
       "note": "EXPECTATION UNRESOLVED by Gate B. Recorded as an observation.",
       "expected_final": null,
       "expected_ans": null,
-      "observed_final": "1",
+      "observed_final": "11",
       "observed_final_error": null,
-      "observed_ans": "1",
+      "observed_ans": "11",
       "console_errors": [],
       "page_errors": [],
       "steps": [
@@ -145,7 +145,7 @@
           "appState_result": "Math ERROR",
           "appState_error": null,
           "appState_state": null,
-          "localAns": null,
+          "localAns": "10",
           "keys_not_found": []
         },
         {
@@ -157,7 +157,7 @@
           "appState_result": "Math ERROR",
           "appState_error": null,
           "appState_state": null,
-          "localAns": null,
+          "localAns": "10",
           "keys_not_found": []
         },
         {
@@ -170,11 +170,11 @@
           ],
           "expr": null,
           "getExpr": "Ans+1",
-          "lcd": "D Math □ Ans+1 1 1",
-          "appState_result": "1",
+          "lcd": "D Math □ Ans+1 11 11",
+          "appState_result": "11",
           "appState_error": null,
           "appState_state": null,
-          "localAns": "1",
+          "localAns": "11",
           "keys_not_found": []
         }
       ],
@@ -208,7 +208,7 @@
           "appState_result": "Math ERROR",
           "appState_error": null,
           "appState_state": null,
-          "localAns": null,
+          "localAns": "0",
           "keys_not_found": []
         },
         {
@@ -482,14 +482,14 @@
     },
     "divzero_then_ans": {
       "contract": "BLOCKED_BY_GATE_B",
-      "browser_final": "1",
+      "browser_final": "11",
       "browser_error": null,
-      "browser_ans": "1",
+      "browser_ans": "11",
       "server_final": "11",
       "server_error": null,
       "server_ans": "11",
-      "paths_agree": false,
-      "ans_agrees": false
+      "paths_agree": true,
+      "ans_agrees": true
     },
     "usable_after_divzero": {
       "contract": "BLOCKED_BY_GATE_B",
