@@ -1,6 +1,30 @@
-# Adjacency contract — DECISION GATE, NOT YET DECIDED
+# Adjacency contract — DECIDED
 
-Status: **UNRESOLVED — requires a human product decision.**
+Status: **DECIDED — Option 1 (Contract A everywhere).**
+Decision date: **2026-10-18**. Authority: owner decision 2
+("`)(` juxtaposition becomes legal on every path, non-negotiable").
+Implemented in `5604549`, which is the tip merged into `origin/v0.12`.
+The body below is the Phase C pre-decision analysis, retained unchanged for
+provenance; the operative summary is the section immediately after this header.
+
+## Operative decision (2026-10-18)
+
+- **Group-group adjacency is legal on every path** (Python engine, node bridge,
+  and the browser `file://` path), and it binds tighter than an explicit `×`/`÷`.
+  `(2)(3)`=6, `(1+2)(3+4)`=21, `8÷2(2+2)`=1, `2(3)(4)(5)`=120.
+- `10%10%` is **not** required to error by this decision. It is produced by the
+  postfix-`%` rewrite, which emits the same string shape as group-group adjacency.
+  Under Option 1 it evaluates rather than raising; see
+  `decision_record_adjacency.md` and `decision_record_adjacency_phase_e.md`
+  for the phase-by-phase measurement.
+- The four contradicting assertions were flipped deliberately as part of the
+  decision, never silently, per step 4 of "To close the gate" below.
+
+The original pre-decision text follows.
+
+---
+
+Status (as of Phase C): **UNRESOLVED — requires a human product decision.**
 Phase C does not change any application behaviour to make these pass.
 
 ## The three shapes

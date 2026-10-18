@@ -15,10 +15,12 @@
     },
     "tolerance": 1e-6,
     "adjacency_decision": {
-      "status": "BLOCKED_FOR_HUMAN_DECISION",
-      "decided_on": null,
-      "decided_by": null,
-      "rationale": "The repository asserts two mutually exclusive contracts for adjacent bracket groups, both as live tests. Allowing group-group juxtaposition is required by 7 rows of this table (8, 9, 24, 33, 37, 38, 44) but is exactly what test_constant_implicit_mult.py::test_group_adjacent_to_group_stays_an_error and the '(2)(3)' entry of test_file_mode.CASES_ERR forbid. The postfix-% rewrite emits the same string shape for 10%10%, so the two requirements cannot both be satisfied without a further change to _transform_percent. No option is ratified, so the affected rows are reported as observed, not as agreed.",
+      "status": "DECIDED",
+      "decision": "Option 1 - Contract A everywhere: group-group adjacency is legal on every path and binds tighter than an explicit x or divide.",
+      "decided_on": "2026-10-18",
+      "decided_by": "owner decision 2 (raw/context.md:16): ')(` juxtaposition becomes legal on every path (non-negotiable).'",
+      "implemented_in": "5604549",
+      "rationale": "The repository asserted two mutually exclusive contracts for adjacent bracket groups, both as live tests. Allowing group-group juxtaposition is required by 7 rows of this table (8, 9, 24, 33, 37, 38, 44) but was exactly what test_constant_implicit_mult.py::test_group_adjacent_to_group_stays_an_error and the '(2)(3)' entry of test_file_mode.CASES_ERR forbade. The owner ratified Option 1, which matches the physical Casio fx-991EX and the project's own 46-case source document. The four contradicting assertions were flipped deliberately as part of the decision. 10%10% is produced by the postfix-% rewrite, which emits the same string shape; under Option 1 it evaluates rather than raising, and it is not a row in the 46-case battery.",
       "gate_document": "audit/docs/adjacency_contract.md",
       "affected_case_ids": [8, 9, 24, 33, 37, 38, 44],
       "conflicting_tests": [

@@ -4050,11 +4050,18 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // rewritten as `2(3.14159...)` by the pi/Ans substitution above, and the
     // same holds for `Ans2` -> `(5)2`.
     //
-    // A group directly followed by another group is refused: that is the shape
-    // the postfix-% rewrite produces for `10%10%` -> `((10)/100)((10)/100)`,
-    // which must stay Math ERROR. Every real juxtaposition form (`2pi`,
-    // `2(3)`, `Ans2`, `3 4`) ends its left operand in something other than a
-    // closing paren, so this one exclusion keeps the error contract.
+    // A group directly followed by another group is ALLOWED, and binds tighter
+    // than an explicit `*` or `/`: `(2)(3)`=6, `(1+2)(3+4)`=21,
+    // `2(3)(4)(5)`=120, `8/2(2+2)`=1. This is owner decision 2, ratified
+    // 2026-10-18 and implemented in 5604549; see
+    // audit/docs/adjacency_contract.md (status DECIDED, Option 1) and
+    // audit/data/cases.json _meta.adjacency_decision.
+    //
+    // This makes the earlier claim here false: `)(` is NOT refused, and
+    // `10%10%` is NOT required to error. The postfix-% rewrite emits the same
+    // string shape for both, so under this decision `10%10%` evaluates rather
+    // than raising. It is not one of the 46 battery rows; it is covered by
+    // test_percent_contextual.py and by the adjacency decision record.
     const implicitAllowed = () => true;
     function implicitMul() {
       let l = unary();
