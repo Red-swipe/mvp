@@ -7025,10 +7025,12 @@ function storeCalcAnswer(r, rawExpr) {
           storeCalcAnswer(r, evalExpr);
         }
       } catch (e) {
-        appState.error = (e && e.message === 'DIV_ZERO') ? 'Math ERROR' : 'Math ERROR';
-        if (appState.error === 'Math ERROR') {
-          appState.result = appState.error; appState.resultDisplayed = true; appState.error = null;
-        } else { appState.result = null; appState.resultDisplayed = false; }
+        if (e && e.message === 'DIV_ZERO') {
+          // Division-by-zero display keeps the previous Ans intact.
+          appState.result = 'Math ERROR'; appState.resultDisplayed = true; appState.error = null;
+        } else {
+          appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
+        }
       }
       renderLCD();
       return;
@@ -7042,8 +7044,8 @@ function storeCalcAnswer(r, rawExpr) {
       try { s = await r.json(); } catch (e) { s = null; }
       if (!r.ok) {
         const msg = (s && s.error) ? s.error : (s && s.display) ? s.display : `HTTP ${r.status}`;
-        if (msg === 'Math ERROR') {
-          appState.result = msg; appState.resultDisplayed = true; appState.error = null;
+        if (s && s.state === 'ERROR') {
+          appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
           renderLCD(); return;
         }
         throw new Error(msg);
