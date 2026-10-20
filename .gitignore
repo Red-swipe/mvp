@@ -40,3 +40,7 @@ desktop.ini
 *.log
 *.tmp
 *.bak
+
+.codex_test_tmp/
+graphify-out/
+*.pyc
