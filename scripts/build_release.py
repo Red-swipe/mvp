@@ -10,7 +10,7 @@ import shutil
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parents[1]
 DIST_DIR = ROOT_DIR / "dist" / "calculator_portable"
 
 REQUIRED_FILES = [
