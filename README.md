@@ -85,11 +85,11 @@ number of tests skip.
 
 Last recorded result on the release commit: **681 passed, 179 subtests, 0 failed, 0 skipped** under Python 3.12.8.
 
-`verify.py` is a separate, smaller end-to-end check that expects a running server:
+`scripts/verify.py` is a separate, smaller end-to-end check that expects a running server:
 
 ```bash
 python mvp_server.py --no-browser
-python verify.py
+python scripts/verify.py
 ```
 
 Desktop smoke test:
@@ -120,7 +120,7 @@ The result lands in `dist/MentisClassWiz/` (generated output, not committed).
 main.py            PySide6 desktop application (entry point)
 mvp_server.py      Local HTTP server for the browser MVP
 frontend.html      Browser frontend UI (single-file app: markup, CSS, JS)
-verify.py          Small end-to-end check against a running server
+scripts/verify.py  Small end-to-end check against a running server
 engine/            Calculation engine
   engine.py        Mode coordinator (dispatches to the tier-3 engines)
   evaluator.py     AST evaluation pipeline (tokenizer -> parser -> evaluator)

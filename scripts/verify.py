@@ -1,6 +1,9 @@
 import sys, re
 sys.stdout.reconfigure(encoding='utf-8')
-html = open('frontend.html', encoding='utf-8').read()
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+html = (ROOT / 'frontend.html').read_text(encoding='utf-8')
 calls = re.findall(r'updateScrollIndicators\(([^)]+)\)', html)
 print(f'Total calls: {len(calls)}')
 for i, c in enumerate(calls):
