@@ -285,19 +285,19 @@ class TestFrontendVariableRouting(unittest.TestCase):
 
     def test_shift_x_key_still_inserts_sigma(self):
         # SHIFT on the same key must produce the SUMMATION TEMPLATE, not the raw
-        # text token "\u03a3(" it used to insert. raw/buttons.md: "shift + x ->
+        # text token "\u03a3(" it used to insert. docs/design_notes/buttons.md: "shift + x ->
         # Sigma [with three input boxes, 1 on top of it, with beneath it,
         # x = [] and one in front of it]".
         out = self._route([{"k": "variable", "s": True, "a": False}])
         self.assertEqual(out, [["<sigma-template>"]])
 
     def test_alpha_x_key_inserts_lowercase_y(self):
-        # ALPHA on the x key is `y` on the fx-991EX (raw/buttons.md).
+        # ALPHA on the x key is `y` on the fx-991EX (docs/design_notes/buttons.md).
         self.assertEqual(self._route([{"k": "variable", "s": False, "a": True}]),
                          [["y"]])
 
     def test_shift_integral_key_inserts_derivative_template(self):
-        # SHIFT + integral is the derivative template (raw/buttons.md:
+        # SHIFT + integral is the derivative template (docs/design_notes/buttons.md:
         # "SHIFT + \u222b -> d/dx [input box]"), not the raw text "d/dx(".
         self.assertEqual(self._route([{"k": "integral", "s": True, "a": False}]),
                          [["<derivative-template>"]])
@@ -381,7 +381,7 @@ class TestFrontendAlphaWiring(unittest.TestCase):
                       FRONTEND)
 
     def test_variable_key_printed_legend_matches_routing(self):
-        # The printed legends must agree with the real device / raw/buttons.md:
+        # The printed legends must agree with the real device / docs/design_notes/buttons.md:
         # SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
         self.assertIn('data-shift="Sigma" data-alpha=":" data-key="integral"',
                       FRONTEND)

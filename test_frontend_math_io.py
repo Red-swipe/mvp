@@ -4,7 +4,7 @@ Every test here drives the REAL frontend.html in a real browser (Playwright +
 Chrome) and asserts on the RENDERED DOM, computed styles and actual key
 routing. None of them assert that a function name merely exists in the source:
 a defect that only moved a string between two functions would pass such a
-test, and each of the defects recorded in FRONTEND_MATH_IO_AUDIT.md would
+test, and each of the defects recorded in docs/audit/FRONTEND_MATH_IO_AUDIT.md would
 have slipped through.
 
 Covered defects:
@@ -24,7 +24,7 @@ Covered defects:
           rejects (and the FILE_MODE bridge silently evaluated a constant)
   SIG-1   SHIFT+x emitted the raw text token `Σ(` instead of a template
   SHIFT-1 the printed legends / data-shift attributes for the ∫ and x keys
-          were swapped with respect to raw/buttons.md
+          were swapped with respect to docs/design_notes/buttons.md
   ALPHA-1 ALPHA on the x key was unmapped (it must insert `y`)
 
 The browser tests skip cleanly when Playwright or Chrome is unavailable; the

@@ -565,7 +565,7 @@ def _run_bridge_eval(cases, variables=None, ans=None):
 class TestShiftAlphaRouting3A(unittest.TestCase):
     """Phase 3A: physical SHIFT/ALPHA key → token → existing evaluator.
 
-    Physical reference is raw/buttons.md. Each feature is proven end to end;
+    Physical reference is docs/design_notes/buttons.md. Each feature is proven end to end;
     the two fixed bridge gaps (parenthesized factorial, Ans/nested-paren
     nPr/nCr forms) carry regression cases reproducing the original failure.
     """
@@ -580,7 +580,7 @@ class TestShiftAlphaRouting3A(unittest.TestCase):
                 buttons[km.group(1)] = tag
         expected = {
             "calc": ('data-shift="SOLVE"', 'data-alpha="="'),
-            # raw/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
+            # docs/design_notes/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
             "integral": ('data-shift="Sigma"', 'data-alpha=":"'),
             "variable": ('data-shift="d/dx"', 'data-alpha="y"'),
             "ellipsis": ('data-shift="FACT"', 'data-alpha="B"'),

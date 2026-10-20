@@ -1,7 +1,7 @@
 """Item 8 regression coverage: key labels must match the real SHIFT/ALPHA
-mappings defined in raw/buttons.md, and the keys must actually perform them.
+mappings defined in docs/design_notes/buttons.md, and the keys must actually perform them.
 
-raw/buttons.md is authoritative:
+docs/design_notes/buttons.md is authoritative:
     * *10^x        -> shift: pi,  alpha: e
     - ANS          -> shift: %
 
@@ -61,15 +61,15 @@ BLOCKS = {b[0]: b for b in _key_blocks()}
 class TestKeyLegendConsistency(unittest.TestCase):
     def test_scientific_key_matches_buttons_md(self):
         key, ds, da, ps, pa, label = BLOCKS["scientific"]
-        self.assertEqual(ds, "pi")          # raw/buttons.md: shift + *10^x -> pi
-        self.assertEqual(da, "e")           # raw/buttons.md: alpha + *10^x -> e
+        self.assertEqual(ds, "pi")          # docs/design_notes/buttons.md: shift + *10^x -> pi
+        self.assertEqual(da, "e")           # docs/design_notes/buttons.md: alpha + *10^x -> e
         self.assertEqual(ps, "\u03c0")      # SHIFT overlay is actually printed
         self.assertEqual(pa, "e")           # ALPHA overlay is actually printed
         self.assertIn("\u00d710", label)    # the real multiplication sign
 
     def test_ans_key_matches_buttons_md(self):
         key, ds, da, ps, pa, label = BLOCKS["ans"]
-        self.assertEqual(ds, "percent")     # raw/buttons.md: shift + ANS -> %
+        self.assertEqual(ds, "percent")     # docs/design_notes/buttons.md: shift + ANS -> %
         self.assertIsNone(da)               # ANS has no ALPHA mapping at all
         self.assertEqual(ps, "%")           # SHIFT overlay is actually printed
         self.assertIsNone(pa)               # no stray ALPHA overlay on this key

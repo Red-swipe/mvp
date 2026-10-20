@@ -248,7 +248,7 @@ class TestBaseN(unittest.TestCase):
             "&& parseInt(tok) >= appState.baseNBase", html)
 
     def test_base_switch_keys_match_buttons_md(self):
-        # raw/buttons.md: SHIFT x²→DEC, SHIFT x^→HEX, SHIFT log→BIN, SHIFT ln→OCT.
+        # docs/design_notes/buttons.md: SHIFT x²→DEC, SHIFT x^→HEX, SHIFT log→BIN, SHIFT ln→OCT.
         html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
         self.assertIn("const baseNSwitchKeys = { square: 10, power: 16, log: 2, ln: 8 };",
                       html)
@@ -477,7 +477,7 @@ class TestFrontendWiring(unittest.TestCase):
         cls.html = pathlib.Path("frontend.html").read_text(encoding="utf-8")
 
     def test_swapped_mappings_fixed(self):
-        # raw/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
+        # docs/design_notes/buttons.md: SHIFT + integral -> d/dx, SHIFT + x -> Sigma.
         # The printed legends, the data-shift attributes and the routing must
         # all agree (they were previously swapped on the keycaps).
         self.assertIn('data-shift="Sigma" data-alpha=":" data-key="integral"', self.html)

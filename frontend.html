@@ -9626,7 +9626,7 @@ function showQRinLCD() {
 
     if (rawKey === 'scientific') {
       // ×10^x -- and its SHIFT π / ALPHA e overlays -- are disabled in BASE-N on
-      // the physical unit; raw/buttons.md lists only the four SHIFT base
+      // the physical unit; docs/design_notes/buttons.md lists only the four SHIFT base
       // switches (x²→DEC, x^→HEX, log→BIN, ln→OCT) for Base-N.
       //
       // Inserting "×10^" here spliced scientific notation into a fixed-radix
@@ -9643,7 +9643,7 @@ function showQRinLCD() {
     }
     if (rawKey === 'variable') {
       // ALPHA on the x key is `y` on the fx-991EX. SHIFT is the summation
-      // template (raw/buttons.md: "shift + x -> Sigma [three input boxes]"),
+      // template (docs/design_notes/buttons.md: "shift + x -> Sigma [three input boxes]"),
       // not the bare "Σ(" text token it used to be.
       if (isAlpha || useAlphaForHex) {
         if (handlePendingVar('Y')) return;

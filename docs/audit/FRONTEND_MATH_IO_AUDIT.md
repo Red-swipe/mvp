@@ -34,14 +34,14 @@ against the real asset `ClassWizFontSet/CASIOClassWizCW01.ttf`.
 | KaTeX | **PARTIAL → PASS** | `#lcdSpreadsheet *` and `#lcdDistribution *` forced Courier New on every descendant; an id selector (1,0,0) outranks KaTeX's own `.katex` (0,1,0), so `.katex` computed to `"Courier New"`. Wrapper className was `"katex-lcd-wrapkatex-inline"` (missing space). The no-KaTeX fallback printed raw LaTeX. Pressing `=` re-typeset the **editable input line** with KaTeX, deleting the cursor and every slot and jumping the font to KaTeX_Main. | Removed both universal font rules (container stacks now name a math face). Fixed the wrapper className. `renderMath()` takes a plain-text fallback. The editable line is no longer re-typeset; KaTeX owns the result/error/matrix lines only. |
 | Fractions | PASS | Real stacked template (`math-fraction` / `math-numerator` / `math-fraction-bar` / `math-denominator`), cursor owns both slots, ▲▼ traverse, nested fractions work, `((1)/(2))` serializes. | Exact-answer **results** (`1/2`, `1 23/45`) reached KaTeX as inline slashes; now typeset as `\frac{1}{2}` / `1\frac{23}{45}`. |
 | Mixed fraction | PASS | `math-mixed-row` with whole + nested fraction; `((1)+((23)/(45)))`. | — |
-| d/dx | **FAIL → PASS** | `SHIFT+∫` emitted the raw text token `d/dx(`: no template, no slot, unbalanced paren, and `localEvaluate('d/dx(2)')` threw Math ERROR. Only the backend `diff(x^2,3)=6` worked. | New `derivative` template (`d` over a fraction bar over `dx` + one editable box) per `raw/buttons.md`. Cursor starts in the body slot. Serializes to `diff(body, <X register>)`. |
-| Sigma | **FAIL → PASS** | `SHIFT+x` emitted the raw text token `Σ(`: no template, no bounds slots, unbalanced paren. | New `sigma` template rendering `ⁿΣₘ x=[term]` with upper above, lower beneath and `x=` in front, per `raw/buttons.md`. Reading order lower→upper→body. Serializes to `sigma(body,lower,upper)`. |
+| d/dx | **FAIL → PASS** | `SHIFT+∫` emitted the raw text token `d/dx(`: no template, no slot, unbalanced paren, and `localEvaluate('d/dx(2)')` threw Math ERROR. Only the backend `diff(x^2,3)=6` worked. | New `derivative` template (`d` over a fraction bar over `dx` + one editable box) per `docs/design_notes/buttons.md`. Cursor starts in the body slot. Serializes to `diff(body, <X register>)`. |
+| Sigma | **FAIL → PASS** | `SHIFT+x` emitted the raw text token `Σ(`: no template, no bounds slots, unbalanced paren. | New `sigma` template rendering `ⁿΣₘ x=[term]` with upper above, lower beneath and `x=` in front, per `docs/design_notes/buttons.md`. Reading order lower→upper→body. Serializes to `sigma(body,lower,upper)`. |
 | Integral | PASS | Already a real template: `∫` with upper/lower/body/`dx`, ▲▼ reach the bounds, `integral(x^2,0,3)=9`. | Navigation generalised to cover `sigma` identically. |
 | Powers | PASS | `x²`/`x³`/`x⁻¹` use the `power` template with a real `math-power-exp` slot. | — |
 | Roots | PASS | `√`, `∛` (root index `3`), `ˣ√` (editable `math-root-index`) all templates. | — |
 | Log | PASS | `math-log-sub` + `math-log-arg` slots → `log_base(2,8)`. | — |
 | Symbols | **FAIL → PASS** | 36 audited code points absent from the LCD face; `sin⁻¹(` contains U+207B which neither the LCD face nor Courier New can draw; keycap legends used Times New Roman, which lacks ∛ ∇ ∈ ∅ ∀ ∃ ∥. | All non-LCD-font characters in a text token now render inside `.math-sym`; keycap/legend/OPTN stacks name a math face. Verified: **0 of 36** escape the wrapper. |
-| SHIFT/ALPHA | **FAIL → PASS** | The printed legends and `data-shift` attributes for the ∫ and x keys were **swapped** relative to `raw/buttons.md` and the real device (∫ printed `Σ`, x printed `d/dx`). ALPHA on the x key was entirely unmapped, so `ALPHA+x` produced `X` instead of `y`. | Legends and attributes corrected to `SHIFT+∫ → d/dx`, `SHIFT+x → Σ`; `ALPHA+x → y` wired (legend, attribute and routing). |
+| SHIFT/ALPHA | **FAIL → PASS** | The printed legends and `data-shift` attributes for the ∫ and x keys were **swapped** relative to `docs/design_notes/buttons.md` and the real device (∫ printed `Σ`, x printed `d/dx`). ALPHA on the x key was entirely unmapped, so `ALPHA+x` produced `X` instead of `y`. | Legends and attributes corrected to `SHIFT+∫ → d/dx`, `SHIFT+x → Σ`; `ALPHA+x → y` wired (legend, attribute and routing). |
 | Statistics | PASS | Inherits the corrected LCD stack; `σ`/`μ` labels resolve. | — |
 | Spreadsheet | **FAIL → PASS** | `#lcdSpreadsheet *` re-typed KaTeX output in Courier New. | Universal rule removed. |
 | Equation | PASS | Inherits the corrected LCD stack. | — |
@@ -171,11 +171,11 @@ against the real asset `ClassWizFontSet/CASIOClassWizCW01.ttf`.
 ### SHIFT-1 — Keycap legends and data attributes were swapped
 * **File** `frontend.html` (keypad markup)
 * **Observed** the ∫ key printed SHIFT `Σ` and the x key printed SHIFT `d/dx`,
-  and carried the same swapped `data-shift` values. `raw/buttons.md` and the real
+  and carried the same swapped `data-shift` values. `docs/design_notes/buttons.md` and the real
   fx-991EX both specify `SHIFT+∫ → d/dx` and `SHIFT+x → Σ`; the *routing* was
   right and the *print* was wrong.
 * **Fix** corrected both legends and both attributes so legend, attribute and
-  routing agree with `raw/buttons.md`.
+  routing agree with `docs/design_notes/buttons.md`.
 * **Regression test** `TestShiftLegendParity` (2 tests),
   `TestShiftAlphaBehaviour::test_shift_fraction_is_the_mixed_fraction_template`
 
@@ -301,7 +301,7 @@ architecture.
 6. **`exprToLatex` is now only reached through the exact-fraction path.** After
    removing the destructive input-line re-typeset, its general input-expression
    role disappeared. It is retained deliberately as the module's documented LaTeX
-   conversion helper (mirrored in `raw/code organisation/js.md`) and is covered
+   conversion helper (mirrored in `docs/design_notes/code organisation/js.md`) and is covered
    by `TestLatexConversion`. Removing it would be an unrelated refactor.
 
 ---

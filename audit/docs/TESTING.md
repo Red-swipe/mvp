@@ -109,7 +109,7 @@ Observed characteristics, measured:
 
 - Collection: `python -m pytest --collect-only -q` → succeeded, exit 0.
   The `test_safe_eval_regressions.py` bare-collection abort claimed in
-  `button_audit.md:213` does **not** reproduce.
+  `docs/audit/button_audit.md:213` does **not** reproduce.
 - Runtime ≈ 9 min, dominated by the browser suites.
 - Phase C baseline: **4 failed, 677 passed, 179 subtests**, exit 1
   (`audit/evidence/phase-b-20261015/baseline_pytest_q.log`).

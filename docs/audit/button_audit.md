@@ -1,7 +1,7 @@
 # FULL BUTTON → LOGIC PARITY AUDIT — Casio fx-991EX ClassWiz emulator (FINAL)
 
 > Fresh independent audit after the final parity pass. Every item in
-> `raw/buttons.md` (299 lines, manually observed on a physical fx-991EX) was
+> `docs/design_notes/buttons.md` (299 lines, manually observed on a physical fx-991EX) was
 > re-traced against `frontend.html`, `mvp_server.py`, `engine/`, and the test
 > suite. Previous PASS/PARTIAL labels were NOT carried over; each row below
 > was re-verified (static trace + live execution where noted).
@@ -174,7 +174,7 @@ cleanly only if node is absent).
 
 * No intermediate variable-prompt state exists: CALC substitutes stored
   variables, SOLVE Newton-solves with the stored-X guess (documented
-  substitute-and-evaluate simplification, `button_audit.md` row 119). No
+  substitute-and-evaluate simplification, `docs/audit/button_audit.md` row 119). No
   `PROMPT` screen state was added — there is no pending-input step to host,
   and `stoPending`/`recallPending` remain the only pending-action mechanism.
 * What the audit pins instead: `doCalc`/`doSolve`/`evaluateApprox` are now all
@@ -240,7 +240,7 @@ cleanly only if node is absent).
 
 ## 6. Phase 3A — SHIFT/ALPHA Routing Audit (2026-09-26 UTC)
 
-> Physical reference: `raw/buttons.md`. Scope is Layer 1 (key routing +
+> Physical reference: `docs/design_notes/buttons.md`. Scope is Layer 1 (key routing +
 > input state + the file:// evaluation bridge in `frontend.html`) only.
 > `mvp_server.py` and `engine/` NOT modified. Every claim below was proven
 > by execution (served backend + node-executed bridge), not by reading.

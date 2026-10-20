@@ -1,7 +1,7 @@
-﻿# Fresh Functional Audit
+# Fresh Functional Audit
 
 > Method: independent, from-scratch functional audit of the **current** working
-> tree. No prior audit claim (`audit.md`, `final_audit.md`, `button_audit.md`,
+> tree. No prior audit claim (`audit.md`, `final_audit.md`, `docs/audit/button_audit.md`,
 > `raw/handover.md`) was taken on trust; every claim in section 14 was
 > re-derived by reproduction. Where a prior claim turned out to be stale or
 > false, that is stated explicitly.
@@ -218,7 +218,7 @@ mvp_server.py (3769 lines)
   evaluate_matvec_expression (2082) typed Matrix/Vector parser (_MVParser)
   MvpHandler (3501)                do_GET / do_POST routing + validation
 engine/                            tokenizer -> parser -> evaluator (+11 mode packages)
-raw/code organisation/*.md         stale verbatim frontend decomposition (reference only)
+docs/design_notes/code organisation/*.md         stale verbatim frontend decomposition (reference only)
 ```
 
 **Single source of truth per concern:** the frontend owns the expression tree,
@@ -665,7 +665,7 @@ Each item was **reproduced**, not read.
 |---|---|---|---|
 | 1 | **Cursor system** | **VERIFIED WORKING** | Backend overwrite/insert/backspace/undo/viewport all behave; frontend `makeCursor()`/`.lcd-cursor` used by the main renderer and all 8 mode screens (section 6). |
 | 2 | **Math-IO rendering** | **VERIFIED WORKING** | All 12 template serializations evaluate correctly on the backend; `exprToLatex`/`renderMath` present with a plain-text fallback (section 7). |
-| 3 | **raw HTML/CSS/JS split** | **DEFERRED - stale reference snapshot (documentation drift, not a defect)** | `raw/code organisation/{html,css,js}.md` was last touched in `a7c841e`; `frontend.html` has moved on since. Sampled-window overlap against the live file: **CSS 90 %, JS 97.5 %**. They are reference copies only - `frontend.html` is the single live artifact. Not repaired (regenerating 350 KB of reference docs is out of scope for a functional pass). |
+| 3 | **raw HTML/CSS/JS split** | **DEFERRED - stale reference snapshot (documentation drift, not a defect)** | `docs/design_notes/code organisation/{html,css,js}.md` was last touched in `a7c841e`; `frontend.html` has moved on since. Sampled-window overlap against the live file: **CSS 90 %, JS 97.5 %**. They are reference copies only - `frontend.html` is the single live artifact. Not repaired (regenerating 350 KB of reference docs is out of scope for a functional pass). |
 | 4 | **mode-screen JavaScript** | **VERIFIED WORKING** | Each of the 12 modes has a real LCD screen with its own cursor and input handling (matrix `4267-4327`, vector `4398-4441`, stats `4679`, distribution `5383`, inequality `5573`, equation `5611`, SETUP `4744-4801`), and every mode's backend operation was exercised (section 11). |
 | 5 | **SHIFT/ALPHA feedback** | **VERIFIED WORKING** | All 17 SHIFT and 14 ALPHA token mappings exact; latch/auto-clear/mutual-exclusion correct; `#indShift`/`#indAlpha` `.active` toggle wired (section 8). Dead CSS at `1307-1310` noted in section 17. |
 | 6 | **QR functionality** | **VERIFIED WORKING** | Real QR generation via `qrcodejs`, reachable from SHIFT+OPTN and SETUP, dismissible, with an offline text fallback (section 13). |
@@ -885,7 +885,7 @@ so the next audit does not re-litigate them.
    element IDs and body classes that exist nowhere in the file. The live
    indicator mechanism is `.status-tag.active` on `#indShift`/`#indAlpha`.
    Cosmetic only.
-4. **`raw/code organisation/*.md` is a stale snapshot** (section 14, item 3).
+4. **`docs/design_notes/code organisation/*.md` is a stale snapshot** (section 14, item 3).
 5. **`Rec()` returns only the x-component** - a documented single-value display
    limitation carried over from `final_audit.md`.
 6. **Spreadsheet formulas require a leading `=` and reject cell references.**
@@ -977,7 +977,7 @@ and behavioural checks (section 18).
 ```text
  M mvp_server.py                  +22 / -2   (BUG-01 fix)
 ?? test_infix_combinatorics.py    new, 15 tests / 41 subtests
-?? FRESH_FUNCTIONAL_AUDIT.md      this file
+?? docs/audit/FRESH_FUNCTIONAL_AUDIT.md      this file
 ```
 
 Deliberately **not** changed: `frontend.html`, `engine/`, `README.md`, `raw/`,

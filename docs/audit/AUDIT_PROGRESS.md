@@ -2,7 +2,7 @@
 ## PHASE 3: DELIVERABLES & SECTION A DOCUMENTATION
 - **Status**: DONE
 - **Verified**:
-  - `docs/AUDIT_REPORT.md` created with complete 46-case table (Paths A, B, C) and Section A root cause analysis.
+  - `docs/audit/AUDIT_REPORT.md` created with complete 46-case table (Paths A, B, C) and Section A root cause analysis.
   - Documented file and line causes for Bug D1 (`100×1.05^2`), Bug D2 (`(-2)^2`, `2(3+4)^2`), and Bug D3 (`√(9+16)`).
   - Documented full analysis of 226 skipped pytest tests.
   - Updated `README.md` with Casio implicit multiplication precedence rules.
@@ -31,7 +31,7 @@
 - **Verified**:
   - Re-ran 46-case battery across Path A (`file://`), Path B (`http://`), and Path C (Python engine).
   - 100% PASS rate achieved across all three paths on all 46 cases.
-  - Updated `docs/AUDIT_REPORT.md` Section B with the verified post-fix 46-case table.
+  - Updated `docs/audit/AUDIT_REPORT.md` Section B with the verified post-fix 46-case table.
 - **Next**: Phase 5 - Browser Compatibility Audit.
 
 ## PHASE 5: BROWSER COMPATIBILITY
