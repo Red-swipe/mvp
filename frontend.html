@@ -3052,6 +3052,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
 
   function prepareExpressionForEvaluation(expression) {
     let prepared = String(expression || '');
+    // A numeric coefficient followed directly by a single ALPHA variable is
+    // implicit multiplication on the physical keypad (2X, 3y). Keep the
+    // scientific-notation form 2e3 intact by excluding e/E here.
+    prepared = prepared.replace(/(\d)([A-DF-MXYxy])\b/g, '$1*$2');
     prepared = prepared.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
     prepared = prepared.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
     // Parenthesized / symbolic keypad operands: (5)P(3+1), (5)C(2), Ans P 2.
