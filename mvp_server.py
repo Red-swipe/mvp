@@ -498,7 +498,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             def integrand_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), integrand_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), integrand_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.integrate(integrand_func, a_val, b_val)
@@ -756,7 +756,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             a_int, b_int = int(a_val), int(b_val)
 
             def sigma_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), body_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.sigma(sigma_func, a_int, b_int)
@@ -770,7 +770,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
                 raise ValueError("Math ERROR")
 
             def diff_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), body_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.differentiate(diff_func, float(x0))
