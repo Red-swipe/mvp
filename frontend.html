@@ -6379,8 +6379,15 @@ function itemLatex(item, ph) {
 
   function calculateTableRemote() {
     const t = appState.table;
+    // TABLE's evaluator binds a lowercase Python `x` and uses `**` for powers.
+    // The on-screen keypad serializes the calculator's variable as uppercase X
+    // and its power templates as `^`, so adapt only at the TABLE request edge.
+    const expression = String(t.functionExpr || '')
+      .replace(/X/g, 'x')
+      .replace(/(\d)(?=x\b)/g, '$1*')
+      .replace(/\^/g, '**');
     fetch('/api/table/calculate', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ expression:t.functionExpr, start:Number(t.start), end:Number(t.end), step:Number(t.step) })
+      body: JSON.stringify({ expression, start:Number(t.start), end:Number(t.end), step:Number(t.step) })
     }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(data => {
       if (!data.ok) throw new Error(data.error || 'Math ERROR');
       t.rows = data.rows.map(row => ({x:localFormat(row.x), value:localFormat(row.f)}));
