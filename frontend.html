@@ -2451,7 +2451,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     numberFormat: 'Norm',
     numberFormatPrecision: 1,
     engineeringSymbols: false,
-    fractionResult: 'ab/c',
+    fractionResult: 'd/c',
     statisticsFrequency: false,
     autoCalc: true,
     showCell: 'Value'
@@ -2696,7 +2696,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     { id:"qr_code", label:"QR Code", special:"qr" }, { id:"contrast", label:"Contrast", special:"contrast" }
   ];
 
-  let setupSettings = { input_output:"MathI/MathO", angle_unit:"Degree", number_format:"Norm", number_format_digits:2, engineering_symbols:false, fraction_result:"ab/c", stat_frequency:true, spreadsheet_auto_calc:true, spreadsheet_show:"value", equation_complex:false, table_mode:"f(x)", decimal_mark:"Dot", digit_separator:false, multiline_font:"Normal", contrast:5 };
+  let setupSettings = { input_output:"MathI/MathO", angle_unit:"Degree", number_format:"Norm", number_format_digits:2, engineering_symbols:false, fraction_result:"d/c", stat_frequency:true, spreadsheet_auto_calc:true, spreadsheet_show:"value", equation_complex:false, table_mode:"f(x)", decimal_mark:"Dot", digit_separator:false, multiline_font:"Normal", contrast:5 };
   const setupState = { active:false, level:0, cursor:0, parentCursor:0, currentCat:null, currentSubCat:null, awaitingDigit:null, awaitingNorm:false };
 
   const spreadsheetData = {
