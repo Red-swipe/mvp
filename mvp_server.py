@@ -3628,6 +3628,44 @@ CONTROLLER = CalculatorController()
 CONTROLLER_LOCK = threading.Lock()
 
 
+# /api/fraction contract: limit_denominator() always invents SOME nearby
+# rational, so a small error alone is no evidence that the value really is
+# rational. sin(60) therefore came back as 2521/2911 and pi as 355/113, and
+# cos(25) would come back as 4411/4867. A candidate is trusted only when
+#   * it is the exact rational form of the decimal the caller supplied
+#     (0.25 -> 1/4, 0.0078125 -> 1/128), or
+#   * it is a genuinely simple fraction (denominator <= 100) that reproduces
+#     the value within FRACTION_TOLERANCE (1/3, 7/3).
+# Anything else keeps the decimal text, so no false exactness is claimed.
+FRACTION_MAX_DENOMINATOR = 10000
+FRACTION_MAX_SIMPLE_DENOMINATOR = 100
+FRACTION_TOLERANCE = Fraction(1, 10 ** 9)
+
+
+def format_exact_fraction(value, mixed=False):
+    """Render *value* as a simple fraction only when that fraction is justified.
+
+    Falls back to the decimal text (str(value)) when no defensible rational
+    form exists.
+    """
+    exact_value = Fraction(value)
+    frac = exact_value.limit_denominator(FRACTION_MAX_DENOMINATOR)
+    if frac != Fraction(str(value)):
+        simple = (
+            frac.denominator <= FRACTION_MAX_SIMPLE_DENOMINATOR
+            and abs(frac - exact_value) <= FRACTION_TOLERANCE
+        )
+        if not simple:
+            return str(value)
+    if frac.denominator == 1:
+        return str(frac.numerator)
+    if mixed and abs(frac.numerator) > frac.denominator:
+        whole = int(frac.numerator / frac.denominator)
+        remainder = abs(frac.numerator) % frac.denominator
+        return f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
+    return f"{frac.numerator}/{frac.denominator}"
+
+
 class MvpHandler(BaseHTTPRequestHandler):
     server_version = "ClassWizMVP/1.0"
 
@@ -3830,16 +3868,11 @@ class MvpHandler(BaseHTTPRequestHandler):
                     else:
                         value = float(payload["value"])
                         mixed = bool(payload.get("mixed", False))
-                        frac = Fraction(value).limit_denominator(10000)
-                        if frac.denominator == 1:
-                            result = str(frac.numerator)
-                        elif mixed and abs(frac.numerator) > frac.denominator:
-                            whole = int(frac.numerator / frac.denominator)
-                            remainder = abs(frac.numerator) % frac.denominator
-                            result = f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
-                        else:
-                            result = f"{frac.numerator}/{frac.denominator}"
-                        response = {"result": result, "success": True, "ok": True}
+                        response = {
+                            "result": format_exact_fraction(value, mixed),
+                            "success": True,
+                            "ok": True,
+                        }
                 elif path == "/api/settings":
                     response = CONTROLLER.set_settings(payload)
                 elif path == "/setup_update":
