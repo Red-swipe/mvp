@@ -2832,7 +2832,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     equation: {
       selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
       currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '',
-      selectedMenuItem: 0, resultState: null, extremum: null
+      selectedMenuItem: 0, resultState: null, extremum: null, resultPage: 0
     },
     solvePrompt: { active: false, value: '0' },
   };
@@ -6415,6 +6415,7 @@ function itemLatex(item, ph) {
         if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
         eq.resultState = data.result;
         eq.extremum = data.extremum || null;
+        eq.resultPage = 0;
         eq.phase='result'; renderLCD();
       })
       .catch(() => {
@@ -6618,7 +6619,7 @@ function itemLatex(item, ph) {
       // with the D-pad; it never dumps every root into a single blob. These two
       // fields carry that state: which solution is on screen, and whether the
       // S<->D key is currently showing the exact (fraction) or decimal form.
-      solutionIndex: 0, exactForm: false };
+      solutionIndex: 0, resultPage: 0, exactForm: false };
   }
   // Shared confirmation for the EQN selection screens. Both `=` and a direct
   // degree digit must run the SAME transition, so the digit path cannot drift
@@ -6680,6 +6681,37 @@ function itemLatex(item, ph) {
     } else if (eq.phase === 'polynomialInput') {
       const t=el('div','eq-template'); t.textContent=equationTemplate(eq); view.appendChild(t); const names=['a','b','c','d','e'].slice(0,eq.polynomialDegree+1); const vals=eq.coefficientValues[0]||[];
       names.forEach((name,i)=>{const row=el('div','eq-coeff-row'+(i===eq.currentCoefficient?' active':''));row.innerHTML=`<span>${name} =</span><span>${i===eq.currentCoefficient&&eq.inputBuffer?eq.inputBuffer:(vals[i]??'')}<span class="lcd-cursor"></span></span>`;view.appendChild(row);});
+    } else if (eq.selectedType === 'polynomial' && eq.polynomialDegree === 2 && eq.extremum) {
+      const result = el('div', 'eq-result');
+      const page = Math.max(0, Math.min(3, Number(eq.resultPage) || 0));
+      eq.resultPage = page;
+      if (page < 2) {
+        const expression = el('div'); expression.textContent = formatPolynomial(eq);
+        result.appendChild(expression);
+      } else {
+        const a = Number(eq.coefficientValues?.[0]?.[0] ?? 0);
+        const title = el('div'); title.textContent = `${a < 0 ? 'Max' : 'Min'} of y = ax²+bx+c`;
+        result.appendChild(title);
+      }
+      const label = el('div');
+      label.textContent = page === 0 ? 'x₁ =' : page === 1 ? 'x₂ =' : page === 2 ? 'x =' : 'y =';
+      result.appendChild(label);
+      const solution = el('div', 'eq-solution');
+      const latexHost = el('div', 'eq-solution-math'); latexHost.id = 'eqSolutionMath';
+      solution.appendChild(latexHost);
+      result.appendChild(solution);
+      view.appendChild(result);
+      try {
+        const latex = page < 2
+          ? equationRootToLatex(Array.isArray(eq.resultState) ? eq.resultState[page] : NaN, page, !!eq.exactForm)
+          : equationNumberToLatex(Number(eq.extremum[page === 2 ? 'x' : 'y']), !!eq.exactForm);
+        renderMath(latex, 'eqSolutionMath', false,
+          page < 2 ? (Array.isArray(eq.resultState) ? formatEquationRoot(eq.resultState[page]) : 'Math ERROR')
+                   : localFormat(Number(eq.extremum[page === 2 ? 'x' : 'y'])));
+      } catch (error) { console.error('[EQUATION] render failed', error); latexHost.textContent='Math ERROR'; }
+      const pos = el('div', 'eq-solution-pos');
+      pos.textContent = (page + 1) + '/4' + (eq.exactForm ? '  a b/c' : '  d/c');
+      solution.appendChild(pos);
     } else {
       const result=el('div','eq-result');
       const expression=el('div'); expression.textContent=eq.selectedType==='polynomial' ? formatPolynomial(eq) : '';
@@ -8697,6 +8729,18 @@ function showQRinLCD() {
         renderLCD(); return;
       }
       if (eq.phase === 'result') {
+        if (eq.selectedType === 'polynomial' && eq.polynomialDegree === 2 && eq.extremum) {
+          if (eq.resultPage == null) eq.resultPage = 0;
+          eq.resultPage = Math.max(0, Math.min(3, eq.resultPage));
+          if (rawKey === 'dpad_down' || rawKey === 'dpad_right' || rawKey === 'equals' || rawKey === 'dpad_center') {
+            eq.resultPage = (eq.resultPage + 1) % 4; renderLCD(); return;
+          }
+          if (rawKey === 'dpad_up' || rawKey === 'dpad_left' || rawKey === 'backspace') {
+            eq.resultPage = (eq.resultPage - 1 + 4) % 4; renderLCD(); return;
+          }
+          if (rawKey === 's_to_d') { eq.exactForm = !eq.exactForm; renderLCD(); return; }
+          return;
+        }
         // fx-991EX steps through the solutions with the D-pad instead of
         // listing them all. Previously every key was swallowed here, so root
         // #2 and beyond were unreachable however many there were.
