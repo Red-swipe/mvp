@@ -1,6 +1,6 @@
 @echo off
 rem ==============================================================================
-rem Mentis ClassWiz Calculator Launcher (UNTESTED on Windows at runtime)
+rem Mentis ClassWiz Calculator Launcher
 rem ==============================================================================
 title Mentis ClassWiz Calculator
 
