@@ -223,6 +223,9 @@ function handlePendingVar() { return false; }
 function updateMemory() { inserted.push('<mem>'); return true; }
 function toggleAnswerFormat() { inserted.push('<toggle>'); return true; }
 function renderLCD() {}
+// Root-level keypad routing tests have no slot tree; this stub avoids pulling
+// the DOM/state-dependent getParent() helper into the extracted JS harness.
+function getParent() { return null; }
 const appState = { mode: 'Calculate', baseNBase: 10, variables: {} };
 """
 
