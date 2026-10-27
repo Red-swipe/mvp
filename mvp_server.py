@@ -472,6 +472,41 @@ def _find_special_call(s: str):
     return best
 
 
+def _special_degree_trig_value(name, value):
+    """Return an exact value for standard special angles, or None."""
+    if not isinstance(value, (int, float)):
+        return None
+    sqrt2 = math.sqrt(2) / 2
+    sqrt3 = math.sqrt(3) / 2
+    values = {
+        "sin": {
+            0: 0.0, 30: 0.5, 45: sqrt2, 60: sqrt3, 90: 1.0,
+            120: sqrt3, 135: sqrt2, 150: 0.5, 180: 0.0,
+            210: -0.5, 225: -sqrt2, 240: -sqrt3, 270: -1.0,
+            300: -sqrt3, 315: -sqrt2, 330: -0.5,
+        },
+        "cos": {
+            0: 1.0, 30: sqrt3, 45: sqrt2, 60: 0.5, 90: 0.0,
+            120: -0.5, 135: -sqrt2, 150: -sqrt3, 180: -1.0,
+            210: -sqrt3, 225: -sqrt2, 240: -0.5, 270: 0.0,
+            300: 0.5, 315: sqrt2, 330: sqrt3,
+        },
+        "tan": {
+            0: 0.0, 30: 1 / math.sqrt(3), 45: 1.0, 60: math.sqrt(3),
+            120: -math.sqrt(3), 135: -1.0, 150: -1 / math.sqrt(3),
+            180: 0.0, 210: 1 / math.sqrt(3), 225: 1.0,
+            240: math.sqrt(3), 300: -math.sqrt(3), 315: -1.0,
+            330: -1 / math.sqrt(3),
+        },
+    }
+    normalized = value % 360
+    for angle, exact in values.get(name, {}).items():
+        distance = abs(normalized - angle)
+        if min(distance, 360 - distance) <= 1e-12:
+            return exact
+    return None
+
+
 def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None) -> str:
     """Replace supported special-function calls with plain Python expressions.
 
@@ -556,6 +591,12 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
                 replacement = _lit(result)
                 s = s[:start] + replacement + s[close_idx + 1:]
                 continue
+            if angle_unit == "Degree":
+                exact_value = _special_degree_trig_value(name, value)
+                if exact_value is not None:
+                    replacement = _lit(exact_value)
+                    s = s[:start] + replacement + s[close_idx + 1:]
+                    continue
             if angle_unit == "Radian":
                 radians = value
             elif angle_unit == "Gradian":
