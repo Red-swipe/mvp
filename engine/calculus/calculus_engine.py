@@ -1,4 +1,5 @@
 import math
+import sys
 
 
 class CalcEngineError(Exception):
@@ -15,18 +16,25 @@ class CalculusEngine:
         pass
 
     def differentiate(self, f, x, tol=1e-8):
-        if x != 0:
-            h = max(1e-8, abs(x) * 1e-8)
-        else:
-            h = 1e-8
+        # A tiny fixed step makes the subtraction in the five-point formula
+        # lose most of its significant digits (for example, x**2 at x=2).
+        # Use two five-point estimates and Richardson extrapolation instead.
+        # The extrapolated stencil has O(h**6) truncation error.
+        h = sys.float_info.epsilon ** (1.0 / 7.0) * max(1.0, abs(x))
+
+        def five_point(step):
+            fm2 = f(x - 2 * step)
+            fm1 = f(x - step)
+            fp1 = f(x + step)
+            fp2 = f(x + 2 * step)
+            return (-fp2 + 8 * fp1 - 8 * fm1 + fm2) / (12 * step)
+
         try:
-            fm2 = f(x - 2 * h)
-            fm1 = f(x - h)
-            fp1 = f(x + h)
-            fp2 = f(x + 2 * h)
+            coarse = five_point(h)
+            fine = five_point(h / 2)
         except Exception:
             raise CalcEngineError("Math ERROR")
-        result = (-fp2 + 8 * fp1 - 8 * fm1 + fm2) / (12 * h)
+        result = (16 * fine - coarse) / 15
         if math.isnan(result) or math.isinf(result):
             raise CalcEngineError("Math ERROR")
         return result

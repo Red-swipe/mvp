@@ -1546,6 +1546,7 @@
     margin:0 1px;
     vertical-align:-2px;
     background:currentColor;
+    transform:translateY(1.5px);
     animation:lcd-cursor-blink 1s steps(1,end) infinite;
   }
   @keyframes lcd-cursor-blink{50%{opacity:0;}}
@@ -2451,7 +2452,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     numberFormat: 'Norm',
     numberFormatPrecision: 1,
     engineeringSymbols: false,
-    fractionResult: 'ab/c',
+    fractionResult: 'd/c',
     statisticsFrequency: false,
     autoCalc: true,
     showCell: 'Value'
@@ -2696,7 +2697,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     { id:"qr_code", label:"QR Code", special:"qr" }, { id:"contrast", label:"Contrast", special:"contrast" }
   ];
 
-  let setupSettings = { input_output:"MathI/MathO", angle_unit:"Degree", number_format:"Norm", number_format_digits:2, engineering_symbols:false, fraction_result:"ab/c", stat_frequency:true, spreadsheet_auto_calc:true, spreadsheet_show:"value", equation_complex:false, table_mode:"f(x)", decimal_mark:"Dot", digit_separator:false, multiline_font:"Normal", contrast:5 };
+  let setupSettings = { input_output:"MathI/MathO", angle_unit:"Degree", number_format:"Norm", number_format_digits:2, engineering_symbols:false, fraction_result:"d/c", stat_frequency:true, spreadsheet_auto_calc:true, spreadsheet_show:"value", equation_complex:false, table_mode:"f(x)", decimal_mark:"Dot", digit_separator:false, multiline_font:"Normal", contrast:5 };
   const setupState = { active:false, level:0, cursor:0, parentCursor:0, currentCat:null, currentSubCat:null, awaitingDigit:null, awaitingNorm:false };
 
   const spreadsheetData = {
@@ -2832,7 +2833,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     equation: {
       selectedType: 0, phase: 'typeMenu', numberOfEquations: 2, polynomialDegree: 2,
       currentEquation: 0, currentCoefficient: 0, coefficientValues: [], inputBuffer: '',
-      selectedMenuItem: 0, resultState: null, extremum: null
+      selectedMenuItem: 0, resultState: null, extremum: null, resultPage: 0
     },
     solvePrompt: { active: false, value: '0' },
   };
@@ -2874,7 +2875,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
   // variable, so map the standalone token back to `x` for the body only. The
   // bounds and the differentiation point keep their own meaning.
   function calculusBody(text) {
-    return String(text == null ? '' : text).replace(/\bX\b/g, 'x');
+    // A digit is part of JavaScript's `\w`, so `\bX\b` misses the common
+    // implicit product `2X`. Calculator identifiers contain letters/underscores;
+    // allow digits on either side while still preserving longer names.
+    return String(text == null ? '' : text).replace(/(?<![A-Za-z_])X(?![A-Za-z_])/g, 'x');
   }
   // An empty calculus part is legal WHILE EDITING (you type the bounds before
   // the integrand); it becomes an error only when `=` is pressed. See
@@ -2971,7 +2975,13 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       } else if (item.type === 'cbrt') {
         out += 'cbrt(' + (serializeSlot(item.radicand)||'0') + ')';
       } else if (item.type === 'power') {
-        out += '((' + (serializeSlot(item.base)||'0') + ')^(' + (serializeSlot(item.exp)||'1') + '))';
+        const base = serializeSlot(item.base) || '0';
+        // Adjacent function factors mean implicit multiplication on the
+        // keypad (e.g. sin(2X) cos(X)^2).  The backend deliberately rejects
+        // raw `)(` sequences, so make this product explicit during
+        // serialization when a function-call power follows a closed factor.
+        if (out.endsWith(')') && /^(?:sin|cos|tan|ln|log|sqrt|cbrt|Abs|abs)\(/.test(base)) out += '*';
+        out += '((' + base + ')^(' + (serializeSlot(item.exp)||'1') + '))';
       } else if (item.type === 'log') {
         out += 'log_base(' + (serializeSlot(item.base)||'10') + ',' + (serializeSlot(item.arg)||'1') + ')';
       } else if (item.type === 'rnd') {
@@ -3043,6 +3053,10 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
 
   function prepareExpressionForEvaluation(expression) {
     let prepared = String(expression || '');
+    // A numeric coefficient followed directly by a single ALPHA variable is
+    // implicit multiplication on the physical keypad (2X, 3y). Keep the
+    // scientific-notation form 2e3 intact by excluding e/E here.
+    prepared = prepared.replace(/(\d)([A-DF-MXYxy])\b/g, '$1*$2');
     prepared = prepared.replace(/(\d+)\s*C\s*(\d+)/g, 'nCr($1,$2)');
     prepared = prepared.replace(/(\d+)\s*P\s*(\d+)/g, 'nPr($1,$2)');
     // Parenthesized / symbolic keypad operands: (5)P(3+1), (5)C(2), Ans P 2.
@@ -3399,6 +3413,14 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         const a = _evalStr(args[1]), b = _evalStr(args[2]);
         const val = _simpson((x) => _evalStr(body.replace(/\bx\b/g, '(' + x + ')')), a, b);
         rep = '(' + _reprNum(val) + ')';
+      } else if (name === 'log') {
+        if (args.length === 1 && args[0]) {
+          const value = _evalStr(args[0]);
+          rep = '(' + _reprNum(Math.log10(value)) + ')';
+        } else if (args.length === 2 && args[0] && args[1]) {
+          const base = _evalStr(args[0]), value = _evalStr(args[1]);
+          rep = '(' + _reprNum(Math.log(value) / Math.log(base)) + ')';
+        } else throw new Error('Math ERROR');
       } else if (name === 'log_base') {
         if (args.length !== 2 || !args[0] || !args[1]) throw new Error('Math ERROR');
         const base = _evalStr(args[0]), val = _evalStr(args[1]);
@@ -4042,22 +4064,33 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // rewritten as `2(3.14159...)` by the pi/Ans substitution above, and the
     // same holds for `Ans2` -> `(5)2`.
     //
-    // A group directly followed by another group is refused: that is the shape
-    // the postfix-% rewrite produces for `10%10%` -> `((10)/100)((10)/100)`,
-    // which must stay Math ERROR. Every real juxtaposition form (`2pi`,
-    // `2(3)`, `Ans2`, `3 4`) ends its left operand in something other than a
-    // closing paren, so this one exclusion keeps the error contract.
-    const implicitAllowed = () => {
-      const prev = p > 0 ? tokens[p - 1] : null;
-      if (prev && prev.length === 1 && prev[0] === ')') return tokens[p][0] !== '(';
-      return true;
-    };
-    function mulDiv() {
+    // A group directly followed by another group is ALLOWED, and binds tighter
+    // than an explicit `*` or `/`: `(2)(3)`=6, `(1+2)(3+4)`=21,
+    // `2(3)(4)(5)`=120, `8/2(2+2)`=1. This is owner decision 2, ratified
+    // 2026-10-18 and implemented in 5604549; see
+    // audit/docs/adjacency_contract.md (status DECIDED, Option 1) and
+    // audit/data/cases.json _meta.adjacency_decision.
+    //
+    // This makes the earlier claim here false: `)(` is NOT refused, and
+    // `10%10%` is NOT required to error. The postfix-% rewrite emits the same
+    // string shape for both, so under this decision `10%10%` evaluates rather
+    // than raising. It is not one of the 46 battery rows; it is covered by
+    // test_percent_contextual.py and by the adjacency decision record.
+    const implicitAllowed = () => true;
+    function implicitMul() {
       let l = unary();
+      while (startsFactor() && implicitAllowed()) {
+        const r = unary();
+        l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
+      }
+      return l;
+    }
+    function mulDiv() {
+      let l = implicitMul();
       for (;;) {
         if (peekOp(['*', '/'])) {
           const op = tokens[p][0]; p++;
-          const r = unary();
+          const r = implicitMul();
           if (op === '*') { l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r; continue; }
           if (_cIsC(l) || _cIsC(r)) {
             if (_cIsZero(r)) throw new Error('Math ERROR');
@@ -4066,11 +4099,6 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
           }
           if (r === 0) throw new Error(l === 0 ? 'Math ERROR' : 'DIV_ZERO');
           l = l / r;
-          continue;
-        }
-        if (startsFactor() && implicitAllowed()) {
-          const r = unary();
-          l = (_cIsC(l) || _cIsC(r)) ? _cMul(l, r) : l * r;
           continue;
         }
         return l;
@@ -4145,6 +4173,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
         }
       }
     } catch (e) {}
+    if (/(?:%\s*%|%\s*\d+(?:\.\d+)?\s*%)/.test(s)) throw new Error('Math ERROR');
     s = s.replace(/(\(\s*[^()]*?\s*\)|(?:Ans|ans|pi|\u03c0|e)|\d+(?:\.\d+)?)\s*%/g, '(($1)/100)');
     s = s.split('×').join('*').split('÷').join('/').split('−').join('-');
     s = _transformSpecial(s);
@@ -4213,7 +4242,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     let v;
     try { v = _evalStr(expr); }
     catch (e) {
-      if (e && e.message === 'DIV_ZERO') { appState.error = null; localAns = null; return 'To infinity and beyonddd'; }
+      if (e && e.message === 'DIV_ZERO') { appState.error = null; return 'Math ERROR'; }
       throw e;
     }
     if (_cIsC(v) && Math.abs(v.im) > 1e-12 && !_complexMode) throw new Error('Math ERROR');
@@ -4338,18 +4367,12 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
     if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
-    if (appState.insertMode) {
-      cursor.slot.items.splice(cursor.index, 0, tok);
-      cursor.index++;
-    } else {
-      if (cursor.index < cursor.slot.items.length && typeof cursor.slot.items[cursor.index] === 'string') {
-        cursor.slot.items.splice(cursor.index, 1, tok);
-        cursor.index++;
-      } else {
-        cursor.slot.items.splice(cursor.index, 0, tok);
-        cursor.index++;
-      }
-    }
+    // cursor.index is a caret between items; keypad input always inserts.
+    // INS remains a calculator modifier indicator, but never changes editing
+    // into overwrite mode.
+    cursor.index = Math.max(0, Math.min(cursor.index, cursor.slot.items.length));
+    cursor.slot.items.splice(cursor.index, 0, tok);
+    cursor.index++;
     renderLCD();
     syncBackendExpression();
   }
@@ -4382,15 +4405,57 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       insertTemplate({ type:'radical', id:nextId(), index:null, radicand:createSlot() }, 'radicand');
     }
   }
+  function _extractPowerBaseItems() {
+    if (cursor.index <= 0) return { items: [], startIndex: 0 };
+    const items = cursor.slot.items;
+    let i = cursor.index - 1;
+    const lastItem = items[i];
+    // If previous item is a closing parenthesis token, capture the full bracketed group
+    if (typeof lastItem === 'string' && lastItem.trim() === ')') {
+      let depth = 1;
+      i--;
+      while (i >= 0 && depth > 0) {
+        if (typeof items[i] === 'string') {
+          const s = items[i].trim();
+          if (s === ')') depth++;
+          else if (s === '(' || s.endsWith('(')) depth--;
+        }
+        i--;
+      }
+      // If the opening bracket is attached to a function token (e.g. "sin("), include the function token
+      if (i >= 0 && typeof items[i] === 'string' && /^[A-Za-z]+$/.test(items[i].trim())) {
+        i--;
+      }
+      const startIndex = i + 1;
+      const baseItems = items.slice(startIndex, cursor.index);
+      return { items: baseItems, startIndex };
+    }
+    // If previous item is part of a number (digits or decimal point), capture the entire number
+    if (typeof lastItem === 'string' && /^[0-9.]$/.test(lastItem.trim())) {
+      while (i >= 0 && typeof items[i] === 'string' && /^[0-9.]$/.test(items[i].trim())) {
+        i--;
+      }
+      const startIndex = i + 1;
+      const baseItems = items.slice(startIndex, cursor.index);
+      return { items: baseItems, startIndex };
+    }
+    // Default: single previous item (object or token)
+    return { items: [lastItem], startIndex: cursor.index - 1 };
+  }
+
   function insertPower(fixedExp) {
     pushUndoState();
-    // Postfix powers (x²/x³/x⁻¹) apply to the displayed result like an
-    // operator; an open power template starts fresh input.
     if (normalizeResultErrorEntry(fixedExp ? 'operator' : 'number') === 'ignore') return;
-    const baseItems = cursor.index > 0 ? [cursor.slot.items[cursor.index-1]] : [];
+    const extracted = _extractPowerBaseItems();
+    const baseItems = extracted.items;
+    const startIndex = extracted.startIndex;
     const pow = { type:'power', id:nextId(), base:createSlot(baseItems), exp:createSlot(fixedExp ? [fixedExp] : []), parentSlot:cursor.slot };
-    if (baseItems.length) cursor.slot.items.splice(cursor.index-1, 1, pow);
-    else { cursor.slot.items.splice(cursor.index, 0, pow); }
+    if (baseItems.length > 0) {
+      cursor.slot.items.splice(startIndex, baseItems.length, pow);
+      cursor.index = startIndex + 1;
+    } else {
+      cursor.slot.items.splice(cursor.index, 0, pow);
+    }
     if (fixedExp) { /* cursor stays after */ }
     else { cursor.slot = pow.exp; cursor.index = 0; }
     renderLCD();
@@ -4445,6 +4510,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // Clear entry state; answer registers survive. hardResetExpr clears them.
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
+    appState.shift = false; appState.alpha = false;
     appState.result = null; appState.resultDisplayed = false; appState.error = null;
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
@@ -4662,9 +4728,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       renderLCD();
       return;
     }
-    if (cursor.index < cursor.slot.items.length) {
-      cursor.slot.items.splice(cursor.index, 1);
-    } else if (cursor.index > 0) {
+    cursor.index = Math.max(0, Math.min(cursor.index, cursor.slot.items.length));
+    if (cursor.index > 0) {
       cursor.slot.items.splice(cursor.index - 1, 1);
       cursor.index--;
     } else {
@@ -5007,8 +5072,44 @@ function itemLatex(item, ph) {
   }
   const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
   function makeCursor() { const c = el('span','lcd-cursor'); return c; }
+  const debugErrors = [];
+
+  function logErrorToDebugPanel(err, context = '') {
+    const timeStr = new Date().toLocaleTimeString();
+    const message = err && err.message ? err.message : String(err);
+    const stack = err && err.stack ? err.stack : '';
+    const logItem = { time: timeStr, context, message, stack };
+    debugErrors.push(logItem);
+    if (debugErrors.length > 20) debugErrors.shift();
+    console.error('[SYSTEM ERROR]', context, err);
+    updateDebugPanelUI();
+  }
+
+  function updateDebugPanelUI() {
+    const panel = document.getElementById('debug-panel');
+    if (!panel) return;
+    const list = document.getElementById('debug-error-list');
+    if (!list) return;
+    list.innerHTML = '';
+    debugErrors.slice().reverse().forEach(item => {
+      const div = document.createElement('div');
+      div.style.cssText = 'margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 4px;';
+      div.innerHTML = `<div style="color: #ff8888;">[${item.time}] ${item.context ? item.context + ': ' : ''}${item.message}</div>` +
+        (item.stack ? `<pre style="margin: 2px 0; font-size: 10px; color: #aaa; white-space: pre-wrap;">${item.stack}</pre>` : '');
+      list.appendChild(div);
+    });
+  }
+
   function showMathError(msg) {
     appState.error = msg || 'Math ERROR';
+    appState.result = null;
+    appState.resultDisplayed = false;
+    renderLCD();
+  }
+
+  function showSystemError(err, context = '') {
+    logErrorToDebugPanel(err, context);
+    appState.error = 'System ERROR';
     appState.result = null;
     appState.resultDisplayed = false;
     renderLCD();
@@ -5165,7 +5266,7 @@ function itemLatex(item, ph) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await response.json();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   function renderVectorLCD() {
@@ -5291,7 +5392,7 @@ function itemLatex(item, ph) {
     }).then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).catch(() => { showMathError(); });
+    }).catch(e => { showSystemError(e, 'Async operation failed'); });
   }
 
   function calculateStatisticsRemote() {
@@ -5527,7 +5628,7 @@ function itemLatex(item, ph) {
     saveSettings(appState.settings);
     if (!FILE_MODE) fetch('/setup_update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key, value})})
       .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-      .catch(() => { showMathError(); });
+      .catch(e => { showSystemError(e, 'Async operation failed'); });
     if (key === 'angle_unit') appState.settings.angleUnit = value;
   }
 
@@ -5859,7 +5960,7 @@ function itemLatex(item, ph) {
         appState.spreadsheet.cells[cellRef] = data.data;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function calculateRatioRemote() {
@@ -5886,7 +5987,7 @@ function itemLatex(item, ph) {
         r.result = null;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function performConversionRemote() {
@@ -5916,7 +6017,7 @@ function itemLatex(item, ph) {
         cv.result = null;
       }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   async function performResetRemote(target) {
@@ -5928,7 +6029,7 @@ function itemLatex(item, ph) {
         body: JSON.stringify({ target: target })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
 
   function renderSpreadsheetLCD() {
@@ -6277,8 +6378,15 @@ function itemLatex(item, ph) {
 
   function calculateTableRemote() {
     const t = appState.table;
+    // TABLE's evaluator binds a lowercase Python `x` and uses `**` for powers.
+    // The on-screen keypad serializes the calculator's variable as uppercase X
+    // and its power templates as `^`, so adapt only at the TABLE request edge.
+    const expression = String(t.functionExpr || '')
+      .replace(/X/g, 'x')
+      .replace(/(\d)(?=x\b)/g, '$1*')
+      .replace(/\^/g, '**');
     fetch('/api/table/calculate', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ expression:t.functionExpr, start:Number(t.start), end:Number(t.end), step:Number(t.step) })
+      body: JSON.stringify({ expression, start:Number(t.start), end:Number(t.end), step:Number(t.step) })
     }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(data => {
       if (!data.ok) throw new Error(data.error || 'Math ERROR');
       t.rows = data.rows.map(row => ({x:localFormat(row.x), value:localFormat(row.f)}));
@@ -6302,6 +6410,7 @@ function itemLatex(item, ph) {
         if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
         eq.resultState = data.result;
         eq.extremum = data.extremum || null;
+        eq.resultPage = 0;
         eq.phase='result'; renderLCD();
       })
       .catch(() => {
@@ -6505,7 +6614,25 @@ function itemLatex(item, ph) {
       // with the D-pad; it never dumps every root into a single blob. These two
       // fields carry that state: which solution is on screen, and whether the
       // S<->D key is currently showing the exact (fraction) or decimal form.
-      solutionIndex: 0, exactForm: false };
+      solutionIndex: 0, resultPage: 0, exactForm: false };
+  }
+  // Shared confirmation for the EQN selection screens. Both `=` and a direct
+  // degree digit must run the SAME transition, so the digit path cannot drift
+  // from the already-tested confirmed path.
+  function confirmEquationSelection(eq) {
+    const n = eq.selectedMenuItem + 2;
+    if (eq.phase === 'simultaneousCount') {
+      eq.numberOfEquations = n;
+      eq.coefficientValues = Array.from({length:n},()=>Array(n+1).fill(''));
+      eq.phase = 'simultaneousInput';
+    } else {
+      eq.polynomialDegree = n;
+      eq.coefficientValues = [Array(n+1).fill('')];
+      eq.phase = 'polynomialInput';
+    }
+    eq.currentEquation = 0;
+    eq.currentCoefficient = 0;
+    eq.inputBuffer = '';
   }
   function equationTemplate(eq) {
     if (eq.selectedType === 'simultaneous') {
@@ -6549,6 +6676,37 @@ function itemLatex(item, ph) {
     } else if (eq.phase === 'polynomialInput') {
       const t=el('div','eq-template'); t.textContent=equationTemplate(eq); view.appendChild(t); const names=['a','b','c','d','e'].slice(0,eq.polynomialDegree+1); const vals=eq.coefficientValues[0]||[];
       names.forEach((name,i)=>{const row=el('div','eq-coeff-row'+(i===eq.currentCoefficient?' active':''));row.innerHTML=`<span>${name} =</span><span>${i===eq.currentCoefficient&&eq.inputBuffer?eq.inputBuffer:(vals[i]??'')}<span class="lcd-cursor"></span></span>`;view.appendChild(row);});
+    } else if (eq.selectedType === 'polynomial' && eq.polynomialDegree === 2 && eq.extremum) {
+      const result = el('div', 'eq-result');
+      const page = Math.max(0, Math.min(3, Number(eq.resultPage) || 0));
+      eq.resultPage = page;
+      if (page < 2) {
+        const expression = el('div'); expression.textContent = formatPolynomial(eq);
+        result.appendChild(expression);
+      } else {
+        const a = Number(eq.coefficientValues?.[0]?.[0] ?? 0);
+        const title = el('div'); title.textContent = `${a < 0 ? 'Max' : 'Min'} of y = ax²+bx+c`;
+        result.appendChild(title);
+      }
+      const label = el('div');
+      label.textContent = page === 0 ? 'x₁ =' : page === 1 ? 'x₂ =' : page === 2 ? 'x =' : 'y =';
+      result.appendChild(label);
+      const solution = el('div', 'eq-solution');
+      const latexHost = el('div', 'eq-solution-math'); latexHost.id = 'eqSolutionMath';
+      solution.appendChild(latexHost);
+      result.appendChild(solution);
+      view.appendChild(result);
+      try {
+        const latex = page < 2
+          ? equationRootToLatex(Array.isArray(eq.resultState) ? eq.resultState[page] : NaN, page, !!eq.exactForm)
+          : equationNumberToLatex(Number(eq.extremum[page === 2 ? 'x' : 'y']), !!eq.exactForm);
+        renderMath(latex, 'eqSolutionMath', false,
+          page < 2 ? (Array.isArray(eq.resultState) ? formatEquationRoot(eq.resultState[page]) : 'Math ERROR')
+                   : localFormat(Number(eq.extremum[page === 2 ? 'x' : 'y'])));
+      } catch (error) { console.error('[EQUATION] render failed', error); latexHost.textContent='Math ERROR'; }
+      const pos = el('div', 'eq-solution-pos');
+      pos.textContent = (page + 1) + '/4' + (eq.exactForm ? '  a b/c' : '  d/c');
+      solution.appendChild(pos);
     } else {
       const result=el('div','eq-result');
       const expression=el('div'); expression.textContent=eq.selectedType==='polynomial' ? formatPolynomial(eq) : '';
@@ -6932,17 +7090,19 @@ function storeCalcAnswer(r, rawExpr) {
     if (FILE_MODE) {
       try {
         const r = localEvaluate(evalExpr);
-        if (r === 'To infinity and beyonddd') {
+        if (r === 'Math ERROR') {
           // Division-by-zero display keeps the previous Ans intact.
           appState.result = r; appState.resultDisplayed = true; appState.error = null;
         } else {
           storeCalcAnswer(r, evalExpr);
         }
       } catch (e) {
-        appState.error = (e && e.message === 'DIV_ZERO') ? 'To infinity and beyonddd' : 'Math ERROR';
-        if (appState.error === 'To infinity and beyonddd') {
-          appState.result = appState.error; appState.resultDisplayed = true; appState.error = null;
-        } else { appState.result = null; appState.resultDisplayed = false; }
+        if (e && e.message === 'DIV_ZERO') {
+          // Division-by-zero display keeps the previous Ans intact.
+          appState.result = 'Math ERROR'; appState.resultDisplayed = true; appState.error = null;
+        } else {
+          appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
+        }
       }
       renderLCD();
       return;
@@ -6956,8 +7116,8 @@ function storeCalcAnswer(r, rawExpr) {
       try { s = await r.json(); } catch (e) { s = null; }
       if (!r.ok) {
         const msg = (s && s.error) ? s.error : (s && s.display) ? s.display : `HTTP ${r.status}`;
-        if (msg === 'To infinity and beyonddd') {
-          appState.result = msg; appState.resultDisplayed = true; appState.error = null;
+        if (s && s.state === 'ERROR') {
+          appState.error = 'Math ERROR'; appState.result = null; appState.resultDisplayed = false;
           renderLCD(); return;
         }
         throw new Error(msg);
@@ -6968,10 +7128,13 @@ function storeCalcAnswer(r, rawExpr) {
         appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
       }
       // Sync state from backend
-      if (s.modeName) appState.mode = s.modeName;
+      // A calculation response must not switch modes. AC can leave a local
+      // equation result while the backend still reports Equation/Func; using
+      // that stale mode here would bring the discarded result page back.
+      if (s.modeName && s.modeName === appState.mode) appState.mode = s.modeName;
       if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
       renderLCD();
-    } catch(e) { showMathError(); }
+    } catch(e) { showSystemError(e, 'Backend communication'); }
   }
 
   function matrixToLatex(canonical) {
@@ -7134,7 +7297,7 @@ function storeCalcAnswer(r, rawExpr) {
         }
       }
       renderLCD();
-    } catch(e) { showMathError(); }
+    } catch(e) { showSystemError(e, 'Backend communication'); }
   }
 
   function displayFormat(canonical) {
@@ -7142,7 +7305,7 @@ function storeCalcAnswer(r, rawExpr) {
     // results (dots, no separators) stay untouched for Ans/storage/eval.
     // With Comma mark, multi-value ',' separators become ';' (per manual).
     let s = String(canonical == null ? '' : canonical);
-    if (s === '' || s === 'Math ERROR' || s === 'Dimension ERROR' || s === 'To infinity and beyonddd') return s;
+    if (s === '' || s === 'Math ERROR' || s === 'Dimension ERROR' || s === 'Math ERROR') return s;
     const mark = (typeof setupSettings !== 'undefined' && setupSettings.decimal_mark) || 'Dot';
     const sep = (typeof setupSettings !== 'undefined' && !!setupSettings.digit_separator);
     let approx = '';
@@ -7285,12 +7448,10 @@ function storeCalcAnswer(r, rawExpr) {
     return `${numerator}/${denominator}`;
   }
 
-  // Exact rational recovery for the file:// bridge, which has no /api/fraction
-  // endpoint to ask. The served path uses Fraction(value).limit_denominator(10000),
-  // so this has to make the SAME decision: 1/3 must come back as 1/3, never as
-  // the misleading 333/1000 that fractionString() produced by pinning the
-  // denominator at 1000. This is limit_denominator()'s own continued-fraction
-  // search, so the served and file:// paths agree value for value.
+  // Continued-fraction candidate search for the file:// bridge, which has no
+  // /api/fraction endpoint to ask. exactFractionString() filters these
+  // candidates using the same exact-decimal / small-denominator rules as the
+  // server, so irrational values never become plausible-looking fractions.
   function limitFraction(value, maxDen = 10000) {
     if (!Number.isFinite(value)) return null;
     const sign = value < 0 ? -1 : 1;
@@ -7317,12 +7478,29 @@ function storeCalcAnswer(r, rawExpr) {
       : { num: sign * b1n, den: b1d };
   }
 
-  // file:// counterpart of the server's /api/fraction handler. Mirrors its
-  // shape: a denominator of 1 prints as a plain integer (str(frac.numerator)),
-  // and mixed mode splits an improper fraction into whole + remainder.
+  // file:// counterpart of the server's /api/fraction handler. Only an exact
+  // decimal fraction or a nearby fraction with denominator <= 100 is accepted;
+  // all other values keep their decimal display.
   function exactFractionString(value, mixed = false) {
     const parts = limitFraction(value, 10000);
     if (!parts || !(parts.den > 0)) return localFormat(value);
+    const decimal = String(value).toLowerCase().match(/^(-?)(\d+)(?:\.(\d*))?(?:e([+-]?\d+))?$/);
+    let matchesDecimal = false;
+    if (decimal && Number.isSafeInteger(parts.num) && Number.isSafeInteger(parts.den)) {
+      const fractionDigits = decimal[3] || '';
+      const digitsText = (decimal[2] + fractionDigits).replace(/^0+(?=\d)/, '');
+      let decimalNumerator = BigInt(digitsText || '0');
+      if (decimal[1] === '-') decimalNumerator = -decimalNumerator;
+      const scale = Number(decimal[4] || 0) - fractionDigits.length;
+      let candidateNumerator = BigInt(parts.num);
+      let decimalSide = decimalNumerator * BigInt(parts.den);
+      if (scale >= 0) decimalSide *= 10n ** BigInt(scale);
+      else candidateNumerator *= 10n ** BigInt(-scale);
+      matchesDecimal = candidateNumerator === decimalSide;
+    }
+    const isSimpleFraction = parts.den <= 100
+      && Math.abs(parts.num / parts.den - value) <= 1e-9;
+    if (!matchesDecimal && !isSimpleFraction) return localFormat(value);
     if (parts.den === 1) return String(parts.num);
     if (mixed && Math.abs(parts.num) >= parts.den) {
       const whole = Math.trunc(parts.num / parts.den);
@@ -7405,7 +7583,7 @@ function storeCalcAnswer(r, rawExpr) {
     }
   }
 
-  const DIV_ZERO_MSG = 'To infinity and beyonddd';
+  const DIV_ZERO_MSG = 'Math ERROR';
   const QR_DEST_URL = 'https://mentisai-delta.vercel.app/';
   function flashStoRecall(label) {
     const elx = document.getElementById('indMode');
@@ -7472,7 +7650,7 @@ function storeCalcAnswer(r, rawExpr) {
         if (s.variables) Object.assign(appState.variables, s.variables);
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
   async function doSolve(guessOverride) {
     // No valid calculation context (EMPTY/RESULT/ERROR) → no-op, never an
@@ -7520,7 +7698,7 @@ function storeCalcAnswer(r, rawExpr) {
         if (s.variable) appState.variables[s.variable] = s.value;
       } else { showMathError(s.error || 'Math ERROR'); renderLCD(); return; }
       renderLCD();
-    } catch (e) { showMathError(); }
+    } catch (e) { showSystemError(e, 'Operation failed'); }
   }
   function _localNewtonSolve(expr, varName, x0) {
     const source = String(expr);
@@ -8510,7 +8688,7 @@ function showQRinLCD() {
     // EQUATION / FUNCTION MODE: frontend selection and backend solving.
     if (appState.mode === 'Equation/Func') {
       const eq = appState.equation;
-      if (rawKey === 'ac') { if (eq.phase === 'result' || eq.inputBuffer === '') { appState.mode = 'Calculate'; resetExpr(); } else eq.inputBuffer = ''; renderLCD(); return; }
+      if (rawKey === 'ac') { if (eq.phase === 'result' || eq.inputBuffer === '') { appState.mode = 'Calculate'; resetEquationState(); resetExpr(); } else eq.inputBuffer = ''; renderLCD(); return; }
       if (eq.phase === 'typeMenu') {
         if (rawKey === 'dpad_up' || rawKey === 'dpad_down') eq.selectedMenuItem = eq.selectedMenuItem === 0 ? 1 : 0;
         else if (rawKey === '1' || rawKey === '2') eq.selectedMenuItem = Number(rawKey)-1;
@@ -8520,9 +8698,9 @@ function showQRinLCD() {
       if (eq.phase === 'simultaneousCount' || eq.phase === 'polynomialDegree') {
         if (rawKey === 'dpad_up') eq.selectedMenuItem = (eq.selectedMenuItem + 2) % 3;
         else if (rawKey === 'dpad_down') eq.selectedMenuItem = (eq.selectedMenuItem + 1) % 3;
-        else if (eq.phase === 'polynomialDegree' && rawKey >= '2' && rawKey <= '4') eq.selectedMenuItem = Number(rawKey)-2;
+        else if (eq.phase === 'polynomialDegree' && rawKey >= '2' && rawKey <= '4') { eq.selectedMenuItem = Number(rawKey)-2; confirmEquationSelection(eq); }
         else if (eq.phase !== 'polynomialDegree' && rawKey >= '1' && rawKey <= '3') eq.selectedMenuItem = Number(rawKey)-1;
-        else if (rawKey === 'equals') { const n=eq.phase==='polynomialDegree' ? eq.selectedMenuItem+2 : eq.selectedMenuItem+2; if(eq.phase==='simultaneousCount'){eq.numberOfEquations=n;eq.coefficientValues=Array.from({length:n},()=>Array(n+1).fill(''));eq.phase='simultaneousInput';}else{eq.polynomialDegree=n;eq.coefficientValues=[Array(n+1).fill('')];eq.phase='polynomialInput';} eq.currentEquation=0;eq.currentCoefficient=0;eq.inputBuffer=''; }
+        else if (rawKey === 'equals') confirmEquationSelection(eq);
         renderLCD(); return;
       }
       if (eq.phase === 'simultaneousInput' || eq.phase === 'polynomialInput') {
@@ -8564,6 +8742,18 @@ function showQRinLCD() {
         renderLCD(); return;
       }
       if (eq.phase === 'result') {
+        if (eq.selectedType === 'polynomial' && eq.polynomialDegree === 2 && eq.extremum) {
+          if (eq.resultPage == null) eq.resultPage = 0;
+          eq.resultPage = Math.max(0, Math.min(3, eq.resultPage));
+          if (rawKey === 'dpad_down' || rawKey === 'dpad_right' || rawKey === 'equals' || rawKey === 'dpad_center') {
+            eq.resultPage = (eq.resultPage + 1) % 4; renderLCD(); return;
+          }
+          if (rawKey === 'dpad_up' || rawKey === 'dpad_left' || rawKey === 'backspace') {
+            eq.resultPage = (eq.resultPage - 1 + 4) % 4; renderLCD(); return;
+          }
+          if (rawKey === 's_to_d') { eq.exactForm = !eq.exactForm; renderLCD(); return; }
+          return;
+        }
         // fx-991EX steps through the solutions with the D-pad instead of
         // listing them all. Previously every key was swallowed here, so root
         // #2 and beyond were unreachable however many there were.
@@ -9197,7 +9387,7 @@ function showQRinLCD() {
         if (!FILE_MODE) {
           fetch('/api/spreadsheet/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
             .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-            .catch(() => { showMathError(); });
+            .catch(e => { showSystemError(e, 'Async operation failed'); });
         }
         renderLCD();
         return;
@@ -9531,7 +9721,7 @@ function showQRinLCD() {
 
     if (rawKey === 'scientific') {
       // ×10^x -- and its SHIFT π / ALPHA e overlays -- are disabled in BASE-N on
-      // the physical unit; raw/buttons.md lists only the four SHIFT base
+      // the physical unit; docs/design_notes/buttons.md lists only the four SHIFT base
       // switches (x²→DEC, x^→HEX, log→BIN, ln→OCT) for Base-N.
       //
       // Inserting "×10^" here spliced scientific notation into a fixed-radix
@@ -9548,7 +9738,7 @@ function showQRinLCD() {
     }
     if (rawKey === 'variable') {
       // ALPHA on the x key is `y` on the fx-991EX. SHIFT is the summation
-      // template (raw/buttons.md: "shift + x -> Sigma [three input boxes]"),
+      // template (docs/design_notes/buttons.md: "shift + x -> Sigma [three input boxes]"),
       // not the bare "Σ(" text token it used to be.
       if (isAlpha || useAlphaForHex) {
         if (handlePendingVar('Y')) return;
@@ -9591,6 +9781,20 @@ function showQRinLCD() {
     if (rawKey === 'right_paren') {
       if (isShift) { insertToken(','); return; }
       if (isAlpha) { if (handlePendingVar('X')) return; insertToken('X'); return; }
+      const parent = getParent();
+      if (parent && parent.par && parent.par.type === 'radical'
+          && parent.slotName === 'radicand'
+          && cursor.index >= cursor.slot.items.length) {
+        const unclosedInRadicand = [];
+        unclosedParenSlots(cursor.slot, unclosedInRadicand);
+        if (unclosedInRadicand.length > 0) {
+          insertToken(')'); return;
+        }
+        // The radical template serializes its own closing parenthesis. Treat
+        // the physical ')' at the end of a balanced radicand as exiting the
+        // template instead of adding a second, unmatched ')' to the expression.
+        moveCursorRight(); return;
+      }
       insertToken(')'); return;
     }
 
@@ -9618,9 +9822,27 @@ function showQRinLCD() {
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeOptnPanel();
+    if (event.ctrlKey && event.shiftKey && (event.key === 'D' || event.key === 'd')) {
+      event.preventDefault();
+      const p = document.getElementById('debug-panel');
+      if (p) {
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        updateDebugPanelUI();
+      }
+    }
   });
   renderLCD();
 </script>
+
+
+    <!-- Hidden Debug Panel (Ctrl+Shift+D) -->
+    <div id="debug-panel" style="display: none; position: fixed; top: 10px; right: 10px; width: 400px; max-height: 500px; background: rgba(0,0,0,0.9); color: #fff; border: 2px solid #ff4444; border-radius: 8px; padding: 12px; z-index: 99999; font-family: monospace; font-size: 11px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff4444; padding-bottom: 6px; margin-bottom: 8px;">
+        <strong style="color: #ff4444;">SYSTEM DEBUG LOG (Last 20 Errors)</strong>
+        <button onclick="document.getElementById('debug-panel').style.display='none'" style="background: #ff4444; color: #fff; border: none; border-radius: 4px; cursor: pointer; padding: 2px 6px;">X</button>
+      </div>
+      <div id="debug-error-list"><em>No system errors recorded.</em></div>
+    </div>
 
 </body>
 </html>
