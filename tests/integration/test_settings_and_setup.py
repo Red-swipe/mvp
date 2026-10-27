@@ -24,7 +24,7 @@ class TestSettingsAndSetup(unittest.TestCase):
         self.assertEqual(s["numberFormat"], "Norm")
         self.assertEqual(s["numberFormatPrecision"], 1)
         self.assertFalse(s["engineeringSymbols"])
-        self.assertEqual(s["fractionResult"], "ab/c")
+        self.assertEqual(s["fractionResult"], "d/c")
         self.assertFalse(s["statisticsFrequency"])
         self.assertTrue(s["autoCalc"])
         self.assertEqual(s["showCell"], "Value")
