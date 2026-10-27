@@ -9773,9 +9773,14 @@ function showQRinLCD() {
       if (parent && parent.par && parent.par.type === 'radical'
           && parent.slotName === 'radicand'
           && cursor.index >= cursor.slot.items.length) {
+        const unclosedInRadicand = [];
+        unclosedParenSlots(cursor.slot, unclosedInRadicand);
+        if (unclosedInRadicand.length > 0) {
+          insertToken(')'); return;
+        }
         // The radical template serializes its own closing parenthesis. Treat
-        // the physical ')' at the end of its radicand as exiting the template
-        // instead of adding a second, unmatched ')' to the expression.
+        // the physical ')' at the end of a balanced radicand as exiting the
+        // template instead of adding a second, unmatched ')' to the expression.
         moveCursorRight(); return;
       }
       insertToken(')'); return;
