@@ -7134,7 +7134,10 @@ function storeCalcAnswer(r, rawExpr) {
         appState.error = s.error; appState.result = null; appState.resultDisplayed = false;
       }
       // Sync state from backend
-      if (s.modeName) appState.mode = s.modeName;
+      // A calculation response must not switch modes. AC can leave a local
+      // equation result while the backend still reports Equation/Func; using
+      // that stale mode here would bring the discarded result page back.
+      if (s.modeName && s.modeName === appState.mode) appState.mode = s.modeName;
       if (s.base !== undefined) { appState.base = s.base; appState.baseNBase = s.base; }
       renderLCD();
     } catch(e) { showSystemError(e, 'Backend communication'); }
@@ -8676,7 +8679,7 @@ function showQRinLCD() {
     // EQUATION / FUNCTION MODE: frontend selection and backend solving.
     if (appState.mode === 'Equation/Func') {
       const eq = appState.equation;
-      if (rawKey === 'ac') { if (eq.phase === 'result' || eq.inputBuffer === '') { appState.mode = 'Calculate'; resetExpr(); } else eq.inputBuffer = ''; renderLCD(); return; }
+      if (rawKey === 'ac') { if (eq.phase === 'result' || eq.inputBuffer === '') { appState.mode = 'Calculate'; resetEquationState(); resetExpr(); } else eq.inputBuffer = ''; renderLCD(); return; }
       if (eq.phase === 'typeMenu') {
         if (rawKey === 'dpad_up' || rawKey === 'dpad_down') eq.selectedMenuItem = eq.selectedMenuItem === 0 ? 1 : 0;
         else if (rawKey === '1' || rawKey === '2') eq.selectedMenuItem = Number(rawKey)-1;
