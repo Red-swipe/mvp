@@ -21,13 +21,19 @@ class FunctionNode:
 
 
 @dataclass
+class UnaryOpNode:
+    op: TokenKind
+    operand: "Node"
+
+
+@dataclass
 class BinaryOpNode:
     left: "Node"
     op: TokenKind
     right: "Node"
 
 
-Node = NumberNode | FunctionNode | BinaryOpNode
+Node = NumberNode | FunctionNode | UnaryOpNode | BinaryOpNode
 
 
 class _Parser:
@@ -114,9 +120,7 @@ class _Parser:
         if token is not None and token.kind == TokenKind.MINUS:
             self._advance()
             operand = self._power()
-            if isinstance(operand, NumberNode):
-                return NumberNode(-operand.number)
-            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
+            return UnaryOpNode(TokenKind.MINUS, operand)
         node = self._unary()
         token = self._peek()
         if token is not None and token.kind == TokenKind.POWER:
@@ -134,9 +138,7 @@ class _Parser:
         if token is not None and token.kind == TokenKind.MINUS:
             self._advance()
             operand = self._unary()
-            if isinstance(operand, NumberNode):
-                return NumberNode(-operand.number)
-            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
+            return UnaryOpNode(TokenKind.MINUS, operand)
         return self._primary()
 
     def _primary(self):

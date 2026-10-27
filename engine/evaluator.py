@@ -2,7 +2,7 @@
 
 import math
 
-from .parser import BinaryOpNode, FunctionNode, NumberNode
+from .parser import BinaryOpNode, FunctionNode, NumberNode, UnaryOpNode
 from .tokenizer import TokenKind
 
 
@@ -51,6 +51,12 @@ def evaluate(node, angle_unit="Degree"):
         if name == "cbrt":
             return math.copysign(abs(value) ** (1 / 3), value)
         raise ValueError(f"Unknown function: {node.name}")
+
+    if isinstance(node, UnaryOpNode):
+        operand = evaluate(node.operand, angle_unit)
+        if node.op is TokenKind.MINUS:
+            return -operand
+        raise TypeError(f"Unsupported unary operator {node.op}")
 
     if isinstance(node, BinaryOpNode):
         left = evaluate(node.left, angle_unit)
