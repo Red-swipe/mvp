@@ -4353,18 +4353,12 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // RESULT/ERROR-aware entry: fresh input discards the old display (Ans
     // preserved), operator input continues from Ans, ignored keys return.
     if (normalizeResultErrorEntry(classifyInsertToken(tok)) === 'ignore') return;
-    if (appState.insertMode) {
-      cursor.slot.items.splice(cursor.index, 0, tok);
-      cursor.index++;
-    } else {
-      if (cursor.index < cursor.slot.items.length && typeof cursor.slot.items[cursor.index] === 'string') {
-        cursor.slot.items.splice(cursor.index, 1, tok);
-        cursor.index++;
-      } else {
-        cursor.slot.items.splice(cursor.index, 0, tok);
-        cursor.index++;
-      }
-    }
+    // cursor.index is a caret between items; keypad input always inserts.
+    // INS remains a calculator modifier indicator, but never changes editing
+    // into overwrite mode.
+    cursor.index = Math.max(0, Math.min(cursor.index, cursor.slot.items.length));
+    cursor.slot.items.splice(cursor.index, 0, tok);
+    cursor.index++;
     renderLCD();
     syncBackendExpression();
   }
@@ -4502,6 +4496,7 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
     // Clear entry state; answer registers survive. hardResetExpr clears them.
     rootSlot = createSlot();
     cursor = { slot: rootSlot, index: 0 };
+    appState.shift = false; appState.alpha = false;
     appState.result = null; appState.resultDisplayed = false; appState.error = null;
     appState.isFractionMode = false;
     appState.base = 10; appState.baseNBase = 10;
@@ -4719,9 +4714,8 @@ function renderMath(latexString, elementId, displayMode, plainFallback) {
       renderLCD();
       return;
     }
-    if (cursor.index < cursor.slot.items.length) {
-      cursor.slot.items.splice(cursor.index, 1);
-    } else if (cursor.index > 0) {
+    cursor.index = Math.max(0, Math.min(cursor.index, cursor.slot.items.length));
+    if (cursor.index > 0) {
       cursor.slot.items.splice(cursor.index - 1, 1);
       cursor.index--;
     } else {

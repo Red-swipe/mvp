@@ -10,6 +10,10 @@ import webbrowser
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
+if not (APP_DIR / "mvp_server.py").is_file() and (APP_DIR.parent / "mvp_server.py").is_file():
+    # Source archives keep this launcher under portable/ while runtime files
+    # stay at the repository root. Built distributions place both together.
+    APP_DIR = APP_DIR.parent
 os.chdir(APP_DIR)
 sys.path.insert(0, str(APP_DIR))
 LOG = APP_DIR / "calculator_log.txt"

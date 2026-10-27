@@ -33,21 +33,21 @@ echo [LAUNCHER] Starting ClassWiz Calculator... > %LOGFILE%
 echo [LAUNCHER] Date/Time: %DATE% %TIME% >> %LOGFILE%
 echo [LAUNCHER] Directory: "%~dp0" >> %LOGFILE%
 
-rem Verify python executable presence
-if not exist "%~dp0python\python.exe" (
-    echo [ERROR] Python folder is missing at "%~dp0python\python.exe". >> %LOGFILE%
-    echo.
-    echo ==============================================================================
-    echo ERROR: Python runtime folder is missing!
-    echo Please copy the ENTIRE application folder, not just RUN_CALCULATOR.bat.
-    echo ==============================================================================
-    echo.
+rem Prefer a bundled runtime. Raw source archives omit the generated runtime,
+rem so use Python on PATH when the archive is run directly.
+set "PYTHON_EXE="
+if exist "%~dp0python\python.exe" set "PYTHON_EXE=%~dp0python\python.exe"
+if not defined PYTHON_EXE if exist "%~dp0..\python\python.exe" set "PYTHON_EXE=%~dp0..\python\python.exe"
+if not defined PYTHON_EXE where python >nul 2>&1 && set "PYTHON_EXE=python"
+if not defined PYTHON_EXE (
+    echo [ERROR] No bundled Python runtime or Python executable on PATH. >> %LOGFILE%
+    echo Python 3 is required to run this source archive.
     pause
     goto :EOF
 )
-
-rem Launch launcher.py using unbuffered python (-u)
-"%~dp0python\python.exe" -u "%~dp0launcher.py" >> %LOGFILE% 2>&1
+echo [LAUNCHER] Python command: %PYTHON_EXE% >> %LOGFILE%
+rem Launch launcher.py using unbuffered Python (-u)
+"%PYTHON_EXE%" -u "%~dp0launcher.py" >> %LOGFILE% 2>&1
 if errorlevel 1 (
     echo [ERROR] Calculator exited with error level %ERRORLEVEL%. >> %LOGFILE%
     echo.
