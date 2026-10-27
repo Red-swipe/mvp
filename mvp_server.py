@@ -3389,13 +3389,12 @@ class CalculatorController:
                 })
                 if expr_override is not None:
                     self.expression = str(expr_override)
-                    self.cursor_position = int(payload.get("cursorPosition", len(self.expression)))
+                    self.cursor_position = max(0, min(len(self.expression), int(payload.get("cursorPosition", len(self.expression)))))
                 else:
-                    if self.cursor_position < len(self.expression):
-                        self.expression = (self.expression[:self.cursor_position] +
-                                           self.expression[self.cursor_position + 1:])
-                    elif self.cursor_position > 0:
-                        self.expression = self.expression[:self.cursor_position - 1]
+                    self.cursor_position = max(0, min(len(self.expression), self.cursor_position))
+                    if self.cursor_position > 0:
+                        self.expression = (self.expression[:self.cursor_position - 1] +
+                                           self.expression[self.cursor_position:])
                         self.cursor_position -= 1
                 self.shift = False
                 self.alpha = False
@@ -3408,7 +3407,7 @@ class CalculatorController:
 
             if key == "dpad_left" and self.state != "MENU":
                 if payload.get("cursorPosition") is not None:
-                    self.cursor_position = int(payload.get("cursorPosition"))
+                    self.cursor_position = max(0, min(len(self.expression), int(payload.get("cursorPosition"))))
                 else:
                     self.cursor_position = max(0, self.cursor_position - 1)
                 self._update_viewport()
@@ -3416,7 +3415,7 @@ class CalculatorController:
 
             if key == "dpad_right" and self.state != "MENU":
                 if payload.get("cursorPosition") is not None:
-                    self.cursor_position = int(payload.get("cursorPosition"))
+                    self.cursor_position = max(0, min(len(self.expression), int(payload.get("cursorPosition"))))
                 else:
                     self.cursor_position = min(len(self.expression), self.cursor_position + 1)
                 self._update_viewport()
@@ -3568,7 +3567,7 @@ class CalculatorController:
 
             if expr_override is not None:
                 self.expression = str(expr_override)
-                self.cursor_position = int(payload.get("cursorPosition", len(self.expression)))
+                self.cursor_position = max(0, min(len(self.expression), int(payload.get("cursorPosition", len(self.expression)))))
                 self._update_viewport()
                 self.state = "INPUT"
                 self.result_displayed = False
@@ -3619,15 +3618,9 @@ class CalculatorController:
                     self.cursor_position = 0
                     self.last_result = None
                     self.result_displayed = False
-                if self.insert_mode:
-                    self.expression = (self.expression[:self.cursor_position] + token +
-                                       self.expression[self.cursor_position:])
-                elif self.cursor_position < len(self.expression):
-                    self.expression = (self.expression[:self.cursor_position] + token +
-                                       self.expression[self.cursor_position + 1:])
-                else:
-                    self.expression = (self.expression[:self.cursor_position] + token +
-                                       self.expression[self.cursor_position:])
+                self.cursor_position = max(0, min(len(self.expression), self.cursor_position))
+                self.expression = (self.expression[:self.cursor_position] + token +
+                                   self.expression[self.cursor_position:])
                 self.cursor_position += len(token)
                 self._update_viewport()
                 self.state = "INPUT"

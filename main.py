@@ -66,6 +66,8 @@ class CalculatorWindow(QWidget):
         self.setObjectName("outerRim")
         self.engine = Engine()
         self.expr = ""
+        self.expr_tokens = []
+        self.cursor_position = 0
         self.last_result = "0"
         self.shift = False
         self.alpha = False
@@ -360,24 +362,33 @@ class CalculatorWindow(QWidget):
             self.do_evaluate()
         elif key == "ac":
             self.expr = ""
+            self.expr_tokens = []
+            self.cursor_position = 0
             self.last_result = "0"
             self.update_lcd()
         elif key == "del":
-            self.expr = self.expr[:-1]
+            self.cursor_position = max(0, min(self.cursor_position, len(self.expr_tokens)))
+            if self.cursor_position:
+                self.expr_tokens.pop(self.cursor_position - 1)
+                self.cursor_position -= 1
+            self.expr = "".join(self.expr_tokens)
             self.update_lcd()
         elif key == "menu":
             self.menu_page = 1 - self.menu_page
             self.refresh_menu()
         elif key == "dpad_left":
-            self.menu_page = 0
-            self.refresh_menu()
+            self.cursor_position = max(0, self.cursor_position - 1)
+            self.update_lcd()
         elif key == "dpad_right":
-            self.menu_page = 1
-            self.refresh_menu()
+            self.cursor_position = min(len(self.expr_tokens), self.cursor_position + 1)
+            self.update_lcd()
         else:
             token = self.resolve_token(key)
             if token:
-                self.expr += token
+                self.cursor_position = max(0, min(self.cursor_position, len(self.expr_tokens)))
+                self.expr_tokens.insert(self.cursor_position, token)
+                self.cursor_position += 1
+                self.expr = "".join(self.expr_tokens)
                 self.update_lcd()
         self.shift = False
         self.alpha = False
@@ -396,7 +407,10 @@ class CalculatorWindow(QWidget):
             self.update_lcd()
 
     def update_lcd(self):
-        self.expr_label.setText(self.expr or "")
+        self.cursor_position = max(0, min(self.cursor_position, len(self.expr_tokens)))
+        before = "".join(self.expr_tokens[:self.cursor_position])
+        after = "".join(self.expr_tokens[self.cursor_position:])
+        self.expr_label.setText((before + "|" + after) if self.expr_tokens else "")
         self.result_label.setText(self.last_result)
 
     def update_indicators(self):
