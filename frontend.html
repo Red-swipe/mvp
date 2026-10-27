@@ -7454,12 +7454,10 @@ function storeCalcAnswer(r, rawExpr) {
     return `${numerator}/${denominator}`;
   }
 
-  // Exact rational recovery for the file:// bridge, which has no /api/fraction
-  // endpoint to ask. The served path uses Fraction(value).limit_denominator(10000),
-  // so this has to make the SAME decision: 1/3 must come back as 1/3, never as
-  // the misleading 333/1000 that fractionString() produced by pinning the
-  // denominator at 1000. This is limit_denominator()'s own continued-fraction
-  // search, so the served and file:// paths agree value for value.
+  // Continued-fraction candidate search for the file:// bridge, which has no
+  // /api/fraction endpoint to ask. exactFractionString() filters these
+  // candidates using the same exact-decimal / small-denominator rules as the
+  // server, so irrational values never become plausible-looking fractions.
   function limitFraction(value, maxDen = 10000) {
     if (!Number.isFinite(value)) return null;
     const sign = value < 0 ? -1 : 1;
@@ -7486,12 +7484,29 @@ function storeCalcAnswer(r, rawExpr) {
       : { num: sign * b1n, den: b1d };
   }
 
-  // file:// counterpart of the server's /api/fraction handler. Mirrors its
-  // shape: a denominator of 1 prints as a plain integer (str(frac.numerator)),
-  // and mixed mode splits an improper fraction into whole + remainder.
+  // file:// counterpart of the server's /api/fraction handler. Only an exact
+  // decimal fraction or a nearby fraction with denominator <= 100 is accepted;
+  // all other values keep their decimal display.
   function exactFractionString(value, mixed = false) {
     const parts = limitFraction(value, 10000);
     if (!parts || !(parts.den > 0)) return localFormat(value);
+    const decimal = String(value).toLowerCase().match(/^(-?)(\d+)(?:\.(\d*))?(?:e([+-]?\d+))?$/);
+    let matchesDecimal = false;
+    if (decimal && Number.isSafeInteger(parts.num) && Number.isSafeInteger(parts.den)) {
+      const fractionDigits = decimal[3] || '';
+      const digitsText = (decimal[2] + fractionDigits).replace(/^0+(?=\d)/, '');
+      let decimalNumerator = BigInt(digitsText || '0');
+      if (decimal[1] === '-') decimalNumerator = -decimalNumerator;
+      const scale = Number(decimal[4] || 0) - fractionDigits.length;
+      let candidateNumerator = BigInt(parts.num);
+      let decimalSide = decimalNumerator * BigInt(parts.den);
+      if (scale >= 0) decimalSide *= 10n ** BigInt(scale);
+      else candidateNumerator *= 10n ** BigInt(-scale);
+      matchesDecimal = candidateNumerator === decimalSide;
+    }
+    const isSimpleFraction = parts.den <= 100
+      && Math.abs(parts.num / parts.den - value) <= 1e-9;
+    if (!matchesDecimal && !isSimpleFraction) return localFormat(value);
     if (parts.den === 1) return String(parts.num);
     if (mixed && Math.abs(parts.num) >= parts.den) {
       const whole = Math.trunc(parts.num / parts.den);

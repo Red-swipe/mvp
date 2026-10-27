@@ -8,16 +8,18 @@ corrupted state further than the LCD: the next S<->D press read the corrupted
 `333/1000` back as a number and printed `0.333`, losing the original
 `0.3333333333` for good.
 
-The served path asks /api/fraction, which uses
-Fraction(value).limit_denominator(10000). limitFraction() in frontend.html is
-that same continued-fraction search, so the two paths must agree value for
-value. Both are asserted here, on the real rendered app.
+The served path asks /api/fraction, which accepts only exact decimal
+fractions or nearby small-denominator fractions. limitFraction() in
+frontend.html performs the same candidate search, then exactFractionString()
+applies the same acceptance rule. Both are asserted here, on the real
+rendered app.
 
 Static layer: the helper is wired and the buggy helper is no longer used.
 Browser layer: file:// and http:// round trips, checking appState.result AND
 appState.lastAnswer so a correct-looking LCD cannot hide a corrupted value.
 """
 import json
+import math
 import pathlib
 import threading
 import time
@@ -227,6 +229,19 @@ class TestFileModeExactFractions(SToDBase):
         finally:
             page.close()
 
+    def test_sin60_and_pi_stay_decimal(self):
+        page = self.make_page(self.URL)
+        try:
+            for expression, expected in (("sin(60)", math.sqrt(3) / 2),
+                                         ("pi", math.pi)):
+                with self.subTest(expression=expression):
+                    self.type_expression(page, expression)
+                    got = self.toggle(page)
+                    self.assertNotIn("/", got["result"], got)
+                    self.assertAlmostEqual(float(got["result"]), expected, places=9)
+        finally:
+            page.close()
+
 
 @unittest.skipUnless(HAVE_BROWSER, "Playwright + Chrome are required")
 class TestServedPathAgrees(SToDBase):
@@ -292,3 +307,33 @@ class TestServedPathAgrees(SToDBase):
             self.assertEqual(self.toggle(page)["result"], "1/3")
         finally:
             page.close()
+
+    def test_file_and_served_paths_agree_on_irrationals_and_quarters(self):
+        file_page = self.make_page(FRONTEND_PATH.as_uri())
+        served_page = self.make_page(f"http://127.0.0.1:{self.port}/")
+        try:
+            self.assertTrue(file_page.evaluate("() => FILE_MODE"))
+            self.assertFalse(served_page.evaluate("() => FILE_MODE"))
+            for expression, expected in (("sin(60)", math.sqrt(3) / 2),
+                                         ("pi", math.pi)):
+                with self.subTest(expression=expression):
+                    results = []
+                    for page in (file_page, served_page):
+                        self.type_expression(page, expression)
+                        result = self.toggle(page)["result"]
+                        self.assertNotIn("/", result)
+                        self.assertAlmostEqual(float(result), expected, places=8)
+                        results.append(result)
+                    self.assertAlmostEqual(float(results[0]), float(results[1]), places=8)
+
+            for expression in ("0.25", "1/4"):
+                with self.subTest(expression=expression):
+                    for page in (file_page, served_page):
+                        self.type_expression(page, expression)
+                        result = self.state(page)["result"]
+                        if result != "1/4":
+                            result = self.toggle(page)["result"]
+                        self.assertEqual(result, "1/4")
+        finally:
+            file_page.close()
+            served_page.close()
