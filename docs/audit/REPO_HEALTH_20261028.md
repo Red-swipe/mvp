@@ -25,7 +25,7 @@ No derivative algorithm was ported from v0.12. Main already contains Richardson 
 - Pinned runtime and development requirements.
 - Added portable Playwright browser discovery for regression/server tests.
 - Added a release allowlist builder that creates `dist/calculator_portable.zip` and excludes audit, documentation, tests, and developer scripts from the package.
-- Replaced the launcher and Windows batch files to use the builder and support paths with spaces, visible Python errors, alternative local ports, and noninteractive smoke mode.
+- Replaced the launcher and Windows batch files to use the builder and support paths with spaces, visible Python errors, exclusive alternative-port binding, and noninteractive smoke mode. A post-build check caught and fixed Windows socket reuse and quoting for the bundled interpreter path.
 - Corrected README instructions for setup, running, testing, verification, and portable packaging.
 - Added a Linux headless GitHub Actions workflow for push and pull request to `main`; it installs Python, Node, and the browser dependencies. The workflow was not executed on GitHub during this local audit.
 - No tracked root-level test files, bytecode/cache/build outputs, or files larger than 5 MB were found.
@@ -45,6 +45,6 @@ Final pushed refs at completion: `main` contains the audit and implementation co
 
 ## Release and launcher verification
 
-`portable/BUILD_ON_MY_PC.bat` ran successfully, downloaded CPython 3.12.8, and produced `dist/calculator_portable.zip` with 126 packaged files and embedded-interpreter self-test success. The ZIP was extracted under `dist/Smoke Test Folder/`; embedded Python 3.12.8 ran the launcher in `--smoke-test` mode successfully. The persistent launcher and packaged `RUN_CALCULATOR.bat` each served HTTP 200 from the spaced path. The batch server was then stopped by terminating its process tree. Derivative (`sin(0.7)`) and integral (`integral x^2 from 0 to 3`) results matched expected values. A truly clean Windows machine without Python was not available, so the missing-system-Python prompt was not exercised; packaged ZIP includes its own runtime.
+`portable/BUILD_ON_MY_PC.bat` ran successfully, downloaded CPython 3.12.8, and produced `dist/calculator_portable.zip` with 126 packaged files and embedded-interpreter self-test success. The final ZIP (12,028,835 bytes) was extracted under a path containing spaces. Embedded Python 3.12.8 ran the launcher in `--smoke-test` mode successfully. With a process already listening on port 8000, the launcher and actual `RUN_CALCULATOR.bat` selected port 8001; the batch-launched server returned HTTP 200 and stopped on Ctrl+C. The system-Python fallback error was verified by running the batch from a temporary system-only package with PATH disabled; it returned exit code 1 and printed the Python 3.11+ installation message. Derivative (`sin(0.7)`) and integral (`integral x^2 from 0 to 3`) results matched expected values.
 
 The first v0.12 test-overlay attempt had six collection errors because test-only audit tools were missing from the temporary setup. After adding main's `audit/` and `scripts/` solely as temporary test support, the full v0.12 runtime suite completed: 930 passed, 2 skipped, 1 expected xfail, 306 subtests, 0 failures/errors. Temporary support files were removed before the release commit.
