@@ -24,7 +24,9 @@ calculator_portable/
 
 # Virtual environments
 .venv/
+.venv*/
 venv/
+venv*/
 env/
 
 # IDE/editor
@@ -44,3 +46,5 @@ desktop.ini
 .codex_test_tmp/
 graphify-out/
 *.pyc
+.*_test_tmp.js
+.x_variable_route_tmp.js
