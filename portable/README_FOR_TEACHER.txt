@@ -1,11 +1,10 @@
-Calculator, how to use
+Calculator: how to use
 
-1. Copy the whole folder "calculator_portable" from the USB stick to the Desktop.
-   Do not run it from inside a zip file.
-2. Open the folder and double click RUN_CALCULATOR.bat.
-3. A black window opens and your browser opens the calculator by itself.
-4. If Windows shows a blue SmartScreen box, click "More info", then "Run anyway".
-5. If a firewall box appears, choose "Allow". It only works on your own computer.
-6. To stop the calculator, close the black window.
-7. It needs no internet and no installation.
-8. If something goes wrong, send Zaidi the file calculator_log.txt from the folder.
+1. Copy the whole calculator_portable folder from the USB stick to the computer. Do not run it from inside the ZIP file.
+2. Open the extracted folder and double-click RUN_CALCULATOR.bat.
+3. A console opens and the calculator opens in your browser. If a port is occupied, the launcher tries the next port from 8000 to 8049.
+4. If Windows shows SmartScreen, choose More info, then Run anyway. If asked about the firewall, allow local access; the server listens only on this computer.
+5. Close the console window to stop the calculator.
+6. The release ZIP built by BUILD_ON_MY_PC.bat includes Python and works offline after it is built and extracted.
+7. If Python is not bundled, install Python 3.11 or newer and ensure it is available on PATH.
+8. If something goes wrong, send the calculator_log.txt file from the folder to your teacher.

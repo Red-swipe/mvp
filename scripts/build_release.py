@@ -1,127 +1,161 @@
 #!/usr/bin/env python3
-"""Build and verify a clean release package for the ClassWiz calculator.
+"""Assemble the allowlisted ClassWiz runtime and create its release ZIP."""
 
-Assembles portable application files, strips bytecode/pycache, and verifies
-completeness of all required assets (Katex, ClassWizFontSet, qrcode).
-"""
-
-import os
+import argparse
 import shutil
+import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DIST_DIR = ROOT_DIR / "dist" / "calculator_portable"
+DIST_ROOT = ROOT_DIR / "dist"
+DIST_DIR = DIST_ROOT / "calculator_portable"
+ZIP_PATH = DIST_ROOT / "calculator_portable.zip"
 
-REQUIRED_FILES = [
-    "mvp_server.py",
-    "frontend.html",
-    "README.md",
-]
-
-REQUIRED_DIRS = [
-    "engine",
-    "katex",
-    "ClassWizFontSet",
-    "qrcode",
-]
-
-
-def clean_and_assemble():
-    print(f"[BUILD] Assembling release into {DIST_DIR}...")
-    if DIST_DIR.exists():
-        shutil.rmtree(DIST_DIR)
-    DIST_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Copy files
-    for f in REQUIRED_FILES:
-        src = ROOT_DIR / f
-        if src.exists():
-            shutil.copy2(src, DIST_DIR / f)
-            print(f"  + Copied {f}")
-        else:
-            print(f"  ! Missing required file: {f}")
-
-    # Copy directories
-    for d in REQUIRED_DIRS:
-        src = ROOT_DIR / d
-        if src.exists():
-            shutil.copytree(src, DIST_DIR / d, dirs_exist_ok=True)
-            print(f"  + Copied directory {d}/")
-        else:
-            print(f"  ! Missing required directory: {d}")
-
-    # Copy portable launchers
-    portable_src = ROOT_DIR / "portable"
-    if portable_src.exists():
-        for pf in portable_src.glob("*"):
-            if pf.is_file():
-                shutil.copy2(pf, DIST_DIR / pf.name)
-                print(f"  + Copied launcher {pf.name}")
-
-    # Clean __pycache__
-    pycache_count = 0
-    for p in DIST_DIR.rglob("__pycache__"):
-        if p.is_dir():
-            shutil.rmtree(p)
-            pycache_count += 1
-    print(f"  - Removed {pycache_count} __pycache__ directories.")
-
-
+# Source path -> path inside the extracted calculator_portable directory.
+RELEASE_FILES = {
+    "README.md": "README.md",
+    "main.py": "main.py",
+    "mvp_server.py": "mvp_server.py",
+    "frontend.html": "frontend.html",
+    "portable/RUN_CALCULATOR.bat": "RUN_CALCULATOR.bat",
+    "portable/launcher.py": "launcher.py",
+    "portable/README_FOR_TEACHER.txt": "README_FOR_TEACHER.txt",
+}
+RELEASE_DIRS = ("engine", "katex", "ClassWizFontSet", "qrcode")
 PYTHON_EXE_REL = Path("python") / "python.exe"
 
 
-def verify_release(require_python=False):
-    print("[VERIFY] Checking asset completeness...")
+def _ignore_generated(_directory, names):
+    return [name for name in names if name == "__pycache__" or name.endswith((".pyc", ".pyo"))]
+
+
+def _configure_embedded_python(python_dir):
+    pth_files = sorted(python_dir.glob("python*._pth"))
+    if not pth_files:
+        raise FileNotFoundError(f"No python*._pth file found in {python_dir}")
+    pth_files[0].write_text(
+        "python312.zip\n.\n..\n\n# Uncomment to run site.main() automatically\n#import site\n",
+        encoding="ascii",
+        newline="\n",
+    )
+
+
+def _copy_release(python_runtime=None):
+    if DIST_DIR.exists():
+        shutil.rmtree(DIST_DIR)
+    if ZIP_PATH.exists():
+        ZIP_PATH.unlink()
+    DIST_DIR.mkdir(parents=True, exist_ok=True)
+
     missing = []
-    for f in REQUIRED_FILES:
-        if not (DIST_DIR / f).exists():
-            missing.append(f)
-    for d in REQUIRED_DIRS:
-        if not (DIST_DIR / d).exists():
-            missing.append(d)
+    for source_rel, dest_rel in RELEASE_FILES.items():
+        source = ROOT_DIR / source_rel
+        if not source.is_file():
+            missing.append(source_rel)
+            continue
+        destination = DIST_DIR / dest_rel
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+    for directory in RELEASE_DIRS:
+        source = ROOT_DIR / directory
+        if not source.is_dir():
+            missing.append(directory + "/")
+            continue
+        shutil.copytree(source, DIST_DIR / directory, ignore=_ignore_generated)
 
     if missing:
-        print(f"[ERROR] Release missing assets: {missing}")
-        sys.exit(1)
+        raise FileNotFoundError("Missing allowlisted release paths: " + ", ".join(missing))
 
-    # RUN_CALCULATOR.bat launches %~dp0python\python.exe and refuses to start
-    # without it, printing "ERROR: Python runtime folder is missing!". A
-    # package produced by this script never contains that folder, so saying
-    # "complete and clean" would be misleading.
-    #
-    # The bundled interpreter is produced by portable\BUILD_ON_MY_PC.bat, not
-    # here. So this is a WARNING by default and only fatal under
-    # --require-python, which is what a real shippable package is built with.
-    if not (DIST_DIR / PYTHON_EXE_REL).exists():
-        print("")
-        print("[WARNING] This package CANNOT BE LAUNCHED AS-IS.")
-        print(f"[WARNING]   Missing: {PYTHON_EXE_REL.as_posix()}")
-        print("[WARNING]   RUN_CALCULATOR.bat will stop with")
-        print('[WARNING]     "ERROR: Python runtime folder is missing!"')
-        print("[WARNING]   Build the shippable folder with")
-        print("[WARNING]     portable\\BUILD_ON_MY_PC.bat")
-        print("[WARNING]   (it downloads the embeddable Python), or rerun this")
-        print("[WARNING]   script with --require-python to make this fatal.")
-        print("")
-        if require_python:
-            print("[ERROR] --require-python: bundled python\\python.exe is absent.")
-            sys.exit(1)
-    elif require_python:
-        print(f"[VERIFY] Bundled interpreter present: {PYTHON_EXE_REL.as_posix()}")
+    if python_runtime:
+        runtime = Path(python_runtime).resolve()
+        if not (runtime / "python.exe").is_file():
+            raise FileNotFoundError(f"Bundled runtime has no python.exe: {runtime}")
+        target = DIST_DIR / "python"
+        shutil.copytree(runtime, target, ignore=_ignore_generated)
+        _configure_embedded_python(target)
 
-    print("[VERIFY] Release package is complete and clean.")
+
+def verify_release(require_python=False):
+    missing = [
+        destination
+        for destination in RELEASE_FILES.values()
+        if not (DIST_DIR / destination).is_file()
+    ]
+    missing.extend(
+        directory + "/" for directory in RELEASE_DIRS
+        if not (DIST_DIR / directory).is_dir()
+    )
+    if missing:
+        raise FileNotFoundError("Release is incomplete: " + ", ".join(missing))
+
+    bundled_python = DIST_DIR / PYTHON_EXE_REL
+    if require_python and not bundled_python.is_file():
+        raise FileNotFoundError("A bundled python/python.exe is required for this build")
+
+    forbidden = {"audit", "docs", "tests", "scripts", ".git"}
+    present_forbidden = sorted({part for path in DIST_DIR.rglob("*") for part in path.relative_to(DIST_DIR).parts if part in forbidden})
+    if present_forbidden:
+        raise RuntimeError("Development-only content entered the release: " + ", ".join(present_forbidden))
+
+    if bundled_python.is_file():
+        check = subprocess.run(
+            [str(bundled_python), "-c", "import engine, mvp_server; mvp_server.run_startup_selftest()"],
+            cwd=DIST_DIR,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if check.returncode:
+            raise RuntimeError("Bundled Python self-test failed:\n" + check.stdout + check.stderr)
+
+    DIST_ROOT.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(ZIP_PATH, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for file_path in sorted(path for path in DIST_DIR.rglob("*") if path.is_file()):
+            archive_name = Path("calculator_portable") / file_path.relative_to(DIST_DIR)
+            archive.write(file_path, archive_name.as_posix())
+
+    with zipfile.ZipFile(ZIP_PATH) as archive:
+        names = set(archive.namelist())
+    expected_prefix = "calculator_portable/"
+    if not names or any(not name.startswith(expected_prefix) for name in names):
+        raise RuntimeError("ZIP contains paths outside calculator_portable/")
+    if any(any(part in forbidden for part in Path(name).parts) for name in names):
+        raise RuntimeError("ZIP includes development-only content")
+
+    print(f"[VERIFY] Allowlisted runtime files: {len(names)}")
+    print(f"[VERIFY] Bundled Python: {'yes' if bundled_python.is_file() else 'no (system Python required)'}")
+    print(f"[BUILD] Release ZIP: {ZIP_PATH}")
+    print("[VERIFY] Release ZIP is complete and contains no development tree.")
+    return ZIP_PATH
+
+
+def build_release(python_runtime=None, require_python=False):
+    _copy_release(python_runtime)
+    return verify_release(require_python=require_python)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--python-runtime",
+        help="directory containing an embeddable Python runtime to include in the ZIP",
+    )
+    parser.add_argument(
+        "--require-python",
+        action="store_true",
+        help="fail unless the ZIP contains python/python.exe",
+    )
+    args = parser.parse_args()
+    try:
+        build_release(args.python_runtime, args.require_python)
+    except Exception as exc:
+        print(f"[ERROR] Release build failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    import argparse
-
-    ap = argparse.ArgumentParser(
-        description="Build and verify the portable calculator release.")
-    ap.add_argument("--require-python", action="store_true",
-                    help="fail if the bundled python\\python.exe is missing, "
-                         "i.e. the package would refuse to start")
-    args = ap.parse_args()
-
-    clean_and_assemble()
-    verify_release(require_python=args.require_python)
+    raise SystemExit(main())
