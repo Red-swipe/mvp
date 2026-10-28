@@ -29,7 +29,7 @@ No derivative algorithm was ported from v0.12. Main already contains Richardson 
 - Corrected README instructions for setup, running, testing, verification, and portable packaging.
 - Added a Linux headless GitHub Actions workflow for push and pull request to `main`; it installs Python, Node, and the browser dependencies. The workflow was not executed on GitHub during this local audit.
 - No tracked root-level test files, bytecode/cache/build outputs, or files larger than 5 MB were found.
-- The tracked-source secret scan found no credential-like material; vendored JavaScript and audit data were excluded from that pattern scan to avoid minified-code and evidence false positives.
+- A high-confidence scan found no credential patterns. One `users.noreply.github.com` co-author attribution appears in preserved audit evidence; it is a GitHub relay address, not a private mailbox. No other email addresses were found in the scanned tracked text.
 
 Commits: `79b562a` (precision regression tests), `7dbdd90` (test configuration and baseline hygiene), `aa80dda` (portable browser discovery), `4485e3c` (allowlist release builder and launchers), and `9e34a6a` (GitHub Actions).
 
@@ -39,8 +39,12 @@ The three files on `rescue/uncommitted_20261028` were compared with `origin/main
 
 ## Branch and tag state at audit writing
 
-Pre-audit tags: `pre_audit_main_20261028` at `c240cda349f2b32861e6b3c26c9fbdd86515bcc9` and `pre_audit_v012_20261028` at `37a04ded73eea68752431d71c9c9c919b2a3c5b2`. Rescue branch `rescue/uncommitted_20261028` remains preserved at `745ae502b1eba866810f72de29e6be466cf1c0b1`. Other existing branches and tags are listed in the final audit report; no unrelated branches or tags were changed.
+Pre-audit tags: `pre_audit_main_20261028` at `c240cda349f2b32861e6b3c26c9fbdd86515bcc9` and `pre_audit_v012_20261028` at `37a04ded73eea68752431d71c9c9c919b2a3c5b2`. Rescue branch `rescue/uncommitted_20261028` remains preserved at `745ae502b1eba866810f72de29e6be466cf1c0b1`.
 
-## Remaining verification
+Final pushed refs at completion: `main` at `66c55d73090e6f03769026b237d64464558f2036`; `v0.12` at `181cf030a04350b5ce520ee9bba37f633df785a5`, tagged `v0.12_release_20261028`. The release allowlist diff between `origin/main` and `origin/v0.12` is empty; `git rev-list --left-right --count` reports `28 6`, expected because the release branch is stripped. The `v0.12_port_oct21` ancestor gate passed. It was deleted locally and remotely only after the tests, smoke checks, allowlist diff, and both pushes passed.
 
-The Windows ZIP build and extraction/launcher smoke test, release-tree regeneration, v0.12 parity test run, pushes, sync proof, and gated old-branch deletion are recorded in the final audit report after those steps complete.
+## Release and launcher verification
+
+`portable/BUILD_ON_MY_PC.bat` ran successfully, downloaded CPython 3.12.8, and produced `dist/calculator_portable.zip` with 126 packaged files and embedded-interpreter self-test success. The ZIP was extracted under `dist/Smoke Test Folder/`; embedded Python 3.12.8 ran the launcher in `--smoke-test` mode successfully. The persistent launcher and packaged `RUN_CALCULATOR.bat` each served HTTP 200 from the spaced path. The batch server was then stopped by terminating its process tree. Derivative (`sin(0.7)`) and integral (`integral x^2 from 0 to 3`) results matched expected values. A truly clean Windows machine without Python was not available, so the missing-system-Python prompt was not exercised; packaged ZIP includes its own runtime.
+
+The first v0.12 test-overlay attempt had six collection errors because test-only audit tools were missing from the temporary setup. After adding main's `audit/` and `scripts/` solely as temporary test support, the full v0.12 runtime suite completed: 930 passed, 2 skipped, 1 expected xfail, 306 subtests, 0 failures/errors. Temporary support files were removed before the release commit.
