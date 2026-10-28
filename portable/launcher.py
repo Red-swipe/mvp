@@ -1,6 +1,7 @@
 """Portable launcher for the calculator server."""
 import argparse
 import os
+import socket
 import sys
 import threading
 import urllib.request
@@ -18,10 +19,25 @@ def start_server():
     mvp_server.run_startup_selftest()
     server = None
     for port in range(8000, 8050):
+        candidate = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            server = ThreadingHTTPServer(("127.0.0.1", port), mvp_server.MvpHandler)
+            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                candidate.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            else:
+                candidate.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+            candidate.bind(("127.0.0.1", port))
+            candidate.listen(socket.SOMAXCONN)
+
+            server = ThreadingHTTPServer(
+                ("127.0.0.1", port), mvp_server.MvpHandler, bind_and_activate=False
+            )
+            server.socket.close()
+            server.socket = candidate
+            server.server_address = candidate.getsockname()
+            server.server_port = server.server_address[1]
             break
         except OSError:
+            candidate.close()
             continue
     if server is None:
         raise RuntimeError("Ports 8000-8049 are occupied. Close another calculator and try again.")
