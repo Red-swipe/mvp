@@ -33,7 +33,13 @@ import pytest
 PROJECT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT))
 
-CHROMIUM = r"C:\Users\DELL\AppData\Local\ms-playwright\chromium-1228\chrome-win64\chrome.exe"
+try:
+    from browser_support import chromium_executable
+    CHROMIUM = chromium_executable()
+    HAVE_CHROMIUM = CHROMIUM is not None
+except Exception:  # pragma: no cover - browser installation is optional
+    CHROMIUM = None
+    HAVE_CHROMIUM = False
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +157,8 @@ def test_calculator_remains_usable_after_a_calculation_error(live_post):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not pathlib.Path(CHROMIUM).exists(),
-                    reason="chromium is not installed")
+@pytest.mark.skipif(not HAVE_CHROMIUM,
+                    reason="Playwright-managed Chromium is not installed")
 def test_frontend_keeps_the_failed_expression_out_of_the_next_input():
     """The served page must not carry a failed expression into the next one.
 
@@ -181,7 +187,7 @@ def test_frontend_keeps_the_failed_expression_out_of_the_next_input():
     pw = None
     try:
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(channel="chrome")
+        browser = pw.chromium.launch(headless=True, executable_path=CHROMIUM)
         page = browser.new_page()
         page.goto("http://127.0.0.1:%d/" % port, wait_until="load")
         page.wait_for_timeout(1200)

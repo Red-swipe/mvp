@@ -8,15 +8,17 @@ from http.server import ThreadingHTTPServer
 
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND = (ROOT / "frontend.html").read_text(encoding="utf-8")
-CHROMIUM = r"C:\Users\DELL\AppData\Local\ms-playwright\chromium-1228\chrome-win64\chrome.exe"
 try:
     from playwright.sync_api import sync_playwright
+    from browser_support import chromium_executable
     HAVE_PLAYWRIGHT = True
 except ImportError:
     HAVE_PLAYWRIGHT = False
 
+CHROMIUM = chromium_executable() if HAVE_PLAYWRIGHT else None
 
-@unittest.skipUnless(HAVE_PLAYWRIGHT and os.path.exists(CHROMIUM), "Playwright Chromium required")
+
+@unittest.skipUnless(CHROMIUM, "Playwright-managed Chromium is not installed")
 class TestBrowserCaretEditing(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -168,7 +170,7 @@ class TestBrowserCaretEditing(unittest.TestCase):
                 self.assertNotIn("XX", actual["text"])
 
 
-@unittest.skipUnless(HAVE_PLAYWRIGHT and os.path.exists(CHROMIUM), "Playwright Chromium required")
+@unittest.skipUnless(CHROMIUM, "Playwright-managed Chromium is not installed")
 class TestServedCalculatorEditing(TestBrowserCaretEditing):
     """Exercise actual keypad handlers on the HTTP-served teacher path."""
     @classmethod

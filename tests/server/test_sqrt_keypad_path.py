@@ -32,10 +32,17 @@ import urllib.error
 import urllib.request
 
 PROJECT = pathlib.Path(__file__).resolve().parents[2]
-CHROMIUM = r"C:\Users\DELL\AppData\Local\ms-playwright\chromium-1228\chrome-win64\chrome.exe"
 FRONTEND = PROJECT / "frontend.html"
 SERVER = PROJECT / "mvp_server.py"
 TIMEOUT = 10
+
+try:
+    from browser_support import chromium_executable
+    CHROMIUM = chromium_executable()
+    HAVE_CHROMIUM = CHROMIUM is not None
+except Exception:  # pragma: no cover - browser installation is optional
+    CHROMIUM = None
+    HAVE_CHROMIUM = False
 
 # (label, keypad keys, serialised expression, expected value)
 SERIALISATION_CASES = [
@@ -53,7 +60,7 @@ SERIALISATION_CASES = [
 # ---------------------------------------------------------------------------
 
 
-@unittest.skipUnless(os.path.exists(CHROMIUM), "chromium is not installed")
+@unittest.skipUnless(HAVE_CHROMIUM, "Playwright-managed Chromium is not installed")
 class TestSqrtKeypadSerialisation(unittest.TestCase):
     """The keypad must not depend on anything downstream to repair its output."""
 

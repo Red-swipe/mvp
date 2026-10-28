@@ -16,8 +16,15 @@ import sys
 import unittest
 
 PROJECT = pathlib.Path(__file__).resolve().parents[2]
-CHROMIUM = r"C:\Users\DELL\AppData\Local\ms-playwright\chromium-1228\chrome-win64\chrome.exe"
 FRONTEND = PROJECT / "frontend.html"
+
+try:
+    from browser_support import chromium_executable
+    CHROMIUM = chromium_executable()
+    HAVE_CHROMIUM = CHROMIUM is not None
+except Exception:  # pragma: no cover - browser installation is optional
+    CHROMIUM = None
+    HAVE_CHROMIUM = False
 
 sys.path.insert(0, str(PROJECT))
 import mvp_server  # noqa: E402  the value oracle for the serialisation checks
@@ -31,7 +38,7 @@ def evaluate(expression):
     return float(mvp_server.safe_evaluate_expression(expression))
 
 
-@unittest.skipUnless(os.path.exists(CHROMIUM), "chromium is not installed")
+@unittest.skipUnless(HAVE_CHROMIUM, "Playwright-managed Chromium is not installed")
 class TestPowerKeyBoundaries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
