@@ -31,7 +31,7 @@ No derivative algorithm was ported from v0.12. Main already contains Richardson 
 - No tracked root-level test files, bytecode/cache/build outputs, or files larger than 5 MB were found.
 - A high-confidence scan found no credential patterns. One `users.noreply.github.com` co-author attribution appears in preserved audit evidence; it is a GitHub relay address, not a private mailbox. No other email addresses were found in the scanned tracked text.
 
-Commits: `79b562a` (precision regression tests), `7dbdd90` (test configuration and baseline hygiene), `aa80dda` (portable browser discovery), `4485e3c` (allowlist release builder and launchers), and `9e34a6a` (GitHub Actions).
+Commits: `79b562a` (precision regression tests), `7dbdd90` (test configuration and baseline hygiene), `aa80dda` (portable browser discovery), `4485e3c` (allowlist release builder and launchers), `9e34a6a` (GitHub Actions), `db14248` (exclusive port binding), and `82f2db4` (quoted bundled interpreter path).
 
 ## Rescued work triage
 
@@ -41,7 +41,7 @@ The three files on `rescue/uncommitted_20261028` were compared with `origin/main
 
 Pre-audit tags: `pre_audit_main_20261028` at `c240cda349f2b32861e6b3c26c9fbdd86515bcc9` and `pre_audit_v012_20261028` at `37a04ded73eea68752431d71c9c9c919b2a3c5b2`. Rescue branch `rescue/uncommitted_20261028` remains preserved at `745ae502b1eba866810f72de29e6be466cf1c0b1`.
 
-Final pushed refs at completion: `main` contains the audit and implementation commits; `v0.12` is at `181cf030a04350b5ce520ee9bba37f633df785a5`, tagged `v0.12_release_20261028`. The release allowlist diff between `origin/main` and `origin/v0.12` is empty. `git rev-list --left-right --count` remains nonzero, as expected because the release branch is stripped. The `v0.12_port_oct21` ancestor gate passed. It was deleted locally and remotely only after the tests, smoke checks, allowlist diff, and both pushes passed.
+Final pushed refs at completion: `main` contains the audit and implementation commits; `v0.12` is at `2ac59e3bd6c1cf20c62b7dbf2fd6d69350adac1f`, tagged `v0.12_release_20261028_fix1`. The original immutable tag `v0.12_release_20261028` remains on `181cf030a04350b5ce520ee9bba37f633df785a5`; the Windows launcher defects were found after it was published, so it was left untouched and a corrected tag was added. The release allowlist diff between `origin/main` and `origin/v0.12` is empty. `git rev-list --left-right --count` remains nonzero, as expected because the release branch is stripped. The `v0.12_port_oct21` ancestor gate passed. It was deleted locally and remotely only after the tests, smoke checks, allowlist diff, and both pushes passed.
 
 ## Release and launcher verification
 
