@@ -42,5 +42,6 @@ desktop.ini
 *.bak
 
 .codex_test_tmp/
+_pytest_tmp/
 graphify-out/
 *.pyc

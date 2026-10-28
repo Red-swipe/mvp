@@ -15,10 +15,10 @@ class CalculusEngine:
         pass
 
     def differentiate(self, f, x, tol=1e-8):
-        if x != 0:
-            h = max(1e-8, abs(x) * 1e-8)
-        else:
-            h = 1e-8
+        # A 5-point central difference has O(h**4) truncation error.  Its
+        # useful step is much larger than machine epsilon: eps**(1/5) balances
+        # truncation against floating-point cancellation for this stencil.
+        h = math.ulp(1.0) ** 0.2 * max(1.0, abs(x))
         try:
             fm2 = f(x - 2 * h)
             fm1 = f(x - h)

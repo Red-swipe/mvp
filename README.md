@@ -132,10 +132,5 @@ portable/          Scripts that build and launch the portable distribution
 ```
 
 ## Mathematical Evaluation Conventions
-- **Implicit Multiplication Precedence**: Follows Casio fx-991EX standard. An implicit multiplication (a number, closing bracket, or constant directly followed by an opening bracket, function, or variable) binds tighter than explicit multiplication (, ) and division (, ).
-  - Example:  is evaluated as .
-
-
-## Mathematical Evaluation Conventions
 - **Implicit Multiplication Precedence**: Follows Casio fx-991EX standard. An implicit multiplication (a number, closing bracket, or constant directly followed by an opening bracket, function, or variable) binds tighter than explicit multiplication (*, x) and division (/, /).
   - Example: 8 / 2(2+2) is evaluated as 8 / (2 * (2+2)) = 1.
