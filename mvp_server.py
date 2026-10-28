@@ -393,7 +393,7 @@ DEFAULT_SETTINGS = {
     "numberFormat": "Norm",
     "numberFormatPrecision": 1,
     "engineeringSymbols": False,
-    "fractionResult": "ab/c",
+    "fractionResult": "d/c",
     "statisticsFrequency": False,
     "autoCalc": True,
     "showCell": "Value",
@@ -405,7 +405,7 @@ DEFAULT_SETUP_SETTINGS = {
     "number_format":         "Norm",
     "number_format_digits":  2,
     "engineering_symbols":   False,
-    "fraction_result":       "ab/c",
+    "fraction_result":       "d/c",
     "stat_frequency":        True,
     "spreadsheet_auto_calc": True,
     "spreadsheet_show":      "value",
@@ -472,6 +472,41 @@ def _find_special_call(s: str):
     return best
 
 
+def _special_degree_trig_value(name, value):
+    """Return an exact value for standard special angles, or None."""
+    if not isinstance(value, (int, float)):
+        return None
+    sqrt2 = math.sqrt(2) / 2
+    sqrt3 = math.sqrt(3) / 2
+    values = {
+        "sin": {
+            0: 0.0, 30: 0.5, 45: sqrt2, 60: sqrt3, 90: 1.0,
+            120: sqrt3, 135: sqrt2, 150: 0.5, 180: 0.0,
+            210: -0.5, 225: -sqrt2, 240: -sqrt3, 270: -1.0,
+            300: -sqrt3, 315: -sqrt2, 330: -0.5,
+        },
+        "cos": {
+            0: 1.0, 30: sqrt3, 45: sqrt2, 60: 0.5, 90: 0.0,
+            120: -0.5, 135: -sqrt2, 150: -sqrt3, 180: -1.0,
+            210: -sqrt3, 225: -sqrt2, 240: -0.5, 270: 0.0,
+            300: 0.5, 315: sqrt2, 330: sqrt3,
+        },
+        "tan": {
+            0: 0.0, 30: 1 / math.sqrt(3), 45: 1.0, 60: math.sqrt(3),
+            120: -math.sqrt(3), 135: -1.0, 150: -1 / math.sqrt(3),
+            180: 0.0, 210: 1 / math.sqrt(3), 225: 1.0,
+            240: math.sqrt(3), 300: -math.sqrt(3), 315: -1.0,
+            330: -1 / math.sqrt(3),
+        },
+    }
+    normalized = value % 360
+    for angle, exact in values.get(name, {}).items():
+        distance = abs(normalized - angle)
+        if min(distance, 360 - distance) <= 1e-12:
+            return exact
+    return None
+
+
 def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degree", variables=None, complex_mode: bool = False, rnd_setting=None) -> str:
     """Replace supported special-function calls with plain Python expressions.
 
@@ -498,7 +533,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             b_val = safe_evaluate_expression(args[2], ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             def integrand_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), integrand_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), integrand_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.integrate(integrand_func, a_val, b_val)
@@ -556,6 +591,12 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
                 replacement = _lit(result)
                 s = s[:start] + replacement + s[close_idx + 1:]
                 continue
+            if angle_unit == "Degree":
+                exact_value = _special_degree_trig_value(name, value)
+                if exact_value is not None:
+                    replacement = _lit(exact_value)
+                    s = s[:start] + replacement + s[close_idx + 1:]
+                    continue
             if angle_unit == "Radian":
                 radians = value
             elif angle_unit == "Gradian":
@@ -756,7 +797,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
             a_int, b_int = int(a_val), int(b_val)
 
             def sigma_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), body_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.sigma(sigma_func, a_int, b_int)
@@ -770,7 +811,7 @@ def _transform_special_functions(s: str, ans_val: float, angle_unit: str = "Degr
                 raise ValueError("Math ERROR")
 
             def diff_func(x):
-                sub_expr = re.sub(r'\bx\b', _lit(x), body_str)
+                sub_expr = re.sub(r'(?<![A-Za-z_])x(?![A-Za-z_])', _lit(x), body_str)
                 return safe_evaluate_expression(sub_expr, ans_val, angle_unit, variables, complex_mode, rnd_setting)
 
             res = CALC_ENGINE.differentiate(diff_func, float(x0))
@@ -3621,6 +3662,44 @@ CONTROLLER = CalculatorController()
 CONTROLLER_LOCK = threading.Lock()
 
 
+# /api/fraction contract: limit_denominator() always invents SOME nearby
+# rational, so a small error alone is no evidence that the value really is
+# rational. sin(60) therefore came back as 2521/2911 and pi as 355/113, and
+# cos(25) would come back as 4411/4867. A candidate is trusted only when
+#   * it is the exact rational form of the decimal the caller supplied
+#     (0.25 -> 1/4, 0.0078125 -> 1/128), or
+#   * it is a genuinely simple fraction (denominator <= 100) that reproduces
+#     the value within FRACTION_TOLERANCE (1/3, 7/3).
+# Anything else keeps the decimal text, so no false exactness is claimed.
+FRACTION_MAX_DENOMINATOR = 10000
+FRACTION_MAX_SIMPLE_DENOMINATOR = 100
+FRACTION_TOLERANCE = Fraction(1, 10 ** 9)
+
+
+def format_exact_fraction(value, mixed=False):
+    """Render *value* as a simple fraction only when that fraction is justified.
+
+    Falls back to the decimal text (str(value)) when no defensible rational
+    form exists.
+    """
+    exact_value = Fraction(value)
+    frac = exact_value.limit_denominator(FRACTION_MAX_DENOMINATOR)
+    if frac != Fraction(str(value)):
+        simple = (
+            frac.denominator <= FRACTION_MAX_SIMPLE_DENOMINATOR
+            and abs(frac - exact_value) <= FRACTION_TOLERANCE
+        )
+        if not simple:
+            return str(value)
+    if frac.denominator == 1:
+        return str(frac.numerator)
+    if mixed and abs(frac.numerator) > frac.denominator:
+        whole = int(frac.numerator / frac.denominator)
+        remainder = abs(frac.numerator) % frac.denominator
+        return f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
+    return f"{frac.numerator}/{frac.denominator}"
+
+
 class MvpHandler(BaseHTTPRequestHandler):
     server_version = "ClassWizMVP/1.0"
 
@@ -3823,16 +3902,11 @@ class MvpHandler(BaseHTTPRequestHandler):
                     else:
                         value = float(payload["value"])
                         mixed = bool(payload.get("mixed", False))
-                        frac = Fraction(value).limit_denominator(10000)
-                        if frac.denominator == 1:
-                            result = str(frac.numerator)
-                        elif mixed and abs(frac.numerator) > frac.denominator:
-                            whole = int(frac.numerator / frac.denominator)
-                            remainder = abs(frac.numerator) % frac.denominator
-                            result = f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
-                        else:
-                            result = f"{frac.numerator}/{frac.denominator}"
-                        response = {"result": result, "success": True, "ok": True}
+                        response = {
+                            "result": format_exact_fraction(value, mixed),
+                            "success": True,
+                            "ok": True,
+                        }
                 elif path == "/api/settings":
                     response = CONTROLLER.set_settings(payload)
                 elif path == "/setup_update":

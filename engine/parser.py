@@ -15,13 +15,25 @@ class NumberNode:
 
 
 @dataclass
+class FunctionNode:
+    name: str
+    argument: "Node"
+
+
+@dataclass
+class UnaryOpNode:
+    op: TokenKind
+    operand: "Node"
+
+
+@dataclass
 class BinaryOpNode:
     left: "Node"
     op: TokenKind
     right: "Node"
 
 
-Node = NumberNode | BinaryOpNode
+Node = NumberNode | FunctionNode | UnaryOpNode | BinaryOpNode
 
 
 class _Parser:
@@ -92,7 +104,7 @@ class _Parser:
     @staticmethod
     def _starts_factor(token):
         """True when `token` can begin a factor, i.e. an operand was omitted."""
-        return token.kind in (TokenKind.NUMBER, TokenKind.LPAREN)
+        return token.kind in (TokenKind.NUMBER, TokenKind.IDENTIFIER, TokenKind.LPAREN)
 
     def _implicit_multiply_allowed(self):
         """Allow all implicit multiplication forms including adjacent brackets `)(`."""
@@ -108,9 +120,7 @@ class _Parser:
         if token is not None and token.kind == TokenKind.MINUS:
             self._advance()
             operand = self._power()
-            if isinstance(operand, NumberNode):
-                return NumberNode(-operand.number)
-            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
+            return UnaryOpNode(TokenKind.MINUS, operand)
         node = self._unary()
         token = self._peek()
         if token is not None and token.kind == TokenKind.POWER:
@@ -128,9 +138,7 @@ class _Parser:
         if token is not None and token.kind == TokenKind.MINUS:
             self._advance()
             operand = self._unary()
-            if isinstance(operand, NumberNode):
-                return NumberNode(-operand.number)
-            return BinaryOpNode(NumberNode(0), TokenKind.MINUS, operand)
+            return UnaryOpNode(TokenKind.MINUS, operand)
         return self._primary()
 
     def _primary(self):
@@ -140,6 +148,13 @@ class _Parser:
         if token.kind == TokenKind.NUMBER:
             self._advance()
             return NumberNode(token.value)
+        if token.kind == TokenKind.IDENTIFIER:
+            self._advance()
+            name = str(token.value)
+            self._expect(TokenKind.LPAREN)
+            argument = self._expression()
+            self._expect(TokenKind.RPAREN)
+            return FunctionNode(name, argument)
         if token.kind == TokenKind.LPAREN:
             self._advance()
             node = self._expression()

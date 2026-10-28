@@ -6,6 +6,7 @@ from enum import Enum
 
 class TokenKind(Enum):
     NUMBER = "NUMBER"
+    IDENTIFIER = "IDENTIFIER"
     PLUS = "PLUS"
     MINUS = "MINUS"
     TIMES = "TIMES"
@@ -40,7 +41,7 @@ def tokenize(text):
     """Tokenize ``text`` into a list of Tokens, ignoring whitespace.
 
     Raises TokenizerError on any character that is not a digit,
-    decimal point, operator, parenthesis, or whitespace.
+    decimal point, identifier character, operator, parenthesis, or whitespace.
     """
     tokens = []
     i = 0
@@ -71,6 +72,13 @@ def tokenize(text):
                     f"Invalid number '{raw}' at position {start}"
                 )
             tokens.append(Token(TokenKind.NUMBER, value, start))
+            continue
+
+        if char.isalpha() or char == "_":
+            start = i
+            while i < length and (text[i].isalnum() or text[i] == "_"):
+                i += 1
+            tokens.append(Token(TokenKind.IDENTIFIER, text[start:i], start))
             continue
 
         if char in _SINGLE_CHAR_TOKENS:

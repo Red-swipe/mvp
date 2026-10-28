@@ -19,84 +19,36 @@ A desktop MVP emulator inspired by the Casio fx-991EX ClassWiz calculator, built
 
 ## Requirements
 
-- Python 3.11+ to run from source
-- [PySide6](https://pypi.org/project/PySide6/) — **desktop app only**. The browser MVP and the portable build use only the standard library.
+- Python 3.11 or newer for source use and tests.
+- PySide6 for the desktop app (`pip install -r requirements.txt`). The browser server and packaged runtime use the Python standard library.
+- Tests additionally use the pinned packages in `audit/requirements-dev.txt`; browser tests need Playwright Chromium and Chrome.
 
-The shipped portable build carries its own **embeddable CPython 3.12.8** and does **not** use a system Python. The full test suite has been run green under Python 3.12.8.
-
-## Installation
-
-```bash
-pip install -r requirements.txt   # desktop app only
-```
-
-The browser MVP and the portable build need no installation at all.
-
-## Running from source
-
-Browser MVP:
+## Installation and running
 
 ```bash
-python mvp_server.py                   # serves http://127.0.0.1:8000
-python mvp_server.py --no-browser      # start without opening a tab
-```
-
-Desktop app:
-
-```bash
-python main.py
-```
-
-`ClassWizFontSet/`, `katex/` and `qrcode/` are runtime assets for the browser frontend and must stay next to `mvp_server.py`. KaTeX and the QR generator are **vendored**, not loaded from a CDN, so the app works with no internet connection.
-
-## Building the portable version (how users get it)
-
-Run **once** on a Windows PC that has internet. It downloads the embeddable
-Python runtime and produces the folder you copy to a USB stick:
-
-```bat
-cd portable
-BUILD_ON_MY_PC.bat
-```
-
-The build writes to `calculator_portable/` at the repository root, verifies
-itself by importing the real engine with the bundled interpreter, and prints a
-`[SELFTEST]` report. It then exits non-zero if anything is missing.
-
-To use it, copy the **whole** `calculator_portable/` folder to the target PC and
-double-click `RUN_CALCULATOR.bat`. A console window opens, the calculator
-appears in the browser, and closing the window stops it.
-
-`calculator_portable/` is a generated artefact and is not committed (see `.gitignore`). Rebuild it on each machine you distribute from.
-
-## Testing
-
-The suite is **pytest**. From a Python 3.12 environment:
-
-```bash
-pip install pytest playwright opencv-python-headless pillow numpy fonttools
-python -m pytest -q
-```
-
-Several tests drive a real Chrome via Playwright (`channel="chrome"`), so a local
-Chrome install is required; tests needing it skip cleanly if it is unavailable.
-`fonttools` and the image/decoder packages are optional — without them a small
-number of tests skip.
-
-Last recorded result on the release commit: **681 passed, 179 subtests, 0 failed, 0 skipped** under Python 3.12.8.
-
-`scripts/verify.py` is a separate, smaller end-to-end check that expects a running server:
-
-```bash
+python -m pip install -r requirements.txt
+python main.py                 # desktop app
+python mvp_server.py           # browser app at http://127.0.0.1:8000
 python mvp_server.py --no-browser
-python scripts/verify.py
 ```
 
-Desktop smoke test:
+The browser runtime assets `ClassWizFontSet/`, `katex/` and `qrcode/` must remain beside `mvp_server.py`. They are vendored for offline use.
+
+## Tests
 
 ```bash
-python main.py --smoke-test
+python -m pip install -r requirements.txt -r audit/requirements-dev.txt
+python -m playwright install chromium chrome
+python -m pytest -vv
 ```
+
+`pytest.ini` applies a 60-second per-test timeout and prints a traceback for stalled tests. Tests that require browser binaries skip with a visible reason when those binaries are absent. `scripts/verify.py` checks static frontend wiring and scroll indicators; it does not start a server.
+
+## Building the portable ZIP
+
+On Windows, run `portable\BUILD_ON_MY_PC.bat` from a machine with Python 3.11+ and internet access. The script downloads the CPython 3.12.8 embeddable runtime and calls `scripts/build_release.py`, which defines the runtime allowlist and writes `dist\calculator_portable.zip`. Extract the ZIP completely, then double-click `RUN_CALCULATOR.bat`. The launcher starts the server, opens the browser, selects another port if 8000 is busy, and closes cleanly with its console.
+
+The ZIP works offline after download and extraction. The release contains only runtime files and launch instructions; it excludes tests, audit evidence, and developer scripts.
 
 ## Building the desktop executable
 
@@ -132,5 +84,5 @@ portable/          Scripts that build and launch the portable distribution
 ```
 
 ## Mathematical Evaluation Conventions
-- **Implicit Multiplication Precedence**: Follows Casio fx-991EX standard. An implicit multiplication (a number, closing bracket, or constant directly followed by an opening bracket, function, or variable) binds tighter than explicit multiplication (*, x) and division (/, /).
-  - Example: 8 / 2(2+2) is evaluated as 8 / (2 * (2+2)) = 1.
+
+Implicit multiplication follows the fx-991EX convention. For example, `8 / 2(2+2)` is evaluated as `8 / (2 * (2+2)) = 1`.
