@@ -41,7 +41,7 @@ The three files on `rescue/uncommitted_20261028` were compared with `origin/main
 
 Pre-audit tags: `pre_audit_main_20261028` at `c240cda349f2b32861e6b3c26c9fbdd86515bcc9` and `pre_audit_v012_20261028` at `37a04ded73eea68752431d71c9c9c919b2a3c5b2`. Rescue branch `rescue/uncommitted_20261028` remains preserved at `745ae502b1eba866810f72de29e6be466cf1c0b1`.
 
-Final pushed refs at completion: `main` at `66c55d73090e6f03769026b237d64464558f2036`; `v0.12` at `181cf030a04350b5ce520ee9bba37f633df785a5`, tagged `v0.12_release_20261028`. The release allowlist diff between `origin/main` and `origin/v0.12` is empty; `git rev-list --left-right --count` reports `28 6`, expected because the release branch is stripped. The `v0.12_port_oct21` ancestor gate passed. It was deleted locally and remotely only after the tests, smoke checks, allowlist diff, and both pushes passed.
+Final pushed refs at completion: `main` contains the audit and implementation commits; `v0.12` is at `181cf030a04350b5ce520ee9bba37f633df785a5`, tagged `v0.12_release_20261028`. The release allowlist diff between `origin/main` and `origin/v0.12` is empty; `git rev-list --left-right --count` reports `28 6`, expected because the release branch is stripped. The `v0.12_port_oct21` ancestor gate passed. It was deleted locally and remotely only after the tests, smoke checks, allowlist diff, and both pushes passed.
 
 ## Release and launcher verification
 
